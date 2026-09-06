@@ -3,10 +3,30 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 
-const DOC_OPTIONS = ["Техпаспорт", "ДКП", "Красная книга", "Зелёная книга"];
-const ROOM_TYPES = ["Студия", "1", "2", "3", "4", "5+"];
-const HEATING_OPTS = ["Центральное", "Электро-конвекторы", "Электро-паровое", "Газовый котёл", "Газовая котельная", "Другое"];
-const DEAL_TERMS_OPTS = ["Наличные", "Ипотека", "Рассрочка от Госрегистра", "Обмен"];
+const ROOM_TYPES = [
+  "Гостинка", "1-комн. студия", "1-комн. полноценная", "2-комнатная",
+  "3-комнатная", "4-комнатная", "5-комнатная", "6+",
+];
+
+const SERIES_OPTIONS = [
+  "Сталинка", "Хрущёвка", "Общежитие", "Малосемейка", "Гостиничного типа",
+  "104 серия", "105 серия", "106 серия", "107 серия", "108 серия",
+  "Индивидуалка", "Элитка", "Другое",
+];
+
+const DOC_OPTIONS = [
+  "Техпаспорт", "ДКП", "Красная книга", "Зелёная книга (частная собственность)",
+  "Зелёная книга (аренда)", "Свидетельство о наследстве", "Договор мены",
+  "ДДУ", "ПДКП", "Генеральная доверенность", "Акт ввода в эксплуатацию",
+];
+
+const HEATING_OPTS = [
+  "Центральное (ТЭЦ)", "Автономная газовая котельная", "Автономная электрическая котельная",
+  "Индивидуальный газовый котёл", "Индивидуальное электрическое отопление",
+  "Комбинированное", "Угольное", "Другое",
+];
+
+const DEAL_TERMS_OPTS = ["Наличные", "Ипотека", "Рассрочка через Госрегистр", "Обмен"];
 
 function Accordion({ title, children, defaultOpen = false }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -23,12 +43,11 @@ function Accordion({ title, children, defaultOpen = false }) {
     </div>
   );
 }
-
-function MiniField({ label, value, onChange, placeholder }) {
+function MiniField({ label, value, onChange }) {
   return (
     <div>
       <div className="mini-field-label">{label}</div>
-      <input className="field-input" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder || ""} />
+      <input className="field-input" value={value} onChange={(e) => onChange(e.target.value)} />
     </div>
   );
 }
@@ -52,33 +71,35 @@ export default function VtorichkaForm() {
   const [electricity, setElectricity] = useState(null);
   const [sewerage, setSewerage] = useState(null);
   const [price, setPrice] = useState("");
+  const [currency, setCurrency] = useState("USD");
   const [ownerPhone, setOwnerPhone] = useState("");
   const [commissionPercent, setCommissionPercent] = useState("");
   const [commissionTerms, setCommissionTerms] = useState("");
   const [vRuki, setVRuki] = useState("");
-  const [dealTerms, setDealTerms] = useState("");
+  const [dealTerms, setDealTerms] = useState([]); // теперь массив — множественный выбор
 
   const [zhk, setZhk] = useState("");
   const [sk, setSk] = useState("");
   const [description, setDescription] = useState("");
 
   const [ownerName, setOwnerName] = useState("");
-  const [agentPhone, setAgentPhone] = useState("");
+  const [agentName, setAgentName] = useState("");
+  const [agentPhone, setAgentPhone] = useState(""); // теперь ПУБЛИЧНОЕ поле
   const [exactAddress, setExactAddress] = useState("");
   const [contractStatus, setContractStatus] = useState("без договора");
 
   const [extra, setExtra] = useState({});
   const setEx = (key) => (val) => setExtra((p) => ({ ...p, [key]: val }));
 
-  function toggleDoc(d) {
-    setDocs((prev) => (prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]));
+  function toggle(setFn, arr, val) {
+    setFn(arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val]);
   }
 
   const canSubmit =
     district && roomType && series && area && floor && floorsTotal &&
     docs.length > 0 && heating && gas !== null && water !== null &&
     electricity !== null && sewerage !== null && price && ownerPhone &&
-    commissionPercent && commissionTerms && vRuki && dealTerms;
+    agentPhone && commissionPercent && commissionTerms && vRuki && dealTerms.length > 0;
 
   async function handleSubmit() {
     setSaving(true);
@@ -90,7 +111,7 @@ export default function VtorichkaForm() {
           type: "вторичка",
           status: "на проверке",
           price: Number(price),
-          currency: "$",
+          currency_new: currency,
           district,
           room_type: roomType,
           rooms: roomType,
@@ -98,17 +119,18 @@ export default function VtorichkaForm() {
           area_m2: Number(area),
           floor: Number(floor),
           floors_total: Number(floorsTotal),
-          zhk,
-          sk,
+          zhk, sk,
           documents: docs,
           heating,
           gas, water, electricity, sewerage,
-          deal_terms: dealTerms,
+          deal_terms: dealTerms.join(", "),
           commission_percent: commissionPercent,
           commission_terms: commissionTerms,
           description,
           contract_status: contractStatus,
           extra_details: extra,
+          agent_phone: agentPhone,
+          agent_name: agentName,
         })
         .select()
         .single();
@@ -120,11 +142,9 @@ export default function VtorichkaForm() {
         source_type: "собственник",
         owner_name: ownerName,
         owner_phone: ownerPhone,
-        agent_contact_phone: agentPhone,
         exact_address: exactAddress,
         commission: `${commissionPercent} (${commissionTerms})`,
         v_ruki: vRuki ? Number(vRuki) : null,
-        deal_terms: vRuki ? `В руки: ${vRuki}$` : "",
       });
       if (e2) throw e2;
 
@@ -141,9 +161,7 @@ export default function VtorichkaForm() {
     <div className="app-shell" style={{ paddingBottom: 40 }}>
       <div className="page-header">
         <button className="back-btn" onClick={() => router.back()}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F6F1E4" strokeWidth="2">
-            <path d="M15 18l-6-6 6-6" />
-          </svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F6F1E4" strokeWidth="2"><path d="M15 18l-6-6 6-6" /></svg>
         </button>
         <div className="page-title">Вторичка</div>
       </div>
@@ -173,31 +191,29 @@ export default function VtorichkaForm() {
 
       <div className="field-group">
         <div className="field-label">Серия дома <span className="star">*</span></div>
-        <input className="field-input" value={series} onChange={(e) => setSeries(e.target.value)} placeholder="105 серия, индивидуалка и т.д." />
-      </div>
-
-      <div className="field-group">
-        <div className="field-row">
-          <div>
-            <div className="field-label">Площадь, м² <span className="star">*</span></div>
-            <input className="field-input" type="number" value={area} onChange={(e) => setArea(e.target.value)} />
-          </div>
-          <div>
-            <div className="field-label">Этаж <span className="star">*</span></div>
-            <input className="field-input" type="number" value={floor} onChange={(e) => setFloor(e.target.value)} />
-          </div>
-          <div>
-            <div className="field-label">Этажность <span className="star">*</span></div>
-            <input className="field-input" type="number" value={floorsTotal} onChange={(e) => setFloorsTotal(e.target.value)} />
-          </div>
+        <div className="chip-group">
+          {SERIES_OPTIONS.map((s) => (
+            <div key={s} className={`chip ${series === s ? "selected" : ""}`} onClick={() => setSeries(s)}>{s}</div>
+          ))}
         </div>
       </div>
 
       <div className="field-group">
-        <div className="field-label">Документы <span className="star">*</span></div>
+        <div className="field-row">
+          <div><div className="field-label">Площадь, м² <span className="star">*</span></div>
+            <input className="field-input" type="number" value={area} onChange={(e) => setArea(e.target.value)} /></div>
+          <div><div className="field-label">Этаж <span className="star">*</span></div>
+            <input className="field-input" type="number" value={floor} onChange={(e) => setFloor(e.target.value)} /></div>
+          <div><div className="field-label">Этажность <span className="star">*</span></div>
+            <input className="field-input" type="number" value={floorsTotal} onChange={(e) => setFloorsTotal(e.target.value)} /></div>
+        </div>
+      </div>
+
+      <div className="field-group">
+        <div className="field-label">Документы (можно несколько) <span className="star">*</span></div>
         <div className="chip-group">
           {DOC_OPTIONS.map((d) => (
-            <div key={d} className={`chip ${docs.includes(d) ? "selected" : ""}`} onClick={() => toggleDoc(d)}>{d}</div>
+            <div key={d} className={`chip ${docs.includes(d) ? "selected" : ""}`} onClick={() => toggle(setDocs, docs, d)}>{d}</div>
           ))}
         </div>
       </div>
@@ -223,40 +239,54 @@ export default function VtorichkaForm() {
       </div>
 
       <div className="field-group">
-        <div className="field-label">Цена, $ <span className="star">*</span></div>
+        <div className="field-label">Цена <span className="star">*</span></div>
         <input className="field-input" type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Общая стоимость, не за м²" />
+        <div className="currency-toggle">
+          {["USD", "KGS"].map((c) => (
+            <div key={c} className={`currency-btn ${currency === c ? "selected" : ""}`} onClick={() => setCurrency(c)}>{c === "USD" ? "$ USD" : "KGS сом"}</div>
+          ))}
+        </div>
       </div>
 
       <div className="field-group">
-        <div className="field-label">Условия сделки <span className="star">*</span></div>
+        <div className="field-label">Условия сделки (можно несколько) <span className="star">*</span></div>
         <div className="chip-group">
           {DEAL_TERMS_OPTS.map((d) => (
-            <div key={d} className={`chip ${dealTerms === d ? "selected" : ""}`} onClick={() => setDealTerms(d)}>{d}</div>
+            <div key={d} className={`chip ${dealTerms.includes(d) ? "selected" : ""}`} onClick={() => toggle(setDealTerms, dealTerms, d)}>{d}</div>
           ))}
         </div>
       </div>
 
       <div className="field-group">
         <div className="field-row">
-          <div>
-            <div className="field-label">Комиссия, % / сумма <span className="star">*</span></div>
-            <input className="field-input" value={commissionPercent} onChange={(e) => setCommissionPercent(e.target.value)} placeholder="3% или $500" />
-          </div>
-          <div>
-            <div className="field-label">Условия комиссии <span className="star">*</span></div>
-            <input className="field-input" value={commissionTerms} onChange={(e) => setCommissionTerms(e.target.value)} placeholder="50/50, 100% и т.д." />
-          </div>
+          <div><div className="field-label">Комиссия, % / сумма <span className="star">*</span></div>
+            <input className="field-input" value={commissionPercent} onChange={(e) => setCommissionPercent(e.target.value)} placeholder="3% или $500" /></div>
+          <div><div className="field-label">Условия комиссии <span className="star">*</span></div>
+            <input className="field-input" value={commissionTerms} onChange={(e) => setCommissionTerms(e.target.value)} placeholder="50/50, 100% и т.д." /></div>
         </div>
       </div>
 
       <div className="field-group">
-        <div className="field-label">Цена в руки, $ <span className="star">*</span></div>
+        <div className="field-label">Цена в руки <span className="star">*</span></div>
         <input className="field-input" type="number" value={vRuki} onChange={(e) => setVRuki(e.target.value)} />
       </div>
 
       <div className="field-group">
         <div className="field-label">Телефон собственника <span className="star">*</span></div>
         <input className="field-input" value={ownerPhone} onChange={(e) => setOwnerPhone(e.target.value)} placeholder="+996..." />
+      </div>
+
+      <div className="section-divider">
+        <div className="section-divider-title">Контакт агента</div>
+        <span className="lock-badge" style={{ color: "#baf5d0", background: "rgba(20,120,80,0.15)", borderColor: "rgba(100,220,150,0.3)" }}>👁 ВИДЕН ВСЕМ</span>
+      </div>
+      <div className="field-group">
+        <div className="field-row">
+          <div><div className="field-label">Имя агента <span className="star">*</span></div>
+            <input className="field-input" value={agentName} onChange={(e) => setAgentName(e.target.value)} /></div>
+          <div><div className="field-label">Телефон агента <span className="star">*</span></div>
+            <input className="field-input" value={agentPhone} onChange={(e) => setAgentPhone(e.target.value)} placeholder="+996..." /></div>
+        </div>
       </div>
 
       <div className="section-divider"><div className="section-divider-title">Дополнительно (не обязательно)</div></div>
@@ -268,52 +298,26 @@ export default function VtorichkaForm() {
       </div>
       <div className="field-group">
         <div className="field-label">Описание для клиента</div>
-        <textarea className="field-textarea" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Опишите объект своими словами..." />
+        <textarea className="field-textarea" value={description} onChange={(e) => setDescription(e.target.value)} />
         <button className="ai-btn" type="button" disabled>✨ Сформировать описание с ИИ (следующий этап)</button>
       </div>
 
       <div className="photo-drop">📷 Загрузка фото/видео — следующий этап</div>
 
       <div className="section-divider"><div className="section-divider-title">Полный бриф — остальные детали</div></div>
-
       <Accordion title="ДОМ И ТЕРРИТОРИЯ">
-        <MiniField label="Планировка (сквозная/в линейку)" value={extra.planirovka || ""} onChange={setEx("planirovka")} />
+        <MiniField label="Планировка" value={extra.planirovka || ""} onChange={setEx("planirovka")} />
         <MiniField label="Балкон/лоджия, количество" value={extra.balkon || ""} onChange={setEx("balkon")} />
-        <MiniField label="Технический этаж (если последний)" value={extra.tehEtazh || ""} onChange={setEx("tehEtazh")} />
-        <MiniField label="Высота потолков" value={extra.potolki || ""} onChange={setEx("potolki")} />
-        <MiniField label="Лифт (производитель, работает ли)" value={extra.lift || ""} onChange={setEx("lift")} />
-        <MiniField label="Расположение окон" value={extra.okna || ""} onChange={setEx("okna")} />
-        <MiniField label="Материал / состояние фасада" value={extra.fasad || ""} onChange={setEx("fasad")} />
-        <MiniField label="Состояние подъезда / двора" value={extra.podjezd || ""} onChange={setEx("podjezd")} />
-        <MiniField label="Двор закрытый/охраняемый" value={extra.dvor || ""} onChange={setEx("dvor")} />
-        <MiniField label="Детская площадка" value={extra.detskaya || ""} onChange={setEx("detskaya")} />
+        <MiniField label="Лифт" value={extra.lift || ""} onChange={setEx("lift")} />
+        <MiniField label="Фасад / подъезд / двор" value={extra.fasad || ""} onChange={setEx("fasad")} />
       </Accordion>
-
-      <Accordion title="ДОКУМЕНТЫ — ПОДРОБНО">
-        <MiniField label="Правоустанавливающие документы" value={extra.pravoust || ""} onChange={setEx("pravoust")} />
-        <MiniField label="Арест / залог / обременения" value={extra.obremeneniya || ""} onChange={setEx("obremeneniya")} />
-        <MiniField label="Проверка Госрегистра" value={extra.gosregistr || ""} onChange={setEx("gosregistr")} />
-        <MiniField label="Соответствие площади документам" value={extra.ploshadSootv || ""} onChange={setEx("ploshadSootv")} />
-        <MiniField label="Перепланировка" value={extra.pereplanirovka || ""} onChange={setEx("pereplanirovka")} />
-      </Accordion>
-
       <Accordion title="КВАРТИРА">
         <MiniField label="Ремонт (тип + год)" value={extra.remont || ""} onChange={setEx("remont")} />
-        <MiniField label="Мебель / что остаётся" value={extra.mebel || ""} onChange={setEx("mebel")} />
-        <MiniField label="Техника / что остаётся" value={extra.tehnika || ""} onChange={setEx("tehnika")} />
+        <MiniField label="Мебель / техника" value={extra.mebel || ""} onChange={setEx("mebel")} />
         <MiniField label="Вид из окон" value={extra.vidOkna || ""} onChange={setEx("vidOkna")} />
-        <MiniField label="Состояние окон" value={extra.sostOkna || ""} onChange={setEx("sostOkna")} />
-        <MiniField label="Кол-во квартир на этаже" value={extra.kvNaEtazhe || ""} onChange={setEx("kvNaEtazhe")} />
       </Accordion>
-
-      <Accordion title="ИНФРАСТРУКТУРА">
-        <MiniField label="Магазины / школы / сады / остановки рядом" value={extra.infra || ""} onChange={setEx("infra")} />
-      </Accordion>
-
       <Accordion title="ПОКАЗ">
-        <MiniField label="Время показа" value={extra.vremyaPokaza || ""} onChange={setEx("vremyaPokaza")} />
-        <MiniField label="Кто показывает" value={extra.ktoPokazyvaet || ""} onChange={setEx("ktoPokazyvaet")} />
-        <MiniField label="Телефон показывающего" value={extra.telPokazyvayushego || ""} onChange={setEx("telPokazyvayushego")} />
+        <MiniField label="Время / кто показывает / телефон" value={extra.pokaz || ""} onChange={setEx("pokaz")} />
       </Accordion>
 
       <div className="section-divider private">
@@ -321,10 +325,8 @@ export default function VtorichkaForm() {
         <span className="lock-badge">🔒 ТОЛЬКО ДЛЯ ВАС</span>
       </div>
       <div className="field-group">
-        <div className="field-row">
-          <div><div className="field-label">ФИО собственника</div><input className="field-input" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} /></div>
-          <div><div className="field-label">Ваш телефон (агент)</div><input className="field-input" value={agentPhone} onChange={(e) => setAgentPhone(e.target.value)} /></div>
-        </div>
+        <div className="field-label">ФИО собственника</div>
+        <input className="field-input" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} />
       </div>
       <div className="field-group">
         <div className="field-label">Точный адрес</div>
@@ -348,7 +350,7 @@ export default function VtorichkaForm() {
       <button className="next-btn" disabled={!canSubmit || saving} onClick={handleSubmit}>
         {saving ? "СОХРАНЕНИЕ..." : "ОТПРАВИТЬ НА ПРОВЕРКУ"}
       </button>
-      <div className="progress-note">Поля со звёздочкой * обязательны, остальное можно дозаполнить позже</div>
+      <div className="progress-note">Поля со звёздочкой * обязательны</div>
     </div>
   );
 }
