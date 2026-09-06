@@ -1,16 +1,31 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 
+const DISTRICTS = [
+  "Ак-Ордо", "Ак-Эмир", "Аламедин-1", "Аламедин-2", "Асанбай", "Ахунбаева",
+  "Байтик", "Ботанический сад", "БЧК", "Восток-5", "Гагарина", "Джал",
+  "Джал-15", "Джал-29", "Дордой", "Достук", "Западный автовокзал", "Ивановка",
+  "Каскад", "Кок-Жар (мкр.)", "Кок-Жар (село)", "Магистраль", "Мадина",
+  "Медерова", "Молодая Гвардия", "Ортосайский рынок", "Панфилова", "Первомайский",
+  "Промзона Кирзавод", "Свердловский район", "Сокулукский тракт", "Тунгуч",
+  "Улан-2", "Учкун", "Филармония", "Центр (Чуй пр-т)", "Чон-Арык", "Юг-2",
+  "Ючастковый Джал", "Ala-Too", "Военно-Антоновка", "Арча-Бешик", "Кызыл-Аскер",
+  "Токольдош", "Джал Верхний", "Джал Нижний", "Арашан",
+];
+
 const ROOM_TYPES = [
-  "Гостинка", "1-комн. студия", "1-комн. полноценная", "2-комнатная",
-  "3-комнатная", "4-комнатная", "5-комнатная", "6+",
+  "Гостинка", "1-комн. студия", "1-комн. полноценная",
+  "2-комн. студия", "2-комн. полноценная",
+  "3-комн. студия", "3-комн. полноценная",
+  "4-комн. студия", "4-комн. полноценная",
+  "5-комнатная", "6+",
 ];
 
 const SERIES_OPTIONS = [
   "Сталинка", "Хрущёвка", "Общежитие", "Малосемейка", "Гостиничного типа",
-  "104 серия", "105 серия", "106 серия", "107 серия", "108 серия",
+  "104 серия", "105 серия", "106 серия", "106 серии улучшенной", "107 серия", "108 серия",
   "Индивидуалка", "Элитка", "Другое",
 ];
 
@@ -51,6 +66,18 @@ function MiniField({ label, value, onChange }) {
     </div>
   );
 }
+function MiniChips({ label, options, value, onChange }) {
+  return (
+    <div>
+      <div className="mini-field-label">{label}</div>
+      <div className="chip-group">
+        {options.map((o) => (
+          <div key={o} className={`chip ${value === o ? "selected" : ""}`} onClick={() => onChange(o)}>{o}</div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function VtorichkaForm() {
   const router = useRouter();
@@ -71,6 +98,7 @@ export default function VtorichkaForm() {
   const [electricity, setElectricity] = useState(null);
   const [sewerage, setSewerage] = useState(null);
   const [price, setPrice] = useState("");
+  const [torg, setTorg] = useState(false);
   const [currency, setCurrency] = useState("USD");
   const [ownerPhone, setOwnerPhone] = useState("");
   const [commissionPercent, setCommissionPercent] = useState("");
@@ -84,8 +112,18 @@ export default function VtorichkaForm() {
 
   const [ownerName, setOwnerName] = useState("");
   const [agentName, setAgentName] = useState("");
-  const [agentPhone, setAgentPhone] = useState(""); // теперь ПУБЛИЧНОЕ поле
+  const [agentPhone, setAgentPhone] = useState("");
+
+  // временное решение: запоминаем имя/телефон агента в этом браузере,
+  // чтобы не вводить заново каждый раз (полноценный вход в аккаунт — следующий этап)
+  useEffect(() => {
+    const savedName = localStorage.getItem("rayan_agent_name");
+    const savedPhone = localStorage.getItem("rayan_agent_phone");
+    if (savedName) setAgentName(savedName);
+    if (savedPhone) setAgentPhone(savedPhone);
+  }, []); // теперь ПУБЛИЧНОЕ поле
   const [exactAddress, setExactAddress] = useState("");
+  const [agentComment, setAgentComment] = useState("");
   const [contractStatus, setContractStatus] = useState("без договора");
 
   const [extra, setExtra] = useState({});
@@ -124,6 +162,7 @@ export default function VtorichkaForm() {
           heating,
           gas, water, electricity, sewerage,
           deal_terms: dealTerms.join(", "),
+          torg,
           commission_percent: commissionPercent,
           commission_terms: commissionTerms,
           description,
@@ -145,8 +184,12 @@ export default function VtorichkaForm() {
         exact_address: exactAddress,
         commission: `${commissionPercent} (${commissionTerms})`,
         v_ruki: vRuki ? Number(vRuki) : null,
+        agent_notes: agentComment,
       });
       if (e2) throw e2;
+
+      localStorage.setItem("rayan_agent_name", agentName);
+      localStorage.setItem("rayan_agent_phone", agentPhone);
 
       setSuccess(true);
       setTimeout(() => router.push("/"), 1200);
@@ -177,7 +220,19 @@ export default function VtorichkaForm() {
 
       <div className="field-group">
         <div className="field-label">Район <span className="star">*</span></div>
-        <input className="field-input" value={district} onChange={(e) => setDistrict(e.target.value)} placeholder="Например: Асанбай" />
+        <input
+          className="field-input"
+          list="district-options"
+          value={district}
+          onChange={(e) => setDistrict(e.target.value)}
+          placeholder="Начните печатать или откройте список ⌄"
+        />
+        <datalist id="district-options">
+          {DISTRICTS.map((d) => <option key={d} value={d} />)}
+        </datalist>
+        <div style={{ color: "#7FA396", fontSize: 10, marginTop: 5 }}>
+          Начните вводить буквы — появятся подсказки, либо нажмите на стрелку в поле, чтобы открыть полный список
+        </div>
       </div>
 
       <div className="field-group">
@@ -246,6 +301,9 @@ export default function VtorichkaForm() {
             <div key={c} className={`currency-btn ${currency === c ? "selected" : ""}`} onClick={() => setCurrency(c)}>{c === "USD" ? "$ USD" : "KGS сом"}</div>
           ))}
         </div>
+        <div style={{ marginTop: 10 }} className="chip-group">
+          <div className={`chip ${torg ? "selected" : ""}`} onClick={() => setTorg(!torg)}>Торг возможен</div>
+        </div>
       </div>
 
       <div className="field-group">
@@ -264,16 +322,6 @@ export default function VtorichkaForm() {
           <div><div className="field-label">Условия комиссии <span className="star">*</span></div>
             <input className="field-input" value={commissionTerms} onChange={(e) => setCommissionTerms(e.target.value)} placeholder="50/50, 100% и т.д." /></div>
         </div>
-      </div>
-
-      <div className="field-group">
-        <div className="field-label">Цена в руки <span className="star">*</span></div>
-        <input className="field-input" type="number" value={vRuki} onChange={(e) => setVRuki(e.target.value)} />
-      </div>
-
-      <div className="field-group">
-        <div className="field-label">Телефон собственника <span className="star">*</span></div>
-        <input className="field-input" value={ownerPhone} onChange={(e) => setOwnerPhone(e.target.value)} placeholder="+996..." />
       </div>
 
       <div className="section-divider">
@@ -305,15 +353,22 @@ export default function VtorichkaForm() {
       <div className="photo-drop">📷 Загрузка фото/видео — следующий этап</div>
 
       <div className="section-divider"><div className="section-divider-title">Полный бриф — остальные детали</div></div>
-      <Accordion title="ДОМ И ТЕРРИТОРИЯ">
-        <MiniField label="Планировка" value={extra.planirovka || ""} onChange={setEx("planirovka")} />
+      <Accordion title="ДОМ И ТЕРРИТОРИЯ" defaultOpen={true}>
+        <MiniChips label="Планировка" options={["Сквозная", "В линейку"]} value={extra.planirovka || ""} onChange={setEx("planirovka")} />
         <MiniField label="Балкон/лоджия, количество" value={extra.balkon || ""} onChange={setEx("balkon")} />
-        <MiniField label="Лифт" value={extra.lift || ""} onChange={setEx("lift")} />
-        <MiniField label="Фасад / подъезд / двор" value={extra.fasad || ""} onChange={setEx("fasad")} />
+        <MiniField label="Лифт (производитель, работает ли)" value={extra.lift || ""} onChange={setEx("lift")} />
+        <MiniChips label="Расположение окон" options={["Север", "Юг", "Запад", "Восток", "Комбинированное"]} value={extra.okna || ""} onChange={setEx("okna")} />
+        <MiniChips label="Двор" options={["Закрытый", "Охраняемый", "Открытый"]} value={extra.dvor || ""} onChange={setEx("dvor")} />
+        <MiniChips label="Детская площадка" options={["Есть", "Нет"]} value={extra.detskaya || ""} onChange={setEx("detskaya")} />
+        <MiniField label="Фасад дома" value={extra.fasad || ""} onChange={setEx("fasad")} />
       </Accordion>
-      <Accordion title="КВАРТИРА">
-        <MiniField label="Ремонт (тип + год)" value={extra.remont || ""} onChange={setEx("remont")} />
-        <MiniField label="Мебель / техника" value={extra.mebel || ""} onChange={setEx("mebel")} />
+      <Accordion title="КВАРТИРА" defaultOpen={true}>
+        <div className="field-row">
+          <MiniField label="Жилая площадь, м²" value={extra.zhilayaPloshad || ""} onChange={setEx("zhilayaPloshad")} />
+          <MiniField label="Площадь кухни, м²" value={extra.kuhnyaPloshad || ""} onChange={setEx("kuhnyaPloshad")} />
+        </div>
+        <MiniChips label="Ремонт" options={["Евро", "Дизайнерский", "Предчистовая", "ПСО", "Без ремонта"]} value={extra.remont || ""} onChange={setEx("remont")} />
+        <MiniField label="Мебель / техника — что остаётся" value={extra.mebel || ""} onChange={setEx("mebel")} />
         <MiniField label="Вид из окон" value={extra.vidOkna || ""} onChange={setEx("vidOkna")} />
       </Accordion>
       <Accordion title="ПОКАЗ">
@@ -329,8 +384,20 @@ export default function VtorichkaForm() {
         <input className="field-input" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} />
       </div>
       <div className="field-group">
+        <div className="field-label">Телефон собственника <span className="star">*</span></div>
+        <input className="field-input" value={ownerPhone} onChange={(e) => setOwnerPhone(e.target.value)} placeholder="+996..." />
+      </div>
+      <div className="field-group">
+        <div className="field-label">Цена в руки <span className="star">*</span></div>
+        <input className="field-input" type="number" value={vRuki} onChange={(e) => setVRuki(e.target.value)} />
+      </div>
+      <div className="field-group">
         <div className="field-label">Точный адрес</div>
         <input className="field-input" value={exactAddress} onChange={(e) => setExactAddress(e.target.value)} />
+      </div>
+      <div className="field-group">
+        <div className="field-label">Комментарий агента (внутренний)</div>
+        <textarea className="field-textarea" value={agentComment} onChange={(e) => setAgentComment(e.target.value)} placeholder="Заметки для себя/коллег — клиент не видит" />
       </div>
 
       <div className="section-divider private"><div className="section-divider-title">Договор</div></div>
