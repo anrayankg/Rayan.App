@@ -18,11 +18,12 @@ const CATS = [
 ];
 
 const NAV = [
-  { label: "Главная", active: true, path: "M3 12l9-9 9 9M5 10v10h14V10" },
-  { label: "Объекты", path: "M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z" },
-  { label: "Реклама", path: "M3 17l6-6 4 4 8-8M21 3h-6M21 3v6" },
-  { label: "Лиды", path: "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" },
-  { label: "Профиль", path: "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" },
+  { label: "Главная", active: true, path: "/", icon: "M3 12l9-9 9 9M5 10v10h14V10" },
+  { label: "Поиск", path: "/search/vse", icon: "M11 4a7 7 0 100 14 7 7 0 000-14zM21 21l-4.35-4.35" },
+  { label: "Добавить", path: "/add", icon: "M12 5v14M5 12h14" },
+  { label: "Реклама", path: "/ads", icon: "M3 17l6-6 4 4 8-8M21 3h-6M21 3v6" },
+  { label: "Мои объекты", path: "/my", icon: "M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z" },
+  { label: "Профиль", path: "/profile", icon: "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" },
 ];
 
 export default function HomePage() {
@@ -34,30 +35,12 @@ export default function HomePage() {
   useEffect(() => {
     async function loadCounts() {
       try {
-        const { count: total, error: e1 } = await supabase
-          .from("listings")
-          .select("*", { count: "exact", head: true });
-        const { count: active, error: e2 } = await supabase
-          .from("listings")
-          .select("*", { count: "exact", head: true })
-          .eq("status", "активен");
-        const { count: review, error: e3 } = await supabase
-          .from("listings")
-          .select("*", { count: "exact", head: true })
-          .eq("status", "на проверке");
-        const { count: archived, error: e4 } = await supabase
-          .from("listings")
-          .select("*", { count: "exact", head: true })
-          .eq("status", "архив");
-
+        const { count: total, error: e1 } = await supabase.from("listings").select("*", { count: "exact", head: true });
+        const { count: active, error: e2 } = await supabase.from("listings").select("*", { count: "exact", head: true }).eq("status", "активен");
+        const { count: review, error: e3 } = await supabase.from("listings").select("*", { count: "exact", head: true }).eq("status", "на проверке");
+        const { count: archived, error: e4 } = await supabase.from("listings").select("*", { count: "exact", head: true }).eq("status", "архив");
         if (e1 || e2 || e3 || e4) throw e1 || e2 || e3 || e4;
-
-        setCounts({
-          всего: total || 0,
-          активен: active || 0,
-          "на проверке": review || 0,
-          архив: archived || 0,
-        });
+        setCounts({ всего: total || 0, активен: active || 0, "на проверке": review || 0, архив: archived || 0 });
       } catch (err) {
         setError(err.message);
       } finally {
@@ -70,9 +53,7 @@ export default function HomePage() {
   return (
     <div className="app-shell">
       <div className="hero">
-        <div className="hero-logo">
-          <img src={LOGO} alt="RAYAN" />
-        </div>
+        <div className="hero-logo"><img src={LOGO} alt="RAYAN" /></div>
       </div>
 
       <div className="body-px">
@@ -80,18 +61,13 @@ export default function HomePage() {
 
         <div className="search">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#062E22" strokeWidth="2">
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>
-          <input placeholder="Поиск объектов..." />
+          <input placeholder="Поиск объектов..." onFocus={() => router.push("/search/vse")} readOnly />
         </div>
 
         <div className="stats">
-          {[
-            ["активен", "Активные"],
-            ["на проверке", "На проверке"],
-            ["архив", "Архив"],
-          ].map(([key, label]) => (
+          {[["активен", "Активные"], ["на проверке", "На проверке"], ["архив", "Архив"]].map(([key, label]) => (
             <div key={key} className="stat-card">
               <div className="stat-num">{loading ? "…" : counts[key]}</div>
               <div className="stat-label">{label}</div>
@@ -99,16 +75,11 @@ export default function HomePage() {
           ))}
         </div>
 
-        {error && (
-          <div style={{ background: "rgba(150,20,20,0.25)", border: "1px solid rgba(255,80,80,0.3)", color: "#ffb4b4", fontSize: 11, padding: 10, borderRadius: 10, marginBottom: 16 }}>
-            Не удалось загрузить данные: {error}
-          </div>
-        )}
+        {error && <div className="status-msg error">Не удалось загрузить данные: {error}</div>}
 
         <button className="add-btn" onClick={() => router.push("/add")}>
           <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#062E22" strokeWidth="3">
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
+            <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
           </svg>
           <span>ДОБАВИТЬ ОБЪЕКТ</span>
         </button>
@@ -116,7 +87,7 @@ export default function HomePage() {
         <div className="section-label">ТИП НЕДВИЖИМОСТИ</div>
         <div className="cats">
           {CATS.map((c, i) => (
-            <button key={i} className="cat" onClick={() => c.key && router.push(`/add/${c.key}`)}>
+            <button key={i} className="cat" onClick={() => router.push(c.key ? `/search/${c.key}` : "/search/vse")}>
               <div className={`cat-icon ${c.active ? "active" : ""}`}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c.active ? "#062E22" : "#F3D477"} strokeWidth="1.6">
                   <path d={c.path} />
@@ -130,9 +101,9 @@ export default function HomePage() {
 
       <div className="bottomnav">
         {NAV.map((n, i) => (
-          <div key={i} className={`nav-item ${n.active ? "active" : ""}`}>
+          <div key={i} className={`nav-item ${n.active ? "active" : ""}`} onClick={() => router.push(n.path)} style={{ cursor: "pointer" }}>
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={n.active ? "#F3D477" : "#7FA396"} strokeWidth={n.active ? 2.2 : 1.7}>
-              <path d={n.path} />
+              <path d={n.icon} />
             </svg>
             <span>{n.label}</span>
           </div>
