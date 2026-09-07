@@ -118,3 +118,20 @@ body { background: #021712; margin: 0; font-family: 'Manrope', sans-serif; min-h
 .currency-btn { flex: 1; padding: 10px; border-radius: 10px; text-align: center; font-size: 13px; font-weight: 700;
   background: rgba(255,255,255,0.06); border: 1px solid rgba(212,164,55,0.25); color: var(--cream); cursor: pointer; }
 .currency-btn.selected { background: linear-gradient(135deg, var(--gold-light), var(--gold)); color: var(--green-deep); border-color: transparent; }
+
+/* ---- Загрузка фото/сканов документов ---- */
+.doc-upload-row { display: flex; gap: 10px; margin-top: 10px; }
+.doc-upload-btn {
+  flex: 1; border: 1.5px dashed rgba(212,164,55,0.4); border-radius: 12px; padding: 14px 10px;
+  text-align: center; color: var(--gold-light); font-size: 11.5px; font-weight: 600; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  background: rgba(212,164,55,0.05);
+}
+.doc-thumbs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.doc-thumb { width: 64px; height: 64px; border-radius: 10px; overflow: hidden; position: relative; border: 1px solid rgba(212,164,55,0.3); }
+.doc-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.doc-thumb-remove {
+  position: absolute; top: 2px; right: 2px; width: 18px; height: 18px; border-radius: 50%;
+  background: rgba(0,0,0,0.6); color: #fff; font-size: 11px; display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.doc-upload-status { color: #7FA396; font-size: 10.5px; margin-top: 6px; }
