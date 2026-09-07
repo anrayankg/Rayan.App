@@ -116,6 +116,29 @@ export default function VtorichkaForm() {
   }, []); // теперь ПУБЛИЧНОЕ поле
   const [exactAddress, setExactAddress] = useState("");
   const [agentComment, setAgentComment] = useState("");
+  const [docPhotos, setDocPhotos] = useState([]); // storage-пути для базы
+  const [docPreviews, setDocPreviews] = useState([]); // локальные превью для показа
+  const [docUploading, setDocUploading] = useState(false);
+
+  async function handleDocFiles(e) {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    setDocUploading(true);
+    try {
+      for (const file of files) {
+        setDocPreviews((p) => [...p, URL.createObjectURL(file)]);
+        const path = `temp-${Date.now()}-${file.name}`;
+        const { error: upErr } = await supabase.storage.from("listing-documents").upload(path, file);
+        if (upErr) throw upErr;
+        setDocPhotos((p) => [...p, path]);
+      }
+    } catch (err) {
+      setError("Не удалось загрузить файл: " + err.message);
+    } finally {
+      setDocUploading(false);
+      e.target.value = "";
+    }
+  }
   const [contractStatus, setContractStatus] = useState("без договора");
 
   const [extra, setExtra] = useState({});
@@ -125,8 +148,9 @@ export default function VtorichkaForm() {
     setFn(arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val]);
   }
 
+  const districtRequired = city === "Бишкек";
   const canSubmit =
-    city && district && roomType && series && area && floor && floorsTotal &&
+    city && (!districtRequired || district) && roomType && series && area && floor && floorsTotal &&
     docs.length > 0 && heating && gas !== null && water !== null &&
     electricity !== null && sewerage !== null && price && ownerPhone &&
     agentPhone && commissionPercent && commissionTerms && vRuki && dealTerms.length > 0;
@@ -173,6 +197,7 @@ export default function VtorichkaForm() {
         owner_name: ownerName,
         owner_phone: ownerPhone,
         exact_address: exactAddress,
+        document_photos: docPhotos,
       });
       if (e2) throw e2;
 
@@ -216,12 +241,13 @@ export default function VtorichkaForm() {
       <div className="section-divider"><div className="section-divider-title">Обязательные поля</div></div>
 
       <div className="field-group">
-        <div className="field-label">Город <span className="star">*</span></div>
-        <div className="chip-group">
-          {CITIES.map((c) => (
-            <div key={c} className={`chip ${city === c ? "selected" : ""}`} onClick={() => { setCity(c); setDistrict(""); }}>{c}</div>
-          ))}
-        </div>
+        <LocationPicker
+          label="Город"
+          required
+          options={CITIES}
+          value={city}
+          onChange={(v) => { setCity(v); setDistrict(""); }}
+        />
       </div>
 
       <div className="field-group">
@@ -234,11 +260,8 @@ export default function VtorichkaForm() {
             onChange={setDistrict}
           />
         ) : (
-          <div>
-            <div className="field-label">Район <span className="star">*</span></div>
-            <div style={{ color: "#7FA396", fontSize: 12, padding: "10px 0" }}>
-              Список районов для «{city}» пока не заполнен — скоро добавим
-            </div>
+          <div style={{ color: "#7FA396", fontSize: 12 }}>
+            Деление на районы пока есть только для Бишкека
           </div>
         )}
       </div>
@@ -389,6 +412,31 @@ export default function VtorichkaForm() {
       <div className="field-group">
         <div className="field-label">Точный адрес</div>
         <input className="field-input" value={exactAddress} onChange={(e) => setExactAddress(e.target.value)} />
+      </div>
+
+      <div className="field-group">
+        <div className="field-label">Фото / скан документов (не обязательно)</div>
+        <div className="doc-upload-row">
+          <label className="doc-upload-btn">
+            📷 Снять камерой
+            <input type="file" accept="image/*" capture="environment" multiple style={{ display: "none" }} onChange={handleDocFiles} />
+          </label>
+          <label className="doc-upload-btn">
+            🖼 Из галереи / файла
+            <input type="file" accept="image/*,.pdf" multiple style={{ display: "none" }} onChange={handleDocFiles} />
+          </label>
+        </div>
+        {docUploading && <div className="doc-upload-status">Загрузка...</div>}
+        {docPreviews.length > 0 && (
+          <div className="doc-thumbs">
+            {docPreviews.map((url, i) => (
+              <div key={i} className="doc-thumb">
+                <img src={url} alt="" />
+                <div className="doc-thumb-remove" onClick={() => { setDocPreviews((p) => p.filter((_, idx) => idx !== i)); setDocPhotos((p) => p.filter((_, idx) => idx !== i)); }}>×</div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="section-divider" style={{ borderTopColor: "rgba(100,180,220,0.3)" }}>
