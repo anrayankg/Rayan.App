@@ -2,18 +2,9 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
+import { BISHKEK_LOCATIONS } from "../../../lib/locations";
+import LocationPicker from "../../../components/LocationPicker";
 
-const DISTRICTS = [
-  "Ак-Ордо", "Ак-Эмир", "Аламедин-1", "Аламедин-2", "Асанбай", "Ахунбаева",
-  "Байтик", "Ботанический сад", "БЧК", "Восток-5", "Гагарина", "Джал",
-  "Джал-15", "Джал-29", "Дордой", "Достук", "Западный автовокзал", "Ивановка",
-  "Каскад", "Кок-Жар (мкр.)", "Кок-Жар (село)", "Магистраль", "Мадина",
-  "Медерова", "Молодая Гвардия", "Ортосайский рынок", "Панфилова", "Первомайский",
-  "Промзона Кирзавод", "Свердловский район", "Сокулукский тракт", "Тунгуч",
-  "Улан-2", "Учкун", "Филармония", "Центр (Чуй пр-т)", "Чон-Арык", "Юг-2",
-  "Ючастковый Джал", "Ala-Too", "Военно-Антоновка", "Арча-Бешик", "Кызыл-Аскер",
-  "Токольдош", "Джал Верхний", "Джал Нижний", "Арашан",
-];
 
 const ROOM_TYPES = [
   "Гостинка", "1-комн. студия", "1-комн. полноценная",
@@ -219,20 +210,13 @@ export default function VtorichkaForm() {
       <div className="section-divider"><div className="section-divider-title">Обязательные поля</div></div>
 
       <div className="field-group">
-        <div className="field-label">Район <span className="star">*</span></div>
-        <input
-          className="field-input"
-          list="district-options"
+        <LocationPicker
+          label="Район"
+          required
+          options={BISHKEK_LOCATIONS}
           value={district}
-          onChange={(e) => setDistrict(e.target.value)}
-          placeholder="Начните печатать или откройте список ⌄"
+          onChange={setDistrict}
         />
-        <datalist id="district-options">
-          {DISTRICTS.map((d) => <option key={d} value={d} />)}
-        </datalist>
-        <div style={{ color: "#7FA396", fontSize: 10, marginTop: 5 }}>
-          Начните вводить буквы — появятся подсказки, либо нажмите на стрелку в поле, чтобы открыть полный список
-        </div>
       </div>
 
       <div className="field-group">
