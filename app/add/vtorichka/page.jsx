@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
-import { ALL_LOCATIONS } from "../../../lib/locations";
+import { CITIES, CITY_DISTRICTS } from "../../../lib/locations";
 import LocationPicker from "../../../components/LocationPicker";
 
 
@@ -76,6 +76,7 @@ export default function VtorichkaForm() {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
 
+  const [city, setCity] = useState("Бишкек");
   const [district, setDistrict] = useState("");
   const [roomType, setRoomType] = useState("");
   const [series, setSeries] = useState("");
@@ -125,7 +126,7 @@ export default function VtorichkaForm() {
   }
 
   const canSubmit =
-    district && roomType && series && area && floor && floorsTotal &&
+    city && district && roomType && series && area && floor && floorsTotal &&
     docs.length > 0 && heating && gas !== null && water !== null &&
     electricity !== null && sewerage !== null && price && ownerPhone &&
     agentPhone && commissionPercent && commissionTerms && vRuki && dealTerms.length > 0;
@@ -142,6 +143,7 @@ export default function VtorichkaForm() {
           price: Number(price),
           currency_new: currency,
           district,
+          city,
           room_type: roomType,
           rooms: roomType,
           series,
@@ -214,13 +216,31 @@ export default function VtorichkaForm() {
       <div className="section-divider"><div className="section-divider-title">Обязательные поля</div></div>
 
       <div className="field-group">
-        <LocationPicker
-          label="Район"
-          required
-          options={ALL_LOCATIONS}
-          value={district}
-          onChange={setDistrict}
-        />
+        <div className="field-label">Город <span className="star">*</span></div>
+        <div className="chip-group">
+          {CITIES.map((c) => (
+            <div key={c} className={`chip ${city === c ? "selected" : ""}`} onClick={() => { setCity(c); setDistrict(""); }}>{c}</div>
+          ))}
+        </div>
+      </div>
+
+      <div className="field-group">
+        {CITY_DISTRICTS[city]?.length > 0 ? (
+          <LocationPicker
+            label="Район"
+            required
+            options={CITY_DISTRICTS[city]}
+            value={district}
+            onChange={setDistrict}
+          />
+        ) : (
+          <div>
+            <div className="field-label">Район <span className="star">*</span></div>
+            <div style={{ color: "#7FA396", fontSize: 12, padding: "10px 0" }}>
+              Список районов для «{city}» пока не заполнен — скоро добавим
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="field-group">
