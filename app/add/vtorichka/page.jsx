@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
-import { BISHKEK_LOCATIONS } from "../../../lib/locations";
+import { ALL_LOCATIONS } from "../../../lib/locations";
 import LocationPicker from "../../../components/LocationPicker";
 
 
@@ -138,7 +138,7 @@ export default function VtorichkaForm() {
         .from("listings")
         .insert({
           type: "вторичка",
-          status: "на проверке",
+          status: "новый объект от собственника",
           price: Number(price),
           currency_new: currency,
           district,
@@ -154,8 +154,6 @@ export default function VtorichkaForm() {
           gas, water, electricity, sewerage,
           deal_terms: dealTerms.join(", "),
           torg,
-          commission_percent: commissionPercent,
-          commission_terms: commissionTerms,
           description,
           contract_status: contractStatus,
           extra_details: extra,
@@ -173,6 +171,8 @@ export default function VtorichkaForm() {
         owner_name: ownerName,
         owner_phone: ownerPhone,
         exact_address: exactAddress,
+        commission_percent: commissionPercent,
+        commission_terms: commissionTerms,
         commission: `${commissionPercent} (${commissionTerms})`,
         v_ruki: vRuki ? Number(vRuki) : null,
         agent_notes: agentComment,
@@ -213,7 +213,7 @@ export default function VtorichkaForm() {
         <LocationPicker
           label="Район"
           required
-          options={BISHKEK_LOCATIONS}
+          options={ALL_LOCATIONS}
           value={district}
           onChange={setDistrict}
         />
@@ -299,15 +299,6 @@ export default function VtorichkaForm() {
         </div>
       </div>
 
-      <div className="field-group">
-        <div className="field-row">
-          <div><div className="field-label">Комиссия, % / сумма <span className="star">*</span></div>
-            <input className="field-input" value={commissionPercent} onChange={(e) => setCommissionPercent(e.target.value)} placeholder="3% или $500" /></div>
-          <div><div className="field-label">Условия комиссии <span className="star">*</span></div>
-            <input className="field-input" value={commissionTerms} onChange={(e) => setCommissionTerms(e.target.value)} placeholder="50/50, 100% и т.д." /></div>
-        </div>
-      </div>
-
       <div className="section-divider">
         <div className="section-divider-title">Контакт агента</div>
         <span className="lock-badge" style={{ color: "#baf5d0", background: "rgba(20,120,80,0.15)", borderColor: "rgba(100,220,150,0.3)" }}>👁 ВИДЕН ВСЕМ</span>
@@ -374,6 +365,14 @@ export default function VtorichkaForm() {
       <div className="field-group">
         <div className="field-label">Цена в руки <span className="star">*</span></div>
         <input className="field-input" type="number" value={vRuki} onChange={(e) => setVRuki(e.target.value)} />
+      </div>
+      <div className="field-group">
+        <div className="field-row">
+          <div><div className="field-label">Комиссия, % / сумма <span className="star">*</span></div>
+            <input className="field-input" value={commissionPercent} onChange={(e) => setCommissionPercent(e.target.value)} placeholder="3% или $500" /></div>
+          <div><div className="field-label">Условия комиссии <span className="star">*</span></div>
+            <input className="field-input" value={commissionTerms} onChange={(e) => setCommissionTerms(e.target.value)} placeholder="50/50, 100% и т.д." /></div>
+        </div>
       </div>
       <div className="field-group">
         <div className="field-label">Точный адрес</div>
