@@ -171,13 +171,17 @@ export default function VtorichkaForm() {
         owner_name: ownerName,
         owner_phone: ownerPhone,
         exact_address: exactAddress,
+      });
+      if (e2) throw e2;
+
+      const { error: e3 } = await supabase.from("listing_financial").insert({
+        listing_id: listing.id,
         commission_percent: commissionPercent,
         commission_terms: commissionTerms,
-        commission: `${commissionPercent} (${commissionTerms})`,
         v_ruki: vRuki ? Number(vRuki) : null,
         agent_notes: agentComment,
       });
-      if (e2) throw e2;
+      if (e3) throw e3;
 
       localStorage.setItem("rayan_agent_name", agentName);
       localStorage.setItem("rayan_agent_phone", agentPhone);
@@ -363,6 +367,15 @@ export default function VtorichkaForm() {
         <input className="field-input" value={ownerPhone} onChange={(e) => setOwnerPhone(e.target.value)} placeholder="+996..." />
       </div>
       <div className="field-group">
+        <div className="field-label">Точный адрес</div>
+        <input className="field-input" value={exactAddress} onChange={(e) => setExactAddress(e.target.value)} />
+      </div>
+
+      <div className="section-divider" style={{ borderTopColor: "rgba(100,180,220,0.3)" }}>
+        <div className="section-divider-title" style={{ color: "#7EC8E3" }}>Финансовая информация</div>
+        <span className="lock-badge" style={{ color: "#7EC8E3", background: "rgba(100,180,220,0.12)", borderColor: "rgba(100,180,220,0.3)" }}>👥 ВИДЯТ ВСЕ АГЕНТЫ, РОП, АДМИН</span>
+      </div>
+      <div className="field-group">
         <div className="field-label">Цена в руки <span className="star">*</span></div>
         <input className="field-input" type="number" value={vRuki} onChange={(e) => setVRuki(e.target.value)} />
       </div>
@@ -375,12 +388,8 @@ export default function VtorichkaForm() {
         </div>
       </div>
       <div className="field-group">
-        <div className="field-label">Точный адрес</div>
-        <input className="field-input" value={exactAddress} onChange={(e) => setExactAddress(e.target.value)} />
-      </div>
-      <div className="field-group">
-        <div className="field-label">Комментарий агента (внутренний)</div>
-        <textarea className="field-textarea" value={agentComment} onChange={(e) => setAgentComment(e.target.value)} placeholder="Заметки для себя/коллег — клиент не видит" />
+        <div className="field-label">Комментарий агента</div>
+        <textarea className="field-textarea" value={agentComment} onChange={(e) => setAgentComment(e.target.value)} placeholder="Видят все агенты, РОП, Админ — не видит клиент" />
       </div>
 
       <div className="section-divider private"><div className="section-divider-title">Договор</div></div>
