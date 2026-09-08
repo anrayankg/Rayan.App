@@ -73,7 +73,10 @@ body { background: #021712; margin: 0; font-family: 'Manrope', sans-serif; min-h
 .field-group { padding: 0 20px; margin-bottom: 22px; }
 .field-label { color: var(--gold-light); font-size: 10px; letter-spacing: 0.12em; margin-bottom: 8px; font-weight: 600; }
 .field-label .req { color: #E8877A; }
-.star { color: #E8877A; }
+.star { color: #FF3B30; font-size: 1.3em; font-weight: 900; margin-left: 2px; }
+.required-note { color: #FF3B30; font-size: 0.62em; font-weight: 700; vertical-align: middle; margin-left: 2px; }
+.required-chip { background: #FFFFFF !important; color: #075741 !important; font-weight: 700 !important; border-color: #FFFFFF !important; }
+.required-chip.selected { background: linear-gradient(135deg, var(--gold-light), var(--gold)) !important; color: var(--green-deep) !important; }
 .field-input, .field-select, .field-textarea { width: 100%; background: rgba(255,255,255,0.06); border: 1px solid rgba(212,164,55,0.25);
   border-radius: 12px; padding: 13px 14px; color: var(--cream); font-size: 14px; font-family: 'Manrope', sans-serif; outline: none; }
 .field-textarea { resize: vertical; min-height: 90px; }
@@ -89,6 +92,7 @@ body { background: #021712; margin: 0; font-family: 'Manrope', sans-serif; min-h
 .section-divider { margin: 26px 20px 16px; padding-top: 18px; border-top: 1px solid rgba(212,164,55,0.2); display: flex; align-items: center; gap: 8px; }
 .section-divider.private { border-top-color: rgba(232,135,122,0.3); }
 .section-divider-title { font-family: 'Cormorant Garamond', serif; color: var(--gold-light); font-size: 15px; }
+.section-divider-title.big { font-size: 26px; font-weight: 700; }
 .section-divider.private .section-divider-title { color: #E8877A; }
 .lock-badge { font-size: 8.5px; color: #E8877A; background: rgba(232,135,122,0.12); border: 1px solid rgba(232,135,122,0.3); padding: 2px 8px; border-radius: 10px; letter-spacing: 0.05em; }
 
