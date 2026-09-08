@@ -71,28 +71,30 @@ body { background: #021712; margin: 0; font-family: 'Manrope', sans-serif; min-h
 .type-row span { color: var(--cream); font-size: 13px; font-weight: 500; }
 
 .field-group { padding: 0 20px; margin-bottom: 22px; }
-.field-label { color: var(--gold-light); font-size: 10px; letter-spacing: 0.12em; margin-bottom: 8px; font-weight: 600; }
+.field-label { color: var(--gold-light); font-size: 20px; letter-spacing: 0.06em; margin-bottom: 10px; font-weight: 700; }
 .field-label .req { color: #E8877A; }
-.star { color: #FF3B30; font-size: 1.3em; font-weight: 900; margin-left: 2px; }
-.required-note { color: #FF3B30; font-size: 0.62em; font-weight: 700; vertical-align: middle; margin-left: 2px; }
+.star { color: #FF3B30; font-size: 1.2em; font-weight: 900; margin-left: 3px; }
+.required-note { color: #FF3B30; font-size: 15px; font-weight: 800; vertical-align: middle; margin-left: 5px; }
 .required-chip { background: #FFFFFF !important; color: #075741 !important; font-weight: 700 !important; border-color: #FFFFFF !important; }
 .required-chip.selected { background: linear-gradient(135deg, var(--gold-light), var(--gold)) !important; color: var(--green-deep) !important; }
+.required-input { background: #FFFFFF !important; color: #075741 !important; font-weight: 700 !important; border-color: #FFFFFF !important; }
+.required-input::placeholder { color: rgba(7,87,65,0.55) !important; }
 .field-input, .field-select, .field-textarea { width: 100%; background: rgba(255,255,255,0.06); border: 1px solid rgba(212,164,55,0.25);
-  border-radius: 12px; padding: 13px 14px; color: var(--cream); font-size: 14px; font-family: 'Manrope', sans-serif; outline: none; }
+  border-radius: 12px; padding: 15px 16px; color: var(--cream); font-size: 17px; font-family: 'Manrope', sans-serif; outline: none; }
 .field-textarea { resize: vertical; min-height: 90px; }
 .field-input::placeholder, .field-textarea::placeholder { color: rgba(246,241,228,0.35); }
 .field-row { display: flex; gap: 10px; }
 .field-row > * { flex: 1; }
 
 .chip-group { display: flex; flex-wrap: wrap; gap: 8px; }
-.chip { padding: 9px 16px; border-radius: 20px; font-size: 12px; font-weight: 500; cursor: pointer;
+.chip { padding: 12px 18px; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer;
   background: rgba(255,255,255,0.06); border: 1px solid rgba(212,164,55,0.25); color: var(--cream); }
 .chip.selected { background: linear-gradient(135deg, var(--gold-light), var(--gold)); color: var(--green-deep); border-color: transparent; font-weight: 700; }
 
 .section-divider { margin: 26px 20px 16px; padding-top: 18px; border-top: 1px solid rgba(212,164,55,0.2); display: flex; align-items: center; gap: 8px; }
 .section-divider.private { border-top-color: rgba(232,135,122,0.3); }
-.section-divider-title { font-family: 'Cormorant Garamond', serif; color: var(--gold-light); font-size: 15px; }
-.section-divider-title.big { font-size: 26px; font-weight: 700; }
+.section-divider-title { font-family: 'Cormorant Garamond', serif; color: var(--gold-light); font-size: 22px; font-weight: 700; }
+.section-divider-title.big { font-size: 32px; font-weight: 800; }
 .section-divider.private .section-divider-title { color: #E8877A; }
 .lock-badge { font-size: 8.5px; color: #E8877A; background: rgba(232,135,122,0.12); border: 1px solid rgba(232,135,122,0.3); padding: 2px 8px; border-radius: 10px; letter-spacing: 0.05em; }
 
@@ -116,7 +118,7 @@ body { background: #021712; margin: 0; font-family: 'Manrope', sans-serif; min-h
 .accordion-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; cursor: pointer; background: rgba(255,255,255,0.04); }
 .accordion-head span { color: var(--gold-light); font-size: 12.5px; font-weight: 700; letter-spacing: 0.04em; }
 .accordion-body { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
-.mini-field-label { color: rgba(246,241,228,0.7); font-size: 11px; margin-bottom: 6px; }
+.mini-field-label { color: rgba(246,241,228,0.85); font-size: 15px; font-weight: 600; margin-bottom: 8px; }
 
 .currency-toggle { display: flex; gap: 8px; margin-top: 8px; }
 .currency-btn { flex: 1; padding: 10px; border-radius: 10px; text-align: center; font-size: 13px; font-weight: 700;
