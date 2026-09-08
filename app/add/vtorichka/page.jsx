@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 import { CITIES, CITY_DISTRICTS } from "../../../lib/locations";
 import LocationPicker from "../../../components/LocationPicker";
+import MapPicker from "../../../components/MapPicker";
 
 
 const ROOM_TYPES = [
@@ -129,10 +130,13 @@ export default function VtorichkaForm() {
   const [commissionPercent, setCommissionPercent] = useState("");
   const [commissionTerms, setCommissionTerms] = useState("");
   const [vRuki, setVRuki] = useState("");
+  const [vRukiCurrency, setVRukiCurrency] = useState("USD");
   const [dealTerms, setDealTerms] = useState([]); // теперь массив — множественный выбор
   const [obmenNa, setObmenNa] = useState([]);
   const [obmenDrugoe, setObmenDrugoe] = useState("");
   const [mapLink, setMapLink] = useState("");
+  const [mapLat, setMapLat] = useState(null);
+  const [mapLng, setMapLng] = useState(null);
 
   const [zhk, setZhk] = useState("");
   const [sk, setSk] = useState("");
@@ -154,6 +158,26 @@ export default function VtorichkaForm() {
   const [agentComment, setAgentComment] = useState("");
   const [docPhotos, setDocPhotos] = useState([]); // storage-пути для базы
   const [docPreviews, setDocPreviews] = useState([]); // локальные превью для показа
+  const [contractPhotos, setContractPhotos] = useState([]);
+  const [contractPreviews, setContractPreviews] = useState([]);
+
+  async function handleContractFiles(e) {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    try {
+      for (const file of files) {
+        setContractPreviews((p) => [...p, URL.createObjectURL(file)]);
+        const path = `contract-${Date.now()}-${file.name}`;
+        const { error: upErr } = await supabase.storage.from("listing-documents").upload(path, file);
+        if (upErr) throw upErr;
+        setContractPhotos((p) => [...p, path]);
+      }
+    } catch (err) {
+      setError("Не удалось загрузить фото договора: " + err.message);
+    } finally {
+      e.target.value = "";
+    }
+  }
   const [docUploading, setDocUploading] = useState(false);
 
   async function handleDocFiles(e) {
@@ -186,7 +210,7 @@ export default function VtorichkaForm() {
 
   const districtRequired = city === "Бишкек";
   const canSubmit =
-    city && (!districtRequired || district) && mapLink && roomType && series && area && floor && floorsTotal &&
+    city && (!districtRequired || district) && mapLat && mapLng && roomType && series && area && floor && floorsTotal &&
     docs.length > 0 && heating && gas !== null && water !== null &&
     electricity !== null && sewerage !== null && hotWater !== null && price && ownerPhone &&
     agentPhone && commissionPercent && commissionTerms && vRuki && dealTerms.length > 0 && description;
@@ -214,7 +238,8 @@ export default function VtorichkaForm() {
           documents: docs,
           heating,
           gas, water, electricity, sewerage, hot_water: hotWater,
-          map_link: mapLink,
+          map_lat: mapLat,
+          map_lng: mapLng,
           deal_terms: dealTerms.join(", "),
           obmen_na: dealTerms.includes("Обмен") ? [...obmenNa, obmenDrugoe].filter(Boolean).join(", ") : null,
           torg,
@@ -236,6 +261,7 @@ export default function VtorichkaForm() {
         owner_phone: ownerPhone,
         exact_address: exactAddress,
         document_photos: docPhotos,
+        contract_photos: contractPhotos,
       });
       if (e2) throw e2;
 
@@ -244,6 +270,7 @@ export default function VtorichkaForm() {
         commission_percent: commissionPercent,
         commission_terms: commissionTerms,
         v_ruki: vRuki ? Number(vRuki) : null,
+        v_ruki_currency: vRukiCurrency,
         agent_notes: agentComment,
       });
       if (e3) throw e3;
@@ -276,7 +303,7 @@ export default function VtorichkaForm() {
         <div className="step-dot">4</div>
       </div>
 
-      <div className="section-divider"><div className="section-divider-title">Обязательные поля</div></div>
+      <div className="section-divider"><div className="section-divider-title big">ОБЯЗАТЕЛЬНЫЕ ПОЛЯ</div></div>
 
       <div className="field-group">
         <LocationPicker
@@ -305,65 +332,67 @@ export default function VtorichkaForm() {
       </div>
 
       <div className="field-group">
-        <div className="field-label">Точка на карте <span className="star">*</span></div>
-        <input className="field-input" value={mapLink} onChange={(e) => setMapLink(e.target.value)} placeholder="Ссылка с 2ГИС или Google Maps" />
-        <div style={{ color: "#7FA396", fontSize: 10, marginTop: 5 }}>
-          Откройте 2ГИС или Google Maps → найдите точку на карте → "Поделиться" → скопируйте ссылку сюда
-        </div>
+        <MapPicker
+          label="Точка на карте"
+          required
+          lat={mapLat}
+          lng={mapLng}
+          onChange={(lat, lng) => { setMapLat(lat); setMapLng(lng); }}
+        />
       </div>
 
       <div className="field-group">
-        <div className="field-label">Комнатность <span className="star">*</span></div>
+        <div className="field-label">Комнатность <span className="star">*</span><span className="required-note">(обязательно)</span></div>
         <div className="chip-group">
           {ROOM_TYPES.map((r) => (
-            <div key={r} className={`chip ${roomType === r ? "selected" : ""}`} onClick={() => setRoomType(r)}>{r}</div>
+            <div key={r} className={`chip required-chip ${roomType === r ? "selected" : ""}`} onClick={() => setRoomType(r)}>{r}</div>
           ))}
         </div>
       </div>
 
       <div className="field-group">
-        <div className="field-label">Серия дома <span className="star">*</span></div>
+        <div className="field-label">Серия дома <span className="star">*</span><span className="required-note">(обязательно)</span></div>
         <div className="chip-group">
           {SERIES_OPTIONS.map((s) => (
-            <div key={s} className={`chip ${series === s ? "selected" : ""}`} onClick={() => setSeries(s)}>{s}</div>
+            <div key={s} className={`chip required-chip ${series === s ? "selected" : ""}`} onClick={() => setSeries(s)}>{s}</div>
           ))}
         </div>
       </div>
 
       <div className="field-group">
         <div className="field-row">
-          <div><div className="field-label">Площадь, м² <span className="star">*</span></div>
+          <div><div className="field-label">Площадь, м² <span className="star">*</span><span className="required-note">(обязательно)</span></div>
             <input className="field-input" type="number" value={area} onChange={(e) => setArea(e.target.value)} /></div>
-          <div><div className="field-label">Этаж <span className="star">*</span></div>
+          <div><div className="field-label">Этаж <span className="star">*</span><span className="required-note">(обязательно)</span></div>
             <input className="field-input" type="number" value={floor} onChange={(e) => setFloor(e.target.value)} /></div>
-          <div><div className="field-label">Этажность <span className="star">*</span></div>
+          <div><div className="field-label">Этажность <span className="star">*</span><span className="required-note">(обязательно)</span></div>
             <input className="field-input" type="number" value={floorsTotal} onChange={(e) => setFloorsTotal(e.target.value)} /></div>
         </div>
       </div>
 
       <div className="field-group">
-        <div className="field-label">Документы (можно несколько) <span className="star">*</span></div>
+        <div className="field-label">Документы (можно несколько) <span className="star">*</span><span className="required-note">(обязательно)</span></div>
         <div className="chip-group">
           {DOC_OPTIONS.map((d) => (
-            <div key={d} className={`chip ${docs.includes(d) ? "selected" : ""}`} onClick={() => toggle(setDocs, docs, d)}>{d}</div>
+            <div key={d} className={`chip required-chip ${docs.includes(d) ? "selected" : ""}`} onClick={() => toggle(setDocs, docs, d)}>{d}</div>
           ))}
         </div>
       </div>
 
       <div className="field-group">
-        <div className="field-label">Отопление <span className="star">*</span></div>
+        <div className="field-label">Отопление <span className="star">*</span><span className="required-note">(обязательно)</span></div>
         <div className="chip-group">
           {HEATING_OPTS.map((h) => (
-            <div key={h} className={`chip ${heating === h ? "selected" : ""}`} onClick={() => setHeating(h)}>{h}</div>
+            <div key={h} className={`chip required-chip ${heating === h ? "selected" : ""}`} onClick={() => setHeating(h)}>{h}</div>
           ))}
         </div>
       </div>
 
       <div className="field-group">
-        <div className="field-label">Коммуникации <span className="star">*</span></div>
+        <div className="field-label">Коммуникации <span className="star">*</span><span className="required-note">(обязательно)</span></div>
         <div className="chip-group">
           {[["Газ", gas, setGas], ["Вода", water, setWater], ["Электричество", electricity, setElectricity], ["Канализация", sewerage, setSewerage], ["Горячая вода", hotWater, setHotWater]].map(([label, val, setter]) => (
-            <div key={label} className={`chip ${val === true ? "selected" : ""}`} onClick={() => setter(val === true ? false : true)}>
+            <div key={label} className={`chip required-chip ${val === true ? "selected" : ""}`} onClick={() => setter(val === true ? false : true)}>
               {label}: {val === null ? "?" : val ? "да" : "нет"}
             </div>
           ))}
@@ -371,23 +400,23 @@ export default function VtorichkaForm() {
       </div>
 
       <div className="field-group">
-        <div className="field-label">Цена <span className="star">*</span></div>
+        <div className="field-label">Цена <span className="star">*</span><span className="required-note">(обязательно)</span></div>
         <input className="field-input" type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Общая стоимость, не за м²" />
         <div className="currency-toggle">
           {["USD", "KGS"].map((c) => (
-            <div key={c} className={`currency-btn ${currency === c ? "selected" : ""}`} onClick={() => setCurrency(c)}>{c === "USD" ? "$ USD" : "KGS сом"}</div>
+            <div key={c} className={`currency-btn required-chip ${currency === c ? "selected" : ""}`} onClick={() => setCurrency(c)}>{c === "USD" ? "$ USD" : "KGS сом"}</div>
           ))}
         </div>
         <div style={{ marginTop: 10 }} className="chip-group">
-          <div className={`chip ${torg ? "selected" : ""}`} onClick={() => setTorg(!torg)}>Торг возможен</div>
+          <div className={`chip required-chip ${torg ? "selected" : ""}`} onClick={() => setTorg(!torg)}>Торг возможен</div>
         </div>
       </div>
 
       <div className="field-group">
-        <div className="field-label">Условия сделки (можно несколько) <span className="star">*</span></div>
+        <div className="field-label">Условия сделки (можно несколько) <span className="star">*</span><span className="required-note">(обязательно)</span></div>
         <div className="chip-group">
           {DEAL_TERMS_OPTS.map((d) => (
-            <div key={d} className={`chip ${dealTerms.includes(d) ? "selected" : ""}`} onClick={() => toggle(setDealTerms, dealTerms, d)}>{d}</div>
+            <div key={d} className={`chip required-chip ${dealTerms.includes(d) ? "selected" : ""}`} onClick={() => toggle(setDealTerms, dealTerms, d)}>{d}</div>
           ))}
         </div>
         {dealTerms.includes("Обмен") && (
@@ -395,7 +424,7 @@ export default function VtorichkaForm() {
             <div className="mini-field-label">На что рассматривается обмен</div>
             <div className="chip-group">
               {OBMEN_OPTS.map((o) => (
-                <div key={o} className={`chip ${obmenNa.includes(o) ? "selected" : ""}`} onClick={() => toggle(setObmenNa, obmenNa, o)}>{o}</div>
+                <div key={o} className={`chip required-chip ${obmenNa.includes(o) ? "selected" : ""}`} onClick={() => toggle(setObmenNa, obmenNa, o)}>{o}</div>
               ))}
             </div>
             <input className="field-input" style={{ marginTop: 8 }} value={obmenDrugoe} onChange={(e) => setObmenDrugoe(e.target.value)} placeholder="Уточнить, если «Другое»" />
@@ -403,35 +432,13 @@ export default function VtorichkaForm() {
         )}
       </div>
 
-      <div className="section-divider">
-        <div className="section-divider-title">Контакт агента</div>
-        <span className="lock-badge" style={{ color: "#baf5d0", background: "rgba(20,120,80,0.15)", borderColor: "rgba(100,220,150,0.3)" }}>👁 ВИДЕН ВСЕМ</span>
-      </div>
-      <div className="field-group">
-        <div className="field-row">
-          <div><div className="field-label">Имя агента <span className="star">*</span></div>
-            <input className="field-input" value={agentName} onChange={(e) => setAgentName(e.target.value)} /></div>
-          <div><div className="field-label">Телефон агента <span className="star">*</span></div>
-            <input className="field-input" value={agentPhone} onChange={(e) => setAgentPhone(e.target.value)} placeholder="+996..." /></div>
-        </div>
-      </div>
-
-      <div className="section-divider"><div className="section-divider-title">Дополнительно (не обязательно)</div></div>
+      <div className="section-divider"><div className="section-divider-title big">ДОПОЛНИТЕЛЬНО, ПОЛНЫЙ БРИФ (НЕ ОБЯЗАТЕЛЬНО)</div></div>
       <div className="field-group">
         <div className="field-row">
           <div><div className="field-label">СК</div><input className="field-input" value={sk} onChange={(e) => setSk(e.target.value)} /></div>
           <div><div className="field-label">ЖК</div><input className="field-input" value={zhk} onChange={(e) => setZhk(e.target.value)} /></div>
         </div>
       </div>
-      <div className="field-group">
-        <div className="field-label">Описание для клиента <span className="star">*</span></div>
-        <textarea className="field-textarea" value={description} onChange={(e) => setDescription(e.target.value)} />
-        <button className="ai-btn" type="button" disabled>✨ Сформировать описание с ИИ (следующий этап)</button>
-      </div>
-
-      <div className="photo-drop">📷 Загрузка фото/видео — следующий этап</div>
-
-      <div className="section-divider"><div className="section-divider-title">Полный бриф — остальные детали</div></div>
       <Accordion title="ДОМ И ТЕРРИТОРИЯ" defaultOpen={true}>
         <MiniChips label="Планировка" options={["Сквозная", "В линейку"]} value={extra.planirovka || ""} onChange={setEx("planirovka")} />
         <MiniField label="Балкон/лоджия, количество" value={extra.balkon || ""} onChange={setEx("balkon")} />
@@ -489,8 +496,8 @@ export default function VtorichkaForm() {
         <div>
           <div className="mini-field-label">Проверка Госрегистра</div>
           <div className="chip-group">
-            <div className={`chip ${extra.gosregistr === "Проверено" ? "selected" : ""}`} onClick={() => setEx("gosregistr")("Проверено")}>Проверено</div>
-            <div className={`chip ${extra.gosregistr === "Не проверено" ? "selected" : ""}`} onClick={() => setEx("gosregistr")("Не проверено")}>Не проверено</div>
+            <div className={`chip required-chip ${extra.gosregistr === "Проверено" ? "selected" : ""}`} onClick={() => setEx("gosregistr")("Проверено")}>Проверено</div>
+            <div className={`chip required-chip ${extra.gosregistr === "Не проверено" ? "selected" : ""}`} onClick={() => setEx("gosregistr")("Не проверено")}>Не проверено</div>
           </div>
         </div>
         {extra.gosregistr === "Проверено" && (
@@ -514,6 +521,14 @@ export default function VtorichkaForm() {
         <MiniField label="Время / кто показывает / телефон" value={extra.pokaz || ""} onChange={setEx("pokaz")} />
       </Accordion>
 
+      <div className="field-group">
+        <div className="field-label">Описание для клиента <span className="star">*</span><span className="required-note">(обязательно)</span></div>
+        <textarea className="field-textarea" value={description} onChange={(e) => setDescription(e.target.value)} />
+        <button className="ai-btn" type="button" disabled>✨ Сформировать описание с ИИ (следующий этап)</button>
+      </div>
+
+      <div className="photo-drop">📷 Загрузка фото/видео — следующий этап</div>
+
       <div className="section-divider private">
         <div className="section-divider-title">Информация для агента</div>
         <span className="lock-badge">🔒 ТОЛЬКО ДЛЯ ВАС</span>
@@ -523,7 +538,7 @@ export default function VtorichkaForm() {
         <input className="field-input" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} />
       </div>
       <div className="field-group">
-        <div className="field-label">Телефон собственника <span className="star">*</span></div>
+        <div className="field-label">Телефон собственника <span className="star">*</span><span className="required-note">(обязательно)</span></div>
         <input className="field-input" value={ownerPhone} onChange={(e) => setOwnerPhone(e.target.value)} placeholder="+996..." />
       </div>
       <div className="field-group">
@@ -563,6 +578,11 @@ export default function VtorichkaForm() {
       <div className="field-group">
         <div className="field-label">Цена в руки <span className="star">*</span></div>
         <input className="field-input" type="number" value={vRuki} onChange={(e) => setVRuki(e.target.value)} />
+        <div className="currency-toggle">
+          {["USD", "KGS"].map((c) => (
+            <div key={c} className={`currency-btn ${vRukiCurrency === c ? "selected" : ""}`} onClick={() => setVRukiCurrency(c)}>{c === "USD" ? "$ USD" : "KGS сом"}</div>
+          ))}
+        </div>
       </div>
       <div className="field-group">
         <div className="field-row">
@@ -585,6 +605,44 @@ export default function VtorichkaForm() {
               {s === "без договора" ? "Без договора" : "С договором"}
             </div>
           ))}
+        </div>
+        {contractStatus === "с договором" && (
+          <div style={{ marginTop: 14 }}>
+            <div className="mini-field-label">Фото договора</div>
+            <div className="doc-upload-row">
+              <label className="doc-upload-btn">
+                📷 Снять камерой
+                <input type="file" accept="image/*" capture="environment" multiple style={{ display: "none" }} onChange={handleContractFiles} />
+              </label>
+              <label className="doc-upload-btn">
+                🖼 Из галереи / файла
+                <input type="file" accept="image/*,.pdf" multiple style={{ display: "none" }} onChange={handleContractFiles} />
+              </label>
+            </div>
+            {contractPreviews.length > 0 && (
+              <div className="doc-thumbs">
+                {contractPreviews.map((url, i) => (
+                  <div key={i} className="doc-thumb">
+                    <img src={url} alt="" />
+                    <div className="doc-thumb-remove" onClick={() => { setContractPreviews((p) => p.filter((_, idx) => idx !== i)); setContractPhotos((p) => p.filter((_, idx) => idx !== i)); }}>×</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+            <div className="section-divider">
+        <div className="section-divider-title">Контакт агента</div>
+        <span className="lock-badge" style={{ color: "#baf5d0", background: "rgba(20,120,80,0.15)", borderColor: "rgba(100,220,150,0.3)" }}>👁 ВИДЕН ВСЕМ</span>
+      </div>
+      <div className="field-group">
+        <div className="field-row">
+          <div><div className="field-label">Имя агента <span className="star">*</span><span className="required-note">(обязательно)</span></div>
+            <input className="field-input" value={agentName} onChange={(e) => setAgentName(e.target.value)} /></div>
+          <div><div className="field-label">Телефон агента <span className="star">*</span><span className="required-note">(обязательно)</span></div>
+            <input className="field-input" value={agentPhone} onChange={(e) => setAgentPhone(e.target.value)} placeholder="+996..." /></div>
         </div>
       </div>
 
