@@ -167,7 +167,8 @@ export default function VtorichkaForm() {
     try {
       for (const file of files) {
         setContractPreviews((p) => [...p, URL.createObjectURL(file)]);
-        const path = `contract-${Date.now()}-${file.name}`;
+        const ext = (file.name.split(".").pop() || "jpg").replace(/[^a-zA-Z0-9]/g, "").slice(0, 5) || "jpg";
+        const path = `contract-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
         const { error: upErr } = await supabase.storage.from("listing-documents").upload(path, file);
         if (upErr) throw upErr;
         setContractPhotos((p) => [...p, path]);
@@ -187,7 +188,8 @@ export default function VtorichkaForm() {
     try {
       for (const file of files) {
         setDocPreviews((p) => [...p, URL.createObjectURL(file)]);
-        const path = `temp-${Date.now()}-${file.name}`;
+        const ext = (file.name.split(".").pop() || "jpg").replace(/[^a-zA-Z0-9]/g, "").slice(0, 5) || "jpg";
+        const path = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
         const { error: upErr } = await supabase.storage.from("listing-documents").upload(path, file);
         if (upErr) throw upErr;
         setDocPhotos((p) => [...p, path]);
@@ -337,6 +339,7 @@ export default function VtorichkaForm() {
           required
           lat={mapLat}
           lng={mapLng}
+          flyToQuery={district || city}
           onChange={(lat, lng) => { setMapLat(lat); setMapLng(lng); }}
         />
       </div>
@@ -362,11 +365,11 @@ export default function VtorichkaForm() {
       <div className="field-group">
         <div className="field-row">
           <div><div className="field-label">Площадь, м² <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-            <input className="field-input" type="number" value={area} onChange={(e) => setArea(e.target.value)} /></div>
+            <input className="field-input required-input" type="number" value={area} onChange={(e) => setArea(e.target.value)} /></div>
           <div><div className="field-label">Этаж <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-            <input className="field-input" type="number" value={floor} onChange={(e) => setFloor(e.target.value)} /></div>
+            <input className="field-input required-input" type="number" value={floor} onChange={(e) => setFloor(e.target.value)} /></div>
           <div><div className="field-label">Этажность <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-            <input className="field-input" type="number" value={floorsTotal} onChange={(e) => setFloorsTotal(e.target.value)} /></div>
+            <input className="field-input required-input" type="number" value={floorsTotal} onChange={(e) => setFloorsTotal(e.target.value)} /></div>
         </div>
       </div>
 
@@ -401,7 +404,7 @@ export default function VtorichkaForm() {
 
       <div className="field-group">
         <div className="field-label">Цена <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-        <input className="field-input" type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Общая стоимость, не за м²" />
+        <input className="field-input required-input" type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Общая стоимость, не за м²" />
         <div className="currency-toggle">
           {["USD", "KGS"].map((c) => (
             <div key={c} className={`currency-btn required-chip ${currency === c ? "selected" : ""}`} onClick={() => setCurrency(c)}>{c === "USD" ? "$ USD" : "KGS сом"}</div>
@@ -432,7 +435,9 @@ export default function VtorichkaForm() {
         )}
       </div>
 
-      <div className="section-divider"><div className="section-divider-title big">ДОПОЛНИТЕЛЬНО, ПОЛНЫЙ БРИФ (НЕ ОБЯЗАТЕЛЬНО)</div></div>
+      <div className="section-divider">
+        <div className="section-divider-title big">ДОПОЛНИТЕЛЬНО <span style={{ fontSize: "0.4em", fontWeight: 500, textTransform: "none", letterSpacing: "0.02em" }}>(не обязательно)</span></div>
+      </div>
       <div className="field-group">
         <div className="field-row">
           <div><div className="field-label">СК</div><input className="field-input" value={sk} onChange={(e) => setSk(e.target.value)} /></div>
@@ -530,7 +535,7 @@ export default function VtorichkaForm() {
       <div className="photo-drop">📷 Загрузка фото/видео — следующий этап</div>
 
       <div className="section-divider private">
-        <div className="section-divider-title">Информация для агента</div>
+        <div className="section-divider-title big">Информация для агента</div>
         <span className="lock-badge">🔒 ТОЛЬКО ДЛЯ ВАС</span>
       </div>
       <div className="field-group">
@@ -572,11 +577,11 @@ export default function VtorichkaForm() {
       </div>
 
       <div className="section-divider" style={{ borderTopColor: "rgba(100,180,220,0.3)" }}>
-        <div className="section-divider-title" style={{ color: "#7EC8E3" }}>Финансовая информация</div>
+        <div className="section-divider-title big" style={{ color: "#7EC8E3" }}>Финансовая информация</div>
         <span className="lock-badge" style={{ color: "#7EC8E3", background: "rgba(100,180,220,0.12)", borderColor: "rgba(100,180,220,0.3)" }}>👥 ВИДЯТ ВСЕ АГЕНТЫ, РОП, АДМИН</span>
       </div>
       <div className="field-group">
-        <div className="field-label">Цена в руки <span className="star">*</span></div>
+        <div className="field-label">Цена в руки <span className="star">*</span><span className="required-note">(обязательно)</span></div>
         <input className="field-input" type="number" value={vRuki} onChange={(e) => setVRuki(e.target.value)} />
         <div className="currency-toggle">
           {["USD", "KGS"].map((c) => (
@@ -586,9 +591,9 @@ export default function VtorichkaForm() {
       </div>
       <div className="field-group">
         <div className="field-row">
-          <div><div className="field-label">Комиссия, % / сумма <span className="star">*</span></div>
+          <div><div className="field-label">Комиссия, % / сумма <span className="star">*</span><span className="required-note">(обязательно)</span></div>
             <input className="field-input" value={commissionPercent} onChange={(e) => setCommissionPercent(e.target.value)} placeholder="3% или $500" /></div>
-          <div><div className="field-label">Условия комиссии <span className="star">*</span></div>
+          <div><div className="field-label">Условия комиссии <span className="star">*</span><span className="required-note">(обязательно)</span></div>
             <input className="field-input" value={commissionTerms} onChange={(e) => setCommissionTerms(e.target.value)} placeholder="50/50, 100% и т.д." /></div>
         </div>
       </div>
