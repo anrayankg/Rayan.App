@@ -28,9 +28,13 @@ const DOC_OPTIONS = [
 
 const HEATING_OPTS = [
   "Центральное (ТЭЦ)", "Автономная газовая котельная", "Автономная электрическая котельная",
-  "Индивидуальный газовый котёл", "Индивидуальное электрическое отопление",
+  "Индивидуальный газовый котёл", "Электро-конвекторы", "Индивидуальное электрическое отопление",
   "Комбинированное", "Угольное", "Другое",
 ];
+
+const OBMEN_OPTS = ["Квартира", "Машина", "Дом", "Иссык-Куль", "Другое"];
+const WINDOW_DIRS = ["Север", "Юг", "Запад", "Восток", "Северо-восток", "Северо-запад", "Юго-восток", "Юго-запад"];
+const FLOOR_COUNT_OPTS = Array.from({ length: 30 }, (_, i) => String(i + 1));
 
 const DEAL_TERMS_OPTS = ["Наличные", "Ипотека", "Рассрочка через Госрегистр", "Обмен"];
 
@@ -69,6 +73,34 @@ function MiniChips({ label, options, value, onChange }) {
     </div>
   );
 }
+function MiniMultiChips({ label, options, value, onChange }) {
+  const arr = value || [];
+  function toggle(o) {
+    onChange(arr.includes(o) ? arr.filter((x) => x !== o) : [...arr, o]);
+  }
+  return (
+    <div>
+      <div className="mini-field-label">{label}</div>
+      <div className="chip-group">
+        {options.map((o) => (
+          <div key={o} className={`chip ${arr.includes(o) ? "selected" : ""}`} onClick={() => toggle(o)}>{o}</div>
+        ))}
+      </div>
+    </div>
+  );
+}
+function MiniYesNo({ label, value, onChange }) {
+  return (
+    <div>
+      <div className="mini-field-label">{label}</div>
+      <div className="chip-group">
+        {["Да", "Нет"].map((o) => (
+          <div key={o} className={`chip ${value === o ? "selected" : ""}`} onClick={() => onChange(o)}>{o}</div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function VtorichkaForm() {
   const router = useRouter();
@@ -89,6 +121,7 @@ export default function VtorichkaForm() {
   const [water, setWater] = useState(null);
   const [electricity, setElectricity] = useState(null);
   const [sewerage, setSewerage] = useState(null);
+  const [hotWater, setHotWater] = useState(null);
   const [price, setPrice] = useState("");
   const [torg, setTorg] = useState(false);
   const [currency, setCurrency] = useState("USD");
@@ -97,6 +130,9 @@ export default function VtorichkaForm() {
   const [commissionTerms, setCommissionTerms] = useState("");
   const [vRuki, setVRuki] = useState("");
   const [dealTerms, setDealTerms] = useState([]); // теперь массив — множественный выбор
+  const [obmenNa, setObmenNa] = useState([]);
+  const [obmenDrugoe, setObmenDrugoe] = useState("");
+  const [mapLink, setMapLink] = useState("");
 
   const [zhk, setZhk] = useState("");
   const [sk, setSk] = useState("");
@@ -150,10 +186,10 @@ export default function VtorichkaForm() {
 
   const districtRequired = city === "Бишкек";
   const canSubmit =
-    city && (!districtRequired || district) && roomType && series && area && floor && floorsTotal &&
+    city && (!districtRequired || district) && mapLink && roomType && series && area && floor && floorsTotal &&
     docs.length > 0 && heating && gas !== null && water !== null &&
-    electricity !== null && sewerage !== null && price && ownerPhone &&
-    agentPhone && commissionPercent && commissionTerms && vRuki && dealTerms.length > 0;
+    electricity !== null && sewerage !== null && hotWater !== null && price && ownerPhone &&
+    agentPhone && commissionPercent && commissionTerms && vRuki && dealTerms.length > 0 && description;
 
   async function handleSubmit() {
     setSaving(true);
@@ -177,8 +213,10 @@ export default function VtorichkaForm() {
           zhk, sk,
           documents: docs,
           heating,
-          gas, water, electricity, sewerage,
+          gas, water, electricity, sewerage, hot_water: hotWater,
+          map_link: mapLink,
           deal_terms: dealTerms.join(", "),
+          obmen_na: dealTerms.includes("Обмен") ? [...obmenNa, obmenDrugoe].filter(Boolean).join(", ") : null,
           torg,
           description,
           contract_status: contractStatus,
@@ -267,6 +305,14 @@ export default function VtorichkaForm() {
       </div>
 
       <div className="field-group">
+        <div className="field-label">Точка на карте <span className="star">*</span></div>
+        <input className="field-input" value={mapLink} onChange={(e) => setMapLink(e.target.value)} placeholder="Ссылка с 2ГИС или Google Maps" />
+        <div style={{ color: "#7FA396", fontSize: 10, marginTop: 5 }}>
+          Откройте 2ГИС или Google Maps → найдите точку на карте → "Поделиться" → скопируйте ссылку сюда
+        </div>
+      </div>
+
+      <div className="field-group">
         <div className="field-label">Комнатность <span className="star">*</span></div>
         <div className="chip-group">
           {ROOM_TYPES.map((r) => (
@@ -316,7 +362,7 @@ export default function VtorichkaForm() {
       <div className="field-group">
         <div className="field-label">Коммуникации <span className="star">*</span></div>
         <div className="chip-group">
-          {[["Газ", gas, setGas], ["Вода", water, setWater], ["Электричество", electricity, setElectricity], ["Канализация", sewerage, setSewerage]].map(([label, val, setter]) => (
+          {[["Газ", gas, setGas], ["Вода", water, setWater], ["Электричество", electricity, setElectricity], ["Канализация", sewerage, setSewerage], ["Горячая вода", hotWater, setHotWater]].map(([label, val, setter]) => (
             <div key={label} className={`chip ${val === true ? "selected" : ""}`} onClick={() => setter(val === true ? false : true)}>
               {label}: {val === null ? "?" : val ? "да" : "нет"}
             </div>
@@ -344,6 +390,17 @@ export default function VtorichkaForm() {
             <div key={d} className={`chip ${dealTerms.includes(d) ? "selected" : ""}`} onClick={() => toggle(setDealTerms, dealTerms, d)}>{d}</div>
           ))}
         </div>
+        {dealTerms.includes("Обмен") && (
+          <div style={{ marginTop: 12 }}>
+            <div className="mini-field-label">На что рассматривается обмен</div>
+            <div className="chip-group">
+              {OBMEN_OPTS.map((o) => (
+                <div key={o} className={`chip ${obmenNa.includes(o) ? "selected" : ""}`} onClick={() => toggle(setObmenNa, obmenNa, o)}>{o}</div>
+              ))}
+            </div>
+            <input className="field-input" style={{ marginTop: 8 }} value={obmenDrugoe} onChange={(e) => setObmenDrugoe(e.target.value)} placeholder="Уточнить, если «Другое»" />
+          </div>
+        )}
       </div>
 
       <div className="section-divider">
@@ -367,7 +424,7 @@ export default function VtorichkaForm() {
         </div>
       </div>
       <div className="field-group">
-        <div className="field-label">Описание для клиента</div>
+        <div className="field-label">Описание для клиента <span className="star">*</span></div>
         <textarea className="field-textarea" value={description} onChange={(e) => setDescription(e.target.value)} />
         <button className="ai-btn" type="button" disabled>✨ Сформировать описание с ИИ (следующий этап)</button>
       </div>
@@ -378,21 +435,81 @@ export default function VtorichkaForm() {
       <Accordion title="ДОМ И ТЕРРИТОРИЯ" defaultOpen={true}>
         <MiniChips label="Планировка" options={["Сквозная", "В линейку"]} value={extra.planirovka || ""} onChange={setEx("planirovka")} />
         <MiniField label="Балкон/лоджия, количество" value={extra.balkon || ""} onChange={setEx("balkon")} />
-        <MiniField label="Лифт (производитель, работает ли)" value={extra.lift || ""} onChange={setEx("lift")} />
-        <MiniChips label="Расположение окон" options={["Север", "Юг", "Запад", "Восток", "Комбинированное"]} value={extra.okna || ""} onChange={setEx("okna")} />
+        <MiniChips label="Лифт" options={["Да, работает", "Да, не работает", "Нет"]} value={extra.lift || ""} onChange={setEx("lift")} />
+        <MiniField label="Производитель лифта" value={extra.liftProizvoditel || ""} onChange={setEx("liftProizvoditel")} />
+        {floor && floorsTotal && floor === floorsTotal && (
+          <MiniChips label="Технический этаж (последний этаж)" options={["Тех этаж есть", "Тех этаж нет"]} value={extra.tehEtazh || ""} onChange={setEx("tehEtazh")} />
+        )}
+        <MiniField label="Высота потолков" value={extra.potolki || ""} onChange={setEx("potolki")} />
+        <MiniMultiChips label="Расположение окон (можно несколько)" options={WINDOW_DIRS} value={extra.okna} onChange={setEx("okna")} />
+        <MiniField label="Материал фасада" value={extra.fasadMaterial || ""} onChange={setEx("fasadMaterial")} />
+        <MiniField label="Состояние фасада" value={extra.fasadSostoyanie || ""} onChange={setEx("fasadSostoyanie")} />
+        <MiniField label="Состояние подъезда" value={extra.podjezdSostoyanie || ""} onChange={setEx("podjezdSostoyanie")} />
+        <MiniField label="Состояние двора" value={extra.dvorSostoyanie || ""} onChange={setEx("dvorSostoyanie")} />
         <MiniChips label="Двор" options={["Закрытый", "Охраняемый", "Открытый"]} value={extra.dvor || ""} onChange={setEx("dvor")} />
         <MiniChips label="Детская площадка" options={["Есть", "Нет"]} value={extra.detskaya || ""} onChange={setEx("detskaya")} />
-        <MiniField label="Фасад дома" value={extra.fasad || ""} onChange={setEx("fasad")} />
+        <MiniMultiChips label="Инфраструктура рядом" options={["Магазины", "Школы", "Детские сады", "Остановки", "Торговый центр", "Рынок/базар"]} value={extra.infra} onChange={setEx("infra")} />
+        <MiniField label="Другая инфраструктура" value={extra.infraDrugoe || ""} onChange={setEx("infraDrugoe")} />
       </Accordion>
+
       <Accordion title="КВАРТИРА" defaultOpen={true}>
         <div className="field-row">
           <MiniField label="Жилая площадь, м²" value={extra.zhilayaPloshad || ""} onChange={setEx("zhilayaPloshad")} />
           <MiniField label="Площадь кухни, м²" value={extra.kuhnyaPloshad || ""} onChange={setEx("kuhnyaPloshad")} />
         </div>
-        <MiniChips label="Ремонт" options={["Евро", "Дизайнерский", "Предчистовая", "ПСО", "Без ремонта"]} value={extra.remont || ""} onChange={setEx("remont")} />
-        <MiniField label="Мебель / техника — что остаётся" value={extra.mebel || ""} onChange={setEx("mebel")} />
+        <MiniChips label="Ремонт" options={["Евро", "Дизайнерский", "Предчистовая", "ПСО", "Без ремонта", "Другое"]} value={extra.remont || ""} onChange={setEx("remont")} />
+        <MiniField label="Год ремонта" value={extra.remontGod || ""} onChange={setEx("remontGod")} />
+
+        <MiniYesNo label="Мебель остаётся" value={extra.mebelDaNet || ""} onChange={setEx("mebelDaNet")} />
+        {extra.mebelDaNet === "Да" && (
+          <>
+            <MiniChips label="Мебель — объём" options={["Частично", "Полностью"]} value={extra.mebelObyem || ""} onChange={setEx("mebelObyem")} />
+            <MiniField label="Что из мебели остаётся" value={extra.mebelChto || ""} onChange={setEx("mebelChto")} />
+          </>
+        )}
+
+        <MiniYesNo label="Техника остаётся" value={extra.tehnikaDaNet || ""} onChange={setEx("tehnikaDaNet")} />
+        {extra.tehnikaDaNet === "Да" && (
+          <>
+            <MiniChips label="Техника — объём" options={["Частично", "Полностью"]} value={extra.tehnikaObyem || ""} onChange={setEx("tehnikaObyem")} />
+            <MiniField label="Что из техники остаётся" value={extra.tehnikaChto || ""} onChange={setEx("tehnikaChto")} />
+          </>
+        )}
+
         <MiniField label="Вид из окон" value={extra.vidOkna || ""} onChange={setEx("vidOkna")} />
+        <MiniField label="Состояние окон" value={extra.sostOkna || ""} onChange={setEx("sostOkna")} />
+        <MiniChips label="Количество квартир на этаже" options={FLOOR_COUNT_OPTS} value={extra.kvNaEtazhe || ""} onChange={setEx("kvNaEtazhe")} />
       </Accordion>
+
+      <Accordion title="ДОКУМЕНТЫ — ПОДРОБНО">
+        <MiniYesNo label="Есть ли арест" value={extra.arest || ""} onChange={setEx("arest")} />
+        <MiniYesNo label="Есть ли залог в банке" value={extra.zalog || ""} onChange={setEx("zalog")} />
+        <MiniField label="Другие обременения" value={extra.obremeneniyaDrugie || ""} onChange={setEx("obremeneniyaDrugie")} />
+
+        <div>
+          <div className="mini-field-label">Проверка Госрегистра</div>
+          <div className="chip-group">
+            <div className={`chip ${extra.gosregistr === "Проверено" ? "selected" : ""}`} onClick={() => setEx("gosregistr")("Проверено")}>Проверено</div>
+            <div className={`chip ${extra.gosregistr === "Не проверено" ? "selected" : ""}`} onClick={() => setEx("gosregistr")("Не проверено")}>Не проверено</div>
+          </div>
+        </div>
+        {extra.gosregistr === "Проверено" && (
+          <div>
+            <div className="mini-field-label">Фото выписки из Тундук</div>
+            <label className="doc-upload-btn" style={{ display: "inline-flex" }}>
+              🖼 Вставить фото выписки
+              <input type="file" accept="image/*,.pdf" style={{ display: "none" }} onChange={handleDocFiles} />
+            </label>
+          </div>
+        )}
+
+        <MiniYesNo label="Совпадает ли фактическая площадь с документами" value={extra.ploshadSootv || ""} onChange={setEx("ploshadSootv")} />
+        <MiniYesNo label="Есть ли перепланировка" value={extra.pereplanirovka || ""} onChange={setEx("pereplanirovka")} />
+        {extra.pereplanirovka === "Да" && (
+          <MiniChips label="Перепланировка" options={["Узаконена", "Не узаконена"]} value={extra.pereplanirovkaStatus || ""} onChange={setEx("pereplanirovkaStatus")} />
+        )}
+      </Accordion>
+
       <Accordion title="ПОКАЗ">
         <MiniField label="Время / кто показывает / телефон" value={extra.pokaz || ""} onChange={setEx("pokaz")} />
       </Accordion>
