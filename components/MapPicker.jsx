@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 // Бишкек по умолчанию — старт карты
 const DEFAULT_CENTER = [42.8746, 74.5698];
 
-export default function MapPicker({ label, required, lat, lng, onChange }) {
+export default function MapPicker({ label, required, lat, lng, flyToQuery, onChange }) {
   const mapRef = useRef(null);
   const mapInstance = useRef(null);
   const markerRef = useRef(null);
@@ -63,6 +63,28 @@ export default function MapPicker({ label, required, lat, lng, onChange }) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Авто-перелёт карты, когда меняется запрос (например, выбран район) —
+  // ищем координаты через бесплатный геокодер OpenStreetMap (Nominatim)
+  useEffect(() => {
+    if (!flyToQuery || !mapInstance.current) return;
+    const controller = new AbortController();
+    fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(flyToQuery + ", Бишкек, Киргизия")}`,
+      { signal: controller.signal, headers: { "Accept-Language": "ru" } }
+    )
+      .then((r) => r.json())
+      .then((results) => {
+        if (results && results[0]) {
+          const foundLat = parseFloat(results[0].lat);
+          const foundLng = parseFloat(results[0].lon);
+          mapInstance.current.flyTo([foundLat, foundLng], 15);
+        }
+      })
+      .catch(() => {});
+    return () => controller.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [flyToQuery]);
 
   return (
     <div>
