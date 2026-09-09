@@ -225,7 +225,7 @@ export default function VtorichkaForm() {
         .from("listings")
         .insert({
           type: "вторичка",
-          status: "новый объект от собственника",
+          status: "на проверке",
           price: Number(price),
           currency_new: currency,
           district,
@@ -339,7 +339,6 @@ export default function VtorichkaForm() {
           required
           lat={mapLat}
           lng={mapLng}
-          flyToQuery={district || city}
           onChange={(lat, lng) => { setMapLat(lat); setMapLng(lng); }}
         />
       </div>
@@ -363,14 +362,18 @@ export default function VtorichkaForm() {
       </div>
 
       <div className="field-group">
-        <div className="field-row">
-          <div><div className="field-label">Площадь, м² <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-            <input className="field-input required-input" type="number" value={area} onChange={(e) => setArea(e.target.value)} /></div>
-          <div><div className="field-label">Этаж <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-            <input className="field-input required-input" type="number" value={floor} onChange={(e) => setFloor(e.target.value)} /></div>
-          <div><div className="field-label">Этажность <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-            <input className="field-input required-input" type="number" value={floorsTotal} onChange={(e) => setFloorsTotal(e.target.value)} /></div>
-        </div>
+        <div className="field-label">Площадь, м² <span className="star">*</span><span className="required-note">(обязательно)</span></div>
+        <input className="field-input required-input" type="number" value={area} onChange={(e) => setArea(e.target.value)} />
+      </div>
+
+      <div className="field-group">
+        <div className="field-label">Этаж <span className="star">*</span><span className="required-note">(обязательно)</span></div>
+        <input className="field-input required-input" type="number" value={floor} onChange={(e) => setFloor(e.target.value)} />
+      </div>
+
+      <div className="field-group">
+        <div className="field-label">Этажность <span className="star">*</span><span className="required-note">(обязательно)</span></div>
+        <input className="field-input required-input" type="number" value={floorsTotal} onChange={(e) => setFloorsTotal(e.target.value)} />
       </div>
 
       <div className="field-group">
