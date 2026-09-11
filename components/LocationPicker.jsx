@@ -12,11 +12,12 @@ export default function LocationPicker({ label, options, value, onChange, requir
     function handleClickOutside(e) {
       if (wrapRef.current && !wrapRef.current.contains(e.target)) {
         setOpen(false);
+        setQuery(value || ""); // не выбрали из списка — возвращаем как было
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [value]);
 
   const filtered = query.trim()
     ? options.filter((o) => o.toLowerCase().includes(query.trim().toLowerCase()))
@@ -41,7 +42,6 @@ export default function LocationPicker({ label, options, value, onChange, requir
         onFocus={() => setOpen(true)}
         onChange={(e) => {
           setQuery(e.target.value);
-          onChange(e.target.value);
           setOpen(true);
         }}
         placeholder="Печатайте буквы или нажмите, чтобы открыть весь список"
