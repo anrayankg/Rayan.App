@@ -4,7 +4,31 @@ import { useEffect, useRef, useState } from "react";
 // Бишкек по умолчанию — старт карты
 const DEFAULT_CENTER = [42.8746, 74.5698];
 
-export default function MapPicker({ label, required, lat, lng, onChange }) {
+// Грубые границы Кыргызстана — чтобы автопоиск не мог случайно
+// улететь на похожее по названию место в другой стране
+const KG_BOUNDS = { minLat: 39.0, maxLat: 43.3, minLng: 69.0, maxLng: 80.5 };
+
+function inKyrgyzstan(pLat, pLng) {
+  return pLat >= KG_BOUNDS.minLat && pLat <= KG_BOUNDS.maxLat && pLng >= KG_BOUNDS.minLng && pLng <= KG_BOUNDS.maxLng;
+}
+
+async function geocode(query) {
+  try {
+    const r = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`,
+      { headers: { "Accept-Language": "ru" } }
+    );
+    const results = await r.json();
+    if (results && results[0]) {
+      const foundLat = parseFloat(results[0].lat);
+      const foundLng = parseFloat(results[0].lon);
+      if (inKyrgyzstan(foundLat, foundLng)) return [foundLat, foundLng];
+    }
+  } catch {}
+  return null;
+}
+
+export default function MapPicker({ label, required, lat, lng, flyToQuery, flyToCity, onChange }) {
   const mapRef = useRef(null);
   const mapInstance = useRef(null);
   const markerRef = useRef(null);
@@ -64,6 +88,37 @@ export default function MapPicker({ label, required, lat, lng, onChange }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const [flyStatus, setFlyStatus] = useState(null);
+
+  // Авто-перелёт карты примерно в нужный район, когда его выбрали —
+  // сначала пробуем "район + город", если не нашли — хотя бы "город",
+  // и в любом случае проверяем, что результат в Кыргызстане
+  useEffect(() => {
+    if (!mapInstance.current) return;
+    if (!flyToQuery && !flyToCity) return;
+    let cancelled = false;
+    setFlyStatus(null);
+    (async () => {
+      let point = null;
+      let zoom = 15;
+      if (flyToQuery) {
+        point = await geocode(`${flyToQuery}, ${flyToCity || "Бишкек"}, Киргизия`);
+      }
+      if (!point && flyToCity) {
+        point = await geocode(`${flyToCity}, Киргизия`);
+        zoom = 12;
+      }
+      if (cancelled) return;
+      if (point) {
+        mapInstance.current.flyTo(point, zoom);
+        setFlyStatus("found");
+      } else {
+        setFlyStatus("notfound");
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [flyToQuery, flyToCity]);
+
   return (
     <div>
       {label && (
@@ -79,7 +134,11 @@ export default function MapPicker({ label, required, lat, lng, onChange }) {
         }}
       />
       <div style={{ color: "#7FA396", fontSize: 10.5, marginTop: 6 }}>
-        {lat && lng ? `Точка выбрана: ${lat.toFixed(5)}, ${lng.toFixed(5)}` : "Найдите нужное место на карте и тапните по нему, чтобы поставить точку"}
+        {lat && lng
+          ? `Точка выбрана: ${lat.toFixed(5)}, ${lng.toFixed(5)}`
+          : flyStatus === "notfound"
+          ? "Не нашли автоматически — найдите место на карте и тапните по нему"
+          : "Найдите нужное место на карте и тапните по нему, чтобы поставить точку"}
       </div>
     </div>
   );
