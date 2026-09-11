@@ -339,6 +339,8 @@ export default function VtorichkaForm() {
           required
           lat={mapLat}
           lng={mapLng}
+          flyToQuery={district}
+          flyToCity={city}
           onChange={(lat, lng) => { setMapLat(lat); setMapLng(lng); }}
         />
       </div>
@@ -442,10 +444,12 @@ export default function VtorichkaForm() {
         <div className="section-divider-title big">ДОПОЛНИТЕЛЬНО <span style={{ fontSize: "0.4em", fontWeight: 500, textTransform: "none", letterSpacing: "0.02em" }}>(не обязательно)</span></div>
       </div>
       <div className="field-group">
-        <div className="field-row">
-          <div><div className="field-label">СК</div><input className="field-input" value={sk} onChange={(e) => setSk(e.target.value)} /></div>
-          <div><div className="field-label">ЖК</div><input className="field-input" value={zhk} onChange={(e) => setZhk(e.target.value)} /></div>
-        </div>
+        <div className="field-label">СК</div>
+        <input className="field-input" value={sk} onChange={(e) => setSk(e.target.value)} />
+      </div>
+      <div className="field-group">
+        <div className="field-label">ЖК</div>
+        <input className="field-input" value={zhk} onChange={(e) => setZhk(e.target.value)} />
       </div>
       <Accordion title="ДОМ И ТЕРРИТОРИЯ" defaultOpen={true}>
         <MiniChips label="Планировка" options={["Сквозная", "В линейку"]} value={extra.planirovka || ""} onChange={setEx("planirovka")} />
@@ -468,10 +472,8 @@ export default function VtorichkaForm() {
       </Accordion>
 
       <Accordion title="КВАРТИРА" defaultOpen={true}>
-        <div className="field-row">
-          <MiniField label="Жилая площадь, м²" value={extra.zhilayaPloshad || ""} onChange={setEx("zhilayaPloshad")} />
-          <MiniField label="Площадь кухни, м²" value={extra.kuhnyaPloshad || ""} onChange={setEx("kuhnyaPloshad")} />
-        </div>
+        <MiniField label="Жилая площадь, м²" value={extra.zhilayaPloshad || ""} onChange={setEx("zhilayaPloshad")} />
+        <MiniField label="Площадь кухни, м²" value={extra.kuhnyaPloshad || ""} onChange={setEx("kuhnyaPloshad")} />
         <MiniChips label="Ремонт" options={["Евро", "Дизайнерский", "Предчистовая", "ПСО", "Без ремонта", "Другое"]} value={extra.remont || ""} onChange={setEx("remont")} />
         <MiniField label="Год ремонта" value={extra.remontGod || ""} onChange={setEx("remontGod")} />
 
@@ -531,7 +533,7 @@ export default function VtorichkaForm() {
 
       <div className="field-group">
         <div className="field-label">Описание для клиента <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-        <textarea className="field-textarea" value={description} onChange={(e) => setDescription(e.target.value)} />
+        <textarea className="field-textarea required-input" value={description} onChange={(e) => setDescription(e.target.value)} />
         <button className="ai-btn" type="button" disabled>✨ Сформировать описание с ИИ (следующий этап)</button>
       </div>
 
@@ -547,7 +549,7 @@ export default function VtorichkaForm() {
       </div>
       <div className="field-group">
         <div className="field-label">Телефон собственника <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-        <input className="field-input" value={ownerPhone} onChange={(e) => setOwnerPhone(e.target.value)} placeholder="+996..." />
+        <input className="field-input required-input" value={ownerPhone} onChange={(e) => setOwnerPhone(e.target.value)} placeholder="+996..." />
       </div>
       <div className="field-group">
         <div className="field-label">Точный адрес</div>
@@ -585,20 +587,20 @@ export default function VtorichkaForm() {
       </div>
       <div className="field-group">
         <div className="field-label">Цена в руки <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-        <input className="field-input" type="number" value={vRuki} onChange={(e) => setVRuki(e.target.value)} />
+        <input className="field-input required-input" type="number" value={vRuki} onChange={(e) => setVRuki(e.target.value)} />
         <div className="currency-toggle">
           {["USD", "KGS"].map((c) => (
-            <div key={c} className={`currency-btn ${vRukiCurrency === c ? "selected" : ""}`} onClick={() => setVRukiCurrency(c)}>{c === "USD" ? "$ USD" : "KGS сом"}</div>
+            <div key={c} className={`currency-btn required-chip ${vRukiCurrency === c ? "selected" : ""}`} onClick={() => setVRukiCurrency(c)}>{c === "USD" ? "$ USD" : "KGS сом"}</div>
           ))}
         </div>
       </div>
       <div className="field-group">
-        <div className="field-row">
-          <div><div className="field-label">Комиссия, % / сумма <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-            <input className="field-input" value={commissionPercent} onChange={(e) => setCommissionPercent(e.target.value)} placeholder="3% или $500" /></div>
-          <div><div className="field-label">Условия комиссии <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-            <input className="field-input" value={commissionTerms} onChange={(e) => setCommissionTerms(e.target.value)} placeholder="50/50, 100% и т.д." /></div>
-        </div>
+        <div className="field-label">Комиссия, % / сумма <span className="star">*</span><span className="required-note">(обязательно)</span></div>
+        <input className="field-input required-input" value={commissionPercent} onChange={(e) => setCommissionPercent(e.target.value)} placeholder="3% или $500" />
+      </div>
+      <div className="field-group">
+        <div className="field-label">Условия комиссии <span className="star">*</span><span className="required-note">(обязательно)</span></div>
+        <input className="field-input required-input" value={commissionTerms} onChange={(e) => setCommissionTerms(e.target.value)} placeholder="50/50, 100% и т.д." />
       </div>
       <div className="field-group">
         <div className="field-label">Комментарий агента</div>
@@ -646,12 +648,12 @@ export default function VtorichkaForm() {
         <span className="lock-badge" style={{ color: "#baf5d0", background: "rgba(20,120,80,0.15)", borderColor: "rgba(100,220,150,0.3)" }}>👁 ВИДЕН ВСЕМ</span>
       </div>
       <div className="field-group">
-        <div className="field-row">
-          <div><div className="field-label">Имя агента <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-            <input className="field-input" value={agentName} onChange={(e) => setAgentName(e.target.value)} /></div>
-          <div><div className="field-label">Телефон агента <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-            <input className="field-input" value={agentPhone} onChange={(e) => setAgentPhone(e.target.value)} placeholder="+996..." /></div>
-        </div>
+        <div className="field-label">Имя агента <span className="star">*</span><span className="required-note">(обязательно)</span></div>
+        <input className="field-input required-input" value={agentName} onChange={(e) => setAgentName(e.target.value)} />
+      </div>
+      <div className="field-group">
+        <div className="field-label">Телефон агента <span className="star">*</span><span className="required-note">(обязательно)</span></div>
+        <input className="field-input required-input" value={agentPhone} onChange={(e) => setAgentPhone(e.target.value)} placeholder="+996..." />
       </div>
 
       {error && <div className="status-msg error">Ошибка: {error}</div>}
