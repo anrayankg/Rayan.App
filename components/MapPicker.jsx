@@ -14,15 +14,10 @@ function inKyrgyzstan(pLat, pLng) {
 
 async function geocode(query) {
   try {
-    const r = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`,
-      { headers: { "Accept-Language": "ru" } }
-    );
-    const results = await r.json();
-    if (results && results[0]) {
-      const foundLat = parseFloat(results[0].lat);
-      const foundLng = parseFloat(results[0].lon);
-      if (inKyrgyzstan(foundLat, foundLng)) return [foundLat, foundLng];
+    const r = await fetch(`/api/geocode?q=${encodeURIComponent(query)}`);
+    const data = await r.json();
+    if (data && data.lat != null && data.lng != null && inKyrgyzstan(data.lat, data.lng)) {
+      return [data.lat, data.lng];
     }
   } catch {}
   return null;
