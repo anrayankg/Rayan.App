@@ -68,7 +68,7 @@ export default function HomePage() {
 
         <div className="stats">
           {[["активен", "Активные"], ["на проверке", "На проверке"], ["архив", "Архив"]].map(([key, label]) => (
-            <div key={key} className="stat-card">
+            <div key={key} className="stat-card" style={{ cursor: "pointer" }} onClick={() => router.push(`/my?status=${encodeURIComponent(key)}`)}>
               <div className="stat-num">{loading ? "…" : counts[key]}</div>
               <div className="stat-label">{label}</div>
             </div>
