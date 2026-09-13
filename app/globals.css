@@ -191,3 +191,61 @@ body { background: #021712; margin: 0; font-family: 'Manrope', sans-serif; min-h
 /* ===== Карточка объекта: телефон с кнопками звонка/WhatsApp ===== */
 .phone-actions { display: flex; align-items: center; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
 .phone-action-btn { text-decoration: none; font-size: 17px; line-height: 1; }
+
+/* ===== Телефон: премиальный выбор страны ===== */
+.phone-unified-row { display: flex; gap: 8px; }
+.phone-country-btn { flex: none; display: flex; align-items: center; gap: 6px; padding: 15px 12px; border-radius: 12px;
+  border: 1px solid rgba(212,164,55,0.25); background: rgba(255,255,255,0.06); color: var(--cream);
+  font-size: 17px; font-family: 'Manrope', sans-serif; font-weight: 600; line-height: 1; cursor: pointer; white-space: nowrap; }
+.phone-flag { font-size: 18px; }
+.phone-caret { font-size: 11px; opacity: 0.7; margin-left: 2px; }
+.phone-unified-input { flex: 1; font-weight: 600; }
+.phone-dropdown { position: absolute; z-index: 9999; top: 100%; left: 0; margin-top: 6px; width: 100%; max-width: 340px;
+  background: #0A3A2C; border: 1px solid rgba(212,164,55,0.35); border-radius: 14px; box-shadow: 0 12px 30px rgba(0,0,0,0.4); overflow: hidden; }
+.phone-search { width: 100%; box-sizing: border-box; padding: 13px 16px; background: rgba(255,255,255,0.06); border: none;
+  border-bottom: 1px solid rgba(212,164,55,0.2); color: var(--cream); font-size: 15px; font-family: 'Manrope', sans-serif; outline: none; }
+.phone-country-list { max-height: 280px; overflow-y: auto; }
+.phone-country-row { display: flex; align-items: center; gap: 10px; padding: 13px 16px; cursor: pointer; }
+.phone-country-row:hover, .phone-country-row.selected { background: rgba(243,212,119,0.12); }
+.phone-country-name { flex: 1; color: var(--cream); font-size: 15px; }
+.phone-country-code { color: #7FA396; font-size: 14px; font-weight: 600; }
+.phone-country-empty { padding: 16px; text-align: center; color: #7FA396; font-size: 13px; }
+.phone-error-text { color: #E8877A; font-size: 11.5px; margin-top: 4px; }
+.field-error { border-color: #E8877A !important; }
+
+/* ===== Единый паттерн: нажал → открылось → выбрал ===== */
+.picker-box { display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box;
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(212,164,55,0.25); border-radius: 12px; padding: 15px 16px;
+  color: rgba(246,241,228,0.35); font-size: 17px; font-family: 'Manrope', sans-serif; cursor: pointer; }
+.picker-box.picker-filled { color: var(--cream); }
+.picker-box.picker-filled .picker-arrow { color: #7FE0A8; font-weight: 700; }
+.picker-placeholder { color: rgba(246,241,228,0.35); }
+.picker-box-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 10px; }
+.picker-arrow { flex: none; color: var(--gold-light); font-size: 18px; }
+.picker-list { margin-top: 8px; background: rgba(255,255,255,0.04); border: 1px solid rgba(212,164,55,0.25); border-radius: 14px;
+  max-height: 320px; overflow-y: auto; }
+.picker-item { display: flex; justify-content: space-between; padding: 14px 16px; color: var(--cream); font-size: 15.5px;
+  cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.picker-item:last-child { border-bottom: none; }
+.picker-item:hover, .picker-item.selected { background: rgba(243,212,119,0.12); }
+.picker-item.selected { color: var(--gold-light); font-weight: 700; }
+.picker-done-btn { text-align: center; padding: 14px; color: var(--green-deep); background: linear-gradient(135deg, var(--gold-light), var(--gold));
+  font-weight: 700; cursor: pointer; }
+
+/* ===== Компактный tap-to-open для полей внутри аккордеонов ===== */
+.mini-picker-box { display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(212,164,55,0.2); border-radius: 10px; padding: 11px 13px; color: rgba(246,241,228,0.4);
+  font-size: 14px; font-family: 'Manrope', sans-serif; cursor: pointer; }
+.mini-picker-box.filled { color: var(--cream); }
+.mini-picker-box.filled .mini-picker-arrow { color: #7FE0A8; font-weight: 700; }
+.mini-picker-box-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 8px; }
+.mini-picker-arrow { flex: none; color: var(--gold-light); font-size: 15px; }
+.mini-picker-list { margin-top: 6px; background: rgba(255,255,255,0.04); border: 1px solid rgba(212,164,55,0.2);
+  border-radius: 10px; max-height: 260px; overflow-y: auto; }
+.mini-picker-item { display: flex; justify-content: space-between; padding: 11px 13px; color: var(--cream); font-size: 14px;
+  cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.mini-picker-item:last-child { border-bottom: none; }
+.mini-picker-item:hover, .mini-picker-item.selected { background: rgba(243,212,119,0.1); }
+.mini-picker-item.selected { color: var(--gold-light); font-weight: 700; }
+.mini-picker-done { text-align: center; padding: 11px; color: var(--green-deep);
+  background: linear-gradient(135deg, var(--gold-light), var(--gold)); font-weight: 700; font-size: 13px; cursor: pointer; }
