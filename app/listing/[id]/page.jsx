@@ -13,6 +13,22 @@ function Row({ label, value }) {
   );
 }
 
+function PhoneRow({ label, value }) {
+  if (!value) return null;
+  const clean = String(value).replace(/[^\d+]/g, "");
+  const waNumber = clean.replace(/^\+/, "");
+  return (
+    <div className="detail-row">
+      <div className="detail-label">{label}</div>
+      <div className="detail-value phone-actions">
+        <span>{value}</span>
+        <a href={`tel:${clean}`} className="phone-action-btn" title="Позвонить">📞</a>
+        <a href={`https://wa.me/${waNumber}`} target="_blank" rel="noopener noreferrer" className="phone-action-btn" title="Написать в WhatsApp">💬</a>
+      </div>
+    </div>
+  );
+}
+
 function yesNo(v) {
   if (v === true) return "да";
   if (v === false) return "нет";
@@ -110,7 +126,7 @@ export default function ListingDetailPage() {
           <div className="detail-section-title">Информация для агента</div>
           <Row label="Источник" value={contact.source_type} />
           <Row label="ФИО собственника" value={contact.owner_name} />
-          <Row label="Телефон собственника" value={contact.owner_phone} />
+          <PhoneRow label="Телефон собственника" value={contact.owner_phone} />
           <Row label="Точный адрес" value={contact.exact_address} />
         </div>
       )}
@@ -128,7 +144,14 @@ export default function ListingDetailPage() {
       <div className="detail-section">
         <div className="detail-section-title">Контакт агента</div>
         <Row label="Имя" value={listing.agent_name} />
-        <Row label="Телефон" value={listing.agent_phone} />
+        <PhoneRow label="Телефон" value={listing.agent_phone} />
+      </div>
+
+      <div className="detail-section">
+        <div className="detail-section-title">Новостройка</div>
+        <Row label="Проходит через Госрегистр" value={listing.gosregistr === true ? "да" : listing.gosregistr === false ? "нет" : null} />
+        <Row label="Сдан / не сдан" value={listing.is_delivered === true ? "Сдан" : listing.is_delivered === false ? "Не сдан" : null} />
+        <Row label="Срок сдачи" value={listing.delivery_year ? `${listing.delivery_quarter ? listing.delivery_quarter + " кв. " : ""}${listing.delivery_year}` : null} />
       </div>
 
       {Object.keys(extra).length > 0 && (
