@@ -52,7 +52,7 @@ export default function AddObjectStart() {
       </div>
 
       <div style={{ margin: "20px 20px 0", textAlign: "center", color: "#7FA396", fontSize: 12 }}>
-        Полностью готова пока только форма «Вторичка» — остальные формы достраиваются по очереди.
+        Готовы формы «Вторичка» и «Первичка» — остальные достраиваются по очереди.
       </div>
     </div>
   );
