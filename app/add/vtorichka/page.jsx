@@ -5,6 +5,7 @@ import { supabase } from "../../../lib/supabase";
 import { CITIES, CITY_DISTRICTS } from "../../../lib/locations";
 import LocationPicker from "../../../components/LocationPicker";
 import MapPicker from "../../../components/MapPicker";
+import PhoneInput, { isPhoneComplete } from "../../../components/PhoneInput";
 
 
 const ROOM_TYPES = [
@@ -214,8 +215,8 @@ export default function VtorichkaForm() {
   const canSubmit =
     city && (!districtRequired || district) && mapLat && mapLng && roomType && series && area && floor && floorsTotal &&
     docs.length > 0 && heating && gas !== null && water !== null &&
-    electricity !== null && sewerage !== null && hotWater !== null && price && ownerPhone &&
-    agentPhone && commissionPercent && commissionTerms && vRuki && dealTerms.length > 0 && description;
+    electricity !== null && sewerage !== null && hotWater !== null && price && isPhoneComplete(ownerPhone) &&
+    isPhoneComplete(agentPhone) && commissionPercent && commissionTerms && vRuki && dealTerms.length > 0 && description;
 
   async function handleSubmit() {
     setSaving(true);
@@ -548,8 +549,7 @@ export default function VtorichkaForm() {
         <input className="field-input" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} />
       </div>
       <div className="field-group">
-        <div className="field-label">Телефон собственника <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-        <input className="field-input required-input" value={ownerPhone} onChange={(e) => setOwnerPhone(e.target.value)} placeholder="+996..." />
+        <PhoneInput label="Телефон собственника" required value={ownerPhone} onChange={setOwnerPhone} whiteBg />
       </div>
       <div className="field-group">
         <div className="field-label">Точный адрес</div>
@@ -652,8 +652,7 @@ export default function VtorichkaForm() {
         <input className="field-input required-input" value={agentName} onChange={(e) => setAgentName(e.target.value)} />
       </div>
       <div className="field-group">
-        <div className="field-label">Телефон агента <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-        <input className="field-input required-input" value={agentPhone} onChange={(e) => setAgentPhone(e.target.value)} placeholder="+996..." />
+        <PhoneInput label="Телефон агента" required value={agentPhone} onChange={setAgentPhone} whiteBg />
       </div>
 
       {error && <div className="status-msg error">Ошибка: {error}</div>}
