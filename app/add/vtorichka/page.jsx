@@ -6,6 +6,7 @@ import { CITIES, CITY_DISTRICTS } from "../../../lib/locations";
 import LocationPicker from "../../../components/LocationPicker";
 import MapPicker from "../../../components/MapPicker";
 import PhoneInput, { isPhoneComplete } from "../../../components/PhoneInput";
+import { Picker, MultiPicker } from "../../../components/Picker";
 
 
 const ROOM_TYPES = [
@@ -36,7 +37,14 @@ const HEATING_OPTS = [
 
 const OBMEN_OPTS = ["Квартира", "Машина", "Дом", "Иссык-Куль", "Другое"];
 const WINDOW_DIRS = ["Север", "Юг", "Запад", "Восток", "Северо-восток", "Северо-запад", "Юго-восток", "Юго-запад"];
-const FLOOR_COUNT_OPTS = Array.from({ length: 30 }, (_, i) => String(i + 1));
+const FLOOR_COUNT_OPTS = Array.from({ length: 40 }, (_, i) => String(i + 1));
+const JILYE_CLASS_OPTS = ["Эконом", "Комфорт", "Бизнес", "Комфорт+", "Премиум", "Клубный дом", "Другое"];
+const WALL_CONSTRUCTION_OPTS = [
+  "Монолитно-кирпичная", "Газобетон", "Газоблок", "Железобетонная", "Кирпич", "Монолитная",
+  "Монолитно-газобетонная", "Монолитно-каркасная", "Панельная", "Пеноблок", "Саман", "Другая конструкция",
+];
+const CURRENT_YEAR_V = new Date().getFullYear();
+const YEAR_BUILT_VTORICHKA = Array.from({ length: CURRENT_YEAR_V - 1940 + 1 }, (_, i) => String(CURRENT_YEAR_V - i));
 
 const DEAL_TERMS_OPTS = ["Наличные", "Ипотека", "Рассрочка через Госрегистр", "Обмен"];
 
@@ -64,44 +72,52 @@ function MiniField({ label, value, onChange }) {
   );
 }
 function MiniChips({ label, options, value, onChange }) {
+  const [open, setOpen] = useState(false);
   return (
-    <div>
-      <div className="mini-field-label">{label}</div>
-      <div className="chip-group">
-        {options.map((o) => (
-          <div key={o} className={`chip ${value === o ? "selected" : ""}`} onClick={() => onChange(o)}>{o}</div>
-        ))}
+    <div style={{ marginBottom: 14 }}>
+      {label && <div className="mini-field-label">{label}</div>}
+      <div className={`mini-picker-box ${value ? "filled" : ""}`} onClick={() => setOpen(!open)}>
+        <span>{value || "Выберите значение"}</span>
+        <span className="mini-picker-arrow">{value ? "✓" : "›"}</span>
       </div>
+      {open && (
+        <div className="mini-picker-list">
+          {options.map((o) => (
+            <div key={o} className={`mini-picker-item ${value === o ? "selected" : ""}`} onClick={() => { onChange(o); setOpen(false); }}>{o}</div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 function MiniMultiChips({ label, options, value, onChange }) {
+  const [open, setOpen] = useState(false);
   const arr = value || [];
   function toggle(o) {
     onChange(arr.includes(o) ? arr.filter((x) => x !== o) : [...arr, o]);
   }
   return (
-    <div>
-      <div className="mini-field-label">{label}</div>
-      <div className="chip-group">
-        {options.map((o) => (
-          <div key={o} className={`chip ${arr.includes(o) ? "selected" : ""}`} onClick={() => toggle(o)}>{o}</div>
-        ))}
+    <div style={{ marginBottom: 14 }}>
+      {label && <div className="mini-field-label">{label}</div>}
+      <div className={`mini-picker-box ${arr.length ? "filled" : ""}`} onClick={() => setOpen(!open)}>
+        <span className="mini-picker-box-text">{arr.length ? arr.join(", ") : "Выберите значения"}</span>
+        <span className="mini-picker-arrow">{arr.length ? "✓" : "›"}</span>
       </div>
+      {open && (
+        <div className="mini-picker-list">
+          {options.map((o) => (
+            <div key={o} className={`mini-picker-item ${arr.includes(o) ? "selected" : ""}`} onClick={() => toggle(o)}>
+              <span>{o}</span>{arr.includes(o) && <span>✓</span>}
+            </div>
+          ))}
+          <div className="mini-picker-done" onClick={() => setOpen(false)}>Готово</div>
+        </div>
+      )}
     </div>
   );
 }
 function MiniYesNo({ label, value, onChange }) {
-  return (
-    <div>
-      <div className="mini-field-label">{label}</div>
-      <div className="chip-group">
-        {["Да", "Нет"].map((o) => (
-          <div key={o} className={`chip ${value === o ? "selected" : ""}`} onClick={() => onChange(o)}>{o}</div>
-        ))}
-      </div>
-    </div>
-  );
+  return <MiniChips label={label} options={["Да", "Нет"]} value={value} onChange={onChange} />;
 }
 
 export default function VtorichkaForm() {
@@ -109,6 +125,7 @@ export default function VtorichkaForm() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+  const [attemptedSubmit, setAttemptedSubmit] = useState(false);
 
   const [city, setCity] = useState("Бишкек");
   const [district, setDistrict] = useState("");
@@ -347,54 +364,34 @@ export default function VtorichkaForm() {
       </div>
 
       <div className="field-group">
-        <div className="field-label">Комнатность <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-        <div className="chip-group">
-          {ROOM_TYPES.map((r) => (
-            <div key={r} className={`chip required-chip ${roomType === r ? "selected" : ""}`} onClick={() => setRoomType(r)}>{r}</div>
-          ))}
-        </div>
+        <Picker label="Комнатность" required options={ROOM_TYPES} value={roomType} onChange={setRoomType} error={attemptedSubmit && !roomType} />
       </div>
 
       <div className="field-group">
-        <div className="field-label">Серия дома <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-        <div className="chip-group">
-          {SERIES_OPTIONS.map((s) => (
-            <div key={s} className={`chip required-chip ${series === s ? "selected" : ""}`} onClick={() => setSeries(s)}>{s}</div>
-          ))}
-        </div>
+        <Picker label="Серия дома" required options={SERIES_OPTIONS} value={series} onChange={setSeries} error={attemptedSubmit && !series} />
       </div>
 
       <div className="field-group">
         <div className="field-label">Площадь, м² <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-        <input className="field-input required-input" type="number" value={area} onChange={(e) => setArea(e.target.value)} />
+        <input className={`field-input required-input ${attemptedSubmit && !area ? "field-error" : ""}`} type="number" value={area} onChange={(e) => setArea(e.target.value)} />
       </div>
 
       <div className="field-group">
         <div className="field-label">Этаж <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-        <input className="field-input required-input" type="number" value={floor} onChange={(e) => setFloor(e.target.value)} />
+        <input className={`field-input required-input ${attemptedSubmit && !floor ? "field-error" : ""}`} type="number" value={floor} onChange={(e) => setFloor(e.target.value)} />
       </div>
 
       <div className="field-group">
         <div className="field-label">Этажность <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-        <input className="field-input required-input" type="number" value={floorsTotal} onChange={(e) => setFloorsTotal(e.target.value)} />
+        <input className={`field-input required-input ${attemptedSubmit && !floorsTotal ? "field-error" : ""}`} type="number" value={floorsTotal} onChange={(e) => setFloorsTotal(e.target.value)} />
       </div>
 
       <div className="field-group">
-        <div className="field-label">Документы (можно несколько) <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-        <div className="chip-group">
-          {DOC_OPTIONS.map((d) => (
-            <div key={d} className={`chip required-chip ${docs.includes(d) ? "selected" : ""}`} onClick={() => toggle(setDocs, docs, d)}>{d}</div>
-          ))}
-        </div>
+        <MultiPicker label="Документы" required options={DOC_OPTIONS} value={docs} onChange={setDocs} error={attemptedSubmit && docs.length === 0} />
       </div>
 
       <div className="field-group">
-        <div className="field-label">Отопление <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-        <div className="chip-group">
-          {HEATING_OPTS.map((h) => (
-            <div key={h} className={`chip required-chip ${heating === h ? "selected" : ""}`} onClick={() => setHeating(h)}>{h}</div>
-          ))}
-        </div>
+        <Picker label="Отопление" required options={HEATING_OPTS} value={heating} onChange={setHeating} error={attemptedSubmit && !heating} />
       </div>
 
       <div className="field-group">
@@ -410,7 +407,7 @@ export default function VtorichkaForm() {
 
       <div className="field-group">
         <div className="field-label">Цена <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-        <input className="field-input required-input" type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Общая стоимость, не за м²" />
+        <input className={`field-input required-input ${attemptedSubmit && !price ? "field-error" : ""}`} type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Общая стоимость, не за м²" />
         <div className="currency-toggle">
           {["USD", "KGS"].map((c) => (
             <div key={c} className={`currency-btn required-chip ${currency === c ? "selected" : ""}`} onClick={() => setCurrency(c)}>{c === "USD" ? "$ USD" : "KGS сом"}</div>
@@ -422,20 +419,10 @@ export default function VtorichkaForm() {
       </div>
 
       <div className="field-group">
-        <div className="field-label">Условия сделки (можно несколько) <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-        <div className="chip-group">
-          {DEAL_TERMS_OPTS.map((d) => (
-            <div key={d} className={`chip required-chip ${dealTerms.includes(d) ? "selected" : ""}`} onClick={() => toggle(setDealTerms, dealTerms, d)}>{d}</div>
-          ))}
-        </div>
+        <MultiPicker label="Условия сделки" required options={DEAL_TERMS_OPTS} value={dealTerms} onChange={setDealTerms} error={attemptedSubmit && dealTerms.length === 0} />
         {dealTerms.includes("Обмен") && (
           <div style={{ marginTop: 12 }}>
-            <div className="mini-field-label">На что рассматривается обмен</div>
-            <div className="chip-group">
-              {OBMEN_OPTS.map((o) => (
-                <div key={o} className={`chip required-chip ${obmenNa.includes(o) ? "selected" : ""}`} onClick={() => toggle(setObmenNa, obmenNa, o)}>{o}</div>
-              ))}
-            </div>
+            <MultiPicker label="На что рассматривается обмен" options={OBMEN_OPTS} value={obmenNa} onChange={setObmenNa} />
             <input className="field-input" style={{ marginTop: 8 }} value={obmenDrugoe} onChange={(e) => setObmenDrugoe(e.target.value)} placeholder="Уточнить, если «Другое»" />
           </div>
         )}
@@ -443,6 +430,10 @@ export default function VtorichkaForm() {
 
       <div className="section-divider">
         <div className="section-divider-title big">ДОПОЛНИТЕЛЬНО <span style={{ fontSize: "0.4em", fontWeight: 500, textTransform: "none", letterSpacing: "0.02em" }}>(не обязательно)</span></div>
+      </div>
+      <div className="field-group">
+        <MiniChips label="Класс жилья" options={JILYE_CLASS_OPTS} value={extra.jilyeClass || ""} onChange={setEx("jilyeClass")} />
+        <MiniChips label="Год постройки" options={YEAR_BUILT_VTORICHKA} value={extra.godPostroiki || ""} onChange={setEx("godPostroiki")} />
       </div>
       <div className="field-group">
         <div className="field-label">СК</div>
@@ -462,6 +453,7 @@ export default function VtorichkaForm() {
         )}
         <MiniField label="Высота потолков" value={extra.potolki || ""} onChange={setEx("potolki")} />
         <MiniMultiChips label="Расположение окон (можно несколько)" options={WINDOW_DIRS} value={extra.okna} onChange={setEx("okna")} />
+        <MiniChips label="Конструкция стен" options={WALL_CONSTRUCTION_OPTS} value={extra.stenyKonstrukciya || ""} onChange={setEx("stenyKonstrukciya")} />
         <MiniField label="Материал фасада" value={extra.fasadMaterial || ""} onChange={setEx("fasadMaterial")} />
         <MiniField label="Состояние фасада" value={extra.fasadSostoyanie || ""} onChange={setEx("fasadSostoyanie")} />
         <MiniField label="Состояние подъезда" value={extra.podjezdSostoyanie || ""} onChange={setEx("podjezdSostoyanie")} />
@@ -534,7 +526,7 @@ export default function VtorichkaForm() {
 
       <div className="field-group">
         <div className="field-label">Описание для клиента <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-        <textarea className="field-textarea required-input" value={description} onChange={(e) => setDescription(e.target.value)} />
+        <textarea className={`field-textarea required-input ${attemptedSubmit && !description ? "field-error" : ""}`} value={description} onChange={(e) => setDescription(e.target.value)} />
         <button className="ai-btn" type="button" disabled>✨ Сформировать описание с ИИ (следующий этап)</button>
       </div>
 
@@ -549,7 +541,7 @@ export default function VtorichkaForm() {
         <input className="field-input" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} />
       </div>
       <div className="field-group">
-        <PhoneInput label="Телефон собственника" required value={ownerPhone} onChange={setOwnerPhone} whiteBg />
+        <PhoneInput label="Телефон собственника" required value={ownerPhone} onChange={setOwnerPhone} whiteBg error={attemptedSubmit && !isPhoneComplete(ownerPhone)} />
       </div>
       <div className="field-group">
         <div className="field-label">Точный адрес</div>
@@ -587,7 +579,7 @@ export default function VtorichkaForm() {
       </div>
       <div className="field-group">
         <div className="field-label">Цена в руки <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-        <input className="field-input required-input" type="number" value={vRuki} onChange={(e) => setVRuki(e.target.value)} />
+        <input className={`field-input required-input ${attemptedSubmit && !vRuki ? "field-error" : ""}`} type="number" value={vRuki} onChange={(e) => setVRuki(e.target.value)} />
         <div className="currency-toggle">
           {["USD", "KGS"].map((c) => (
             <div key={c} className={`currency-btn required-chip ${vRukiCurrency === c ? "selected" : ""}`} onClick={() => setVRukiCurrency(c)}>{c === "USD" ? "$ USD" : "KGS сом"}</div>
@@ -596,11 +588,11 @@ export default function VtorichkaForm() {
       </div>
       <div className="field-group">
         <div className="field-label">Комиссия, % / сумма <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-        <input className="field-input required-input" value={commissionPercent} onChange={(e) => setCommissionPercent(e.target.value)} placeholder="3% или $500" />
+        <input className={`field-input required-input ${attemptedSubmit && !commissionPercent ? "field-error" : ""}`} value={commissionPercent} onChange={(e) => setCommissionPercent(e.target.value)} placeholder="3% или $500" />
       </div>
       <div className="field-group">
         <div className="field-label">Условия комиссии <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-        <input className="field-input required-input" value={commissionTerms} onChange={(e) => setCommissionTerms(e.target.value)} placeholder="50/50, 100% и т.д." />
+        <input className={`field-input required-input ${attemptedSubmit && !commissionTerms ? "field-error" : ""}`} value={commissionTerms} onChange={(e) => setCommissionTerms(e.target.value)} placeholder="50/50, 100% и т.д." />
       </div>
       <div className="field-group">
         <div className="field-label">Комментарий агента</div>
@@ -649,18 +641,21 @@ export default function VtorichkaForm() {
       </div>
       <div className="field-group">
         <div className="field-label">Имя агента <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-        <input className="field-input required-input" value={agentName} onChange={(e) => setAgentName(e.target.value)} />
+        <input className={`field-input required-input ${attemptedSubmit && !agentName ? "field-error" : ""}`} value={agentName} onChange={(e) => setAgentName(e.target.value)} />
       </div>
       <div className="field-group">
-        <PhoneInput label="Телефон агента" required value={agentPhone} onChange={setAgentPhone} whiteBg />
+        <PhoneInput label="Телефон агента" required value={agentPhone} onChange={setAgentPhone} whiteBg error={attemptedSubmit && !isPhoneComplete(agentPhone)} />
       </div>
 
       {error && <div className="status-msg error">Ошибка: {error}</div>}
       {success && <div className="status-msg success">Объект сохранён! Возвращаемся на главную...</div>}
 
-      <button className="next-btn" disabled={!canSubmit || saving} onClick={handleSubmit}>
+      <button className="next-btn" disabled={saving} onClick={() => { if (!canSubmit) { setAttemptedSubmit(true); } else { handleSubmit(); } }}>
         {saving ? "СОХРАНЕНИЕ..." : "ОТПРАВИТЬ НА ПРОВЕРКУ"}
       </button>
+      {attemptedSubmit && !canSubmit && (
+        <div className="status-msg error">Заполните поля, отмеченные красным выше</div>
+      )}
       <div className="progress-note">Поля со звёздочкой * обязательны</div>
     </div>
   );
