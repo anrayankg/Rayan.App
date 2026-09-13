@@ -6,6 +6,7 @@ import { CITIES, CITY_DISTRICTS } from "../../../lib/locations";
 import LocationPicker from "../../../components/LocationPicker";
 import MapPicker from "../../../components/MapPicker";
 import PhoneInput, { isPhoneComplete } from "../../../components/PhoneInput";
+import { Picker, MultiPicker } from "../../../components/Picker";
 
 
 const ROOM_TYPES = [
@@ -25,6 +26,34 @@ const CURRENT_YEAR = new Date().getFullYear();
 const DELIVERY_YEARS = Array.from({ length: 11 }, (_, i) => String(CURRENT_YEAR + i));
 const QUARTERS = ["1 квартал", "2 квартал", "3 квартал", "4 квартал"];
 
+const CONSTRUCTION_STATUS_OPTS = [
+  "В проекте", "Подготовительные работы", "Строится", "Построен, но не сдан под ПСО", "Сдан ПСО (ключи)",
+];
+const YEAR_BUILT_PERVICHKA = Array.from({ length: 11 }, (_, i) => String(CURRENT_YEAR - 10 + i));
+const JILYE_CLASS_OPTS = ["Эконом", "Комфорт", "Бизнес", "Комфорт+", "Премиум", "Клубный дом", "Другое"];
+const WALL_CONSTRUCTION_OPTS = [
+  "Монолитно-кирпичная", "Газобетон", "Газоблок", "Железобетонная", "Кирпич", "Монолитная",
+  "Монолитно-газобетонная", "Монолитно-каркасная", "Панельная", "Пеноблок", "Саман", "Другая конструкция",
+];
+const APARTMENTS_PER_FLOOR_OPTS = Array.from({ length: 40 }, (_, i) => String(i + 1));
+
+const INFRA_CATEGORIES = [
+  { title: "Территория и дворы", options: ["Закрытая территория", "Охрана 24/7", "Видеонаблюдение", "КПП / контроль доступа", "Двор без машин", "Ландшафтное озеленение", "Парк / сквер", "Прогулочные зоны", "Зоны отдыха", "Фонтаны", "BBQ-зона"] },
+  { title: "Для детей", options: ["Детский сад", "Школа", "Детские площадки", "Развивающий центр", "Детский клуб", "Игровая комната", "Детские спортивные площадки"] },
+  { title: "Спорт и здоровье", options: ["Фитнес-клуб", "Тренажёрный зал", "Бассейн", "Детский бассейн", "Спортивный зал", "Футбольное поле", "Баскетбольная площадка", "Теннисный корт", "Падел-корт", "Беговая дорожка", "Велодорожка", "Медицинский центр", "Аптека"] },
+  { title: "Коммерция", options: ["Супермаркет", "Магазины", "Торговая галерея", "Кафе", "Рестораны", "Кофейни", "Пекарня", "Салон красоты", "Барбершоп", "Банк / банкомат", "Бытовые услуги"] },
+  { title: "Паркинг и транспорт", options: ["Подземный паркинг", "Наземный паркинг", "Многоуровневый паркинг", "Гостевой паркинг", "Зарядки для электромобилей", "Автомойка", "Шиномонтаж", "Велопарковка"] },
+  { title: "Современные пространства", options: ["Коворкинг", "Бизнес-лаунж", "Lounge-зона", "Rooftop / терраса на крыше", "Смотровая площадка", "Амфитеатр", "Центральная площадь", "Общественное пространство", "Сад на крыше"] },
+  { title: "Сервисы для жителей", options: ["Консьерж", "Просторное лобби", "Постамат", "Комната для хранения посылок", "Пункт выдачи заказов", "Приложение ЖК", "Умный дом", "Умный домофон", "Цифровой доступ", "Face ID"] },
+  { title: "Экологические решения", options: ["Солнечные панели", "Энергоэффективные технологии", "Раздельный сбор мусора", "Система сбора дождевой воды", "Озеленённая крыша", "Вертикальное озеленение"] },
+];
+
+const ARCHITECTURE_OPTS = [
+  "Стилобат", "Двор на стилобате", "Подземный паркинг", "Двор без машин", "Коммерция на первых этажах",
+  "Первые этажи с панорамным остеклением", "Эксплуатируемая кровля", "Rooftop", "Сад на крыше",
+  "Панорамные виды", "Архитектурное освещение", "Авторская архитектура", "Концепция «город в городе»",
+];
+
 const DOC_OPTIONS = [
   "Техпаспорт", "ДКП", "Красная книга", "Зелёная книга (частная собственность)",
   "Зелёная книга (аренда)", "Свидетельство о наследстве", "Договор мены",
@@ -36,7 +65,7 @@ const OBMEN_OPTS = ["Квартира", "Машина", "Дом", "Иссык-К
 const WINDOW_DIRS = ["Север", "Юг", "Запад", "Восток", "Северо-восток", "Северо-запад", "Юго-восток", "Юго-запад"];
 const FLOOR_COUNT_OPTS = Array.from({ length: 30 }, (_, i) => String(i + 1));
 
-const DEAL_TERMS_OPTS = ["Наличные", "Ипотека", "Рассрочка через Госрегистр", "Обмен"];
+const DEAL_TERMS_OPTS = ["Наличные", "Ипотека", "Рассрочка через Госрегистр", "Рассрочка от строительной компании", "Обмен"];
 
 function Accordion({ title, children, defaultOpen = false }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -62,44 +91,92 @@ function MiniField({ label, value, onChange }) {
   );
 }
 function MiniChips({ label, options, value, onChange }) {
+  const [open, setOpen] = useState(false);
   return (
-    <div>
-      <div className="mini-field-label">{label}</div>
-      <div className="chip-group">
-        {options.map((o) => (
-          <div key={o} className={`chip ${value === o ? "selected" : ""}`} onClick={() => onChange(o)}>{o}</div>
-        ))}
+    <div style={{ marginBottom: 14 }}>
+      {label && <div className="mini-field-label">{label}</div>}
+      <div className={`mini-picker-box ${value ? "filled" : ""}`} onClick={() => setOpen(!open)}>
+        <span>{value || "Выберите значение"}</span>
+        <span className="mini-picker-arrow">{value ? "✓" : "›"}</span>
       </div>
+      {open && (
+        <div className="mini-picker-list">
+          {options.map((o) => (
+            <div key={o} className={`mini-picker-item ${value === o ? "selected" : ""}`} onClick={() => { onChange(o); setOpen(false); }}>{o}</div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 function MiniMultiChips({ label, options, value, onChange }) {
+  const [open, setOpen] = useState(false);
   const arr = value || [];
   function toggle(o) {
     onChange(arr.includes(o) ? arr.filter((x) => x !== o) : [...arr, o]);
   }
   return (
+    <div style={{ marginBottom: 14 }}>
+      {label && <div className="mini-field-label">{label}</div>}
+      <div className={`mini-picker-box ${arr.length ? "filled" : ""}`} onClick={() => setOpen(!open)}>
+        <span className="mini-picker-box-text">{arr.length ? arr.join(", ") : "Выберите значения"}</span>
+        <span className="mini-picker-arrow">{arr.length ? "✓" : "›"}</span>
+      </div>
+      {open && (
+        <div className="mini-picker-list">
+          {options.map((o) => (
+            <div key={o} className={`mini-picker-item ${arr.includes(o) ? "selected" : ""}`} onClick={() => toggle(o)}>
+              <span>{o}</span>{arr.includes(o) && <span>✓</span>}
+            </div>
+          ))}
+          <div className="mini-picker-done" onClick={() => setOpen(false)}>Готово</div>
+        </div>
+      )}
+    </div>
+  );
+}
+function CategoryMultiSelect({ categories, value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const selected = value || [];
+  function toggle(o) {
+    onChange(selected.includes(o) ? selected.filter((x) => x !== o) : [...selected, o]);
+  }
+  return (
     <div>
+      <div className={`mini-picker-box ${selected.length ? "filled" : ""}`} onClick={() => setOpen(!open)} style={{ marginBottom: open ? 12 : 0 }}>
+        <span>{selected.length > 0 ? `Выбрано: ${selected.length}` : "Выбрать"}</span>
+        <span className="mini-picker-arrow">{selected.length ? "✓" : "›"}</span>
+      </div>
+      {open && categories.map((cat) => (
+        <div key={cat.title} style={{ marginBottom: 14 }}>
+          <div className="mini-field-label">{cat.title}</div>
+          <div className="chip-group">
+            {cat.options.map((o) => (
+              <div key={o} className={`chip ${selected.includes(o) ? "selected" : ""}`} onClick={() => toggle(o)}>{o}</div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+function MiniFieldWithUnit({ label, value, unit, onChangeValue, onChangeUnit, units }) {
+  return (
+    <div style={{ marginBottom: 14 }}>
       <div className="mini-field-label">{label}</div>
-      <div className="chip-group">
-        {options.map((o) => (
-          <div key={o} className={`chip ${arr.includes(o) ? "selected" : ""}`} onClick={() => toggle(o)}>{o}</div>
-        ))}
+      <div style={{ display: "flex", gap: 8 }}>
+        <input className="field-input" style={{ flex: 1 }} value={value || ""} onChange={(e) => onChangeValue(e.target.value)} />
+        <div className="chip-group">
+          {units.map((u) => (
+            <div key={u} className={`chip ${unit === u ? "selected" : ""}`} onClick={() => onChangeUnit(u)}>{u}</div>
+          ))}
+        </div>
       </div>
     </div>
   );
 }
 function MiniYesNo({ label, value, onChange }) {
-  return (
-    <div>
-      <div className="mini-field-label">{label}</div>
-      <div className="chip-group">
-        {["Да", "Нет"].map((o) => (
-          <div key={o} className={`chip ${value === o ? "selected" : ""}`} onClick={() => onChange(o)}>{o}</div>
-        ))}
-      </div>
-    </div>
-  );
+  return <MiniChips label={label} options={["Да", "Нет"]} value={value} onChange={onChange} />;
 }
 
 export default function PervichkaForm() {
@@ -107,6 +184,7 @@ export default function PervichkaForm() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+  const [attemptedSubmit, setAttemptedSubmit] = useState(false);
 
   const [city, setCity] = useState("Бишкек");
   const [district, setDistrict] = useState("");
@@ -115,7 +193,7 @@ export default function PervichkaForm() {
   const [floor, setFloor] = useState("");
   const [floorsTotal, setFloorsTotal] = useState("");
   const [throughGosregistr, setThroughGosregistr] = useState(null);
-  const [isDelivered, setIsDelivered] = useState(null);
+  const [constructionStatus, setConstructionStatus] = useState("");
   const [deliveryYear, setDeliveryYear] = useState("");
   const [deliveryQuarter, setDeliveryQuarter] = useState("");
   const [docs, setDocs] = useState([]);
@@ -213,7 +291,8 @@ export default function PervichkaForm() {
   }
 
   const districtRequired = city === "Бишкек";
-  const deliveryOk = isDelivered === true || (isDelivered === false && deliveryYear && deliveryQuarter);
+  const delivered = constructionStatus === "Сдан ПСО (ключи)";
+  const deliveryOk = constructionStatus && (delivered || (deliveryYear && deliveryQuarter));
   const canSubmit =
     city && (!districtRequired || district) && mapLat && mapLng && roomType && zhk && sk && area && floor && floorsTotal &&
     docs.length > 0 && heating && throughGosregistr !== null && deliveryOk && gas !== null && water !== null &&
@@ -242,9 +321,9 @@ export default function PervichkaForm() {
           documents: docs,
           heating,
           gosregistr: throughGosregistr,
-          is_delivered: isDelivered,
-          delivery_year: isDelivered === false && deliveryYear ? Number(deliveryYear) : null,
-          delivery_quarter: isDelivered === false && deliveryQuarter ? Number(deliveryQuarter) : null,
+          construction_status: constructionStatus,
+          delivery_year: !delivered && deliveryYear ? Number(deliveryYear) : null,
+          delivery_quarter: !delivered && deliveryQuarter ? Number(deliveryQuarter) : null,
           gas, water, electricity, sewerage, hot_water: hotWater,
           map_lat: mapLat,
           map_lng: mapLng,
@@ -352,50 +431,40 @@ export default function PervichkaForm() {
       </div>
 
       <div className="field-group">
-        <div className="field-label">Комнатность <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-        <div className="chip-group">
-          {ROOM_TYPES.map((r) => (
-            <div key={r} className={`chip required-chip ${roomType === r ? "selected" : ""}`} onClick={() => setRoomType(r)}>{r}</div>
-          ))}
-        </div>
+        <Picker label="Комнатность" required options={ROOM_TYPES} value={roomType} onChange={setRoomType} error={attemptedSubmit && !roomType} />
       </div>
 
       <div className="field-group">
         <div className="field-label">Название ЖК <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-        <input className="field-input required-input" value={zhk} onChange={(e) => setZhk(e.target.value)} />
+        <input className={`field-input required-input ${attemptedSubmit && !zhk ? "field-error" : ""}`} value={zhk} onChange={(e) => setZhk(e.target.value)} />
       </div>
 
       <div className="field-group">
         <div className="field-label">Название застройщика <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-        <input className="field-input required-input" value={sk} onChange={(e) => setSk(e.target.value)} />
+        <input className={`field-input required-input ${attemptedSubmit && !sk ? "field-error" : ""}`} value={sk} onChange={(e) => setSk(e.target.value)} />
       </div>
 
       <div className="field-group">
         <div className="field-label">Площадь, м² <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-        <input className="field-input required-input" type="number" value={area} onChange={(e) => setArea(e.target.value)} />
+        <input className={`field-input required-input ${attemptedSubmit && !area ? "field-error" : ""}`} type="number" value={area} onChange={(e) => setArea(e.target.value)} />
       </div>
 
       <div className="field-group">
         <div className="field-label">Этаж <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-        <input className="field-input required-input" type="number" value={floor} onChange={(e) => setFloor(e.target.value)} />
+        <input className={`field-input required-input ${attemptedSubmit && !floor ? "field-error" : ""}`} type="number" value={floor} onChange={(e) => setFloor(e.target.value)} />
       </div>
 
       <div className="field-group">
         <div className="field-label">Этажность <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-        <input className="field-input required-input" type="number" value={floorsTotal} onChange={(e) => setFloorsTotal(e.target.value)} />
+        <input className={`field-input required-input ${attemptedSubmit && !floorsTotal ? "field-error" : ""}`} type="number" value={floorsTotal} onChange={(e) => setFloorsTotal(e.target.value)} />
       </div>
 
       <div className="field-group">
-        <div className="field-label">Документы (можно несколько) <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-        <div className="chip-group">
-          {DOC_OPTIONS.map((d) => (
-            <div key={d} className={`chip required-chip ${docs.includes(d) ? "selected" : ""}`} onClick={() => toggle(setDocs, docs, d)}>{d}</div>
-          ))}
-        </div>
+        <MultiPicker label="Документы" required options={DOC_OPTIONS} value={docs} onChange={setDocs} error={attemptedSubmit && docs.length === 0} />
       </div>
 
       <div className="field-group">
-        <div className="field-label">Проходит через Госрегистр <span className="star">*</span><span className="required-note">(обязательно)</span></div>
+        <div className="field-label">Проходит через Госрегистр и нотариуса <span className="star">*</span><span className="required-note">(обязательно)</span></div>
         <div className="chip-group">
           <div className={`chip required-chip ${throughGosregistr === true ? "selected" : ""}`} onClick={() => setThroughGosregistr(true)}>Да</div>
           <div className={`chip required-chip ${throughGosregistr === false ? "selected" : ""}`} onClick={() => setThroughGosregistr(false)}>Нет</div>
@@ -403,35 +472,19 @@ export default function PervichkaForm() {
       </div>
 
       <div className="field-group">
-        <div className="field-label">Сдан / не сдан <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-        <div className="chip-group">
-          <div className={`chip required-chip ${isDelivered === true ? "selected" : ""}`} onClick={() => setIsDelivered(true)}>Сдан</div>
-          <div className={`chip required-chip ${isDelivered === false ? "selected" : ""}`} onClick={() => setIsDelivered(false)}>Не сдан</div>
-        </div>
-        {isDelivered === false && (
+        <Picker label="Статус строительства" required options={CONSTRUCTION_STATUS_OPTS} value={constructionStatus} onChange={setConstructionStatus} error={attemptedSubmit && !constructionStatus} />
+        {constructionStatus && constructionStatus !== "Сдан ПСО (ключи)" && (
           <div style={{ marginTop: 12 }}>
-            <div className="mini-field-label">Год сдачи <span className="star">*</span></div>
-            <select className="field-input required-input" value={deliveryYear} onChange={(e) => setDeliveryYear(e.target.value)}>
-              <option value="">Выбрать год</option>
-              {DELIVERY_YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
-            </select>
-            <div className="mini-field-label" style={{ marginTop: 10 }}>Квартал <span className="star">*</span></div>
-            <div className="chip-group">
-              {QUARTERS.map((q, i) => (
-                <div key={q} className={`chip required-chip ${Number(deliveryQuarter) === i + 1 ? "selected" : ""}`} onClick={() => setDeliveryQuarter(String(i + 1))}>{q}</div>
-              ))}
+            <Picker label="Год сдачи" required options={DELIVERY_YEARS} value={deliveryYear} onChange={setDeliveryYear} error={attemptedSubmit && !deliveryYear} />
+            <div style={{ marginTop: 10 }}>
+              <Picker label="Квартал" required options={QUARTERS} value={QUARTERS[Number(deliveryQuarter) - 1] || ""} onChange={(v) => setDeliveryQuarter(String(QUARTERS.indexOf(v) + 1))} error={attemptedSubmit && !deliveryQuarter} />
             </div>
           </div>
         )}
       </div>
 
       <div className="field-group">
-        <div className="field-label">Отопление <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-        <div className="chip-group">
-          {HEATING_OPTS_PERVICHKA.map((h) => (
-            <div key={h} className={`chip required-chip ${heating === h ? "selected" : ""}`} onClick={() => setHeating(h)}>{h}</div>
-          ))}
-        </div>
+        <Picker label="Отопление" required options={HEATING_OPTS_PERVICHKA} value={heating} onChange={setHeating} error={attemptedSubmit && !heating} />
       </div>
 
       <div className="field-group">
@@ -447,7 +500,7 @@ export default function PervichkaForm() {
 
       <div className="field-group">
         <div className="field-label">Цена <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-        <input className="field-input required-input" type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Общая стоимость, не за м²" />
+        <input className={`field-input required-input ${attemptedSubmit && !price ? "field-error" : ""}`} type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Общая стоимость, не за м²" />
         <div className="currency-toggle">
           {["USD", "KGS"].map((c) => (
             <div key={c} className={`currency-btn required-chip ${currency === c ? "selected" : ""}`} onClick={() => setCurrency(c)}>{c === "USD" ? "$ USD" : "KGS сом"}</div>
@@ -459,20 +512,10 @@ export default function PervichkaForm() {
       </div>
 
       <div className="field-group">
-        <div className="field-label">Условия сделки (можно несколько) <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-        <div className="chip-group">
-          {DEAL_TERMS_OPTS.map((d) => (
-            <div key={d} className={`chip required-chip ${dealTerms.includes(d) ? "selected" : ""}`} onClick={() => toggle(setDealTerms, dealTerms, d)}>{d}</div>
-          ))}
-        </div>
+        <MultiPicker label="Условия сделки" required options={DEAL_TERMS_OPTS} value={dealTerms} onChange={setDealTerms} error={attemptedSubmit && dealTerms.length === 0} />
         {dealTerms.includes("Обмен") && (
           <div style={{ marginTop: 12 }}>
-            <div className="mini-field-label">На что рассматривается обмен</div>
-            <div className="chip-group">
-              {OBMEN_OPTS.map((o) => (
-                <div key={o} className={`chip required-chip ${obmenNa.includes(o) ? "selected" : ""}`} onClick={() => toggle(setObmenNa, obmenNa, o)}>{o}</div>
-              ))}
-            </div>
+            <MultiPicker label="На что рассматривается обмен" options={OBMEN_OPTS} value={obmenNa} onChange={setObmenNa} />
             <input className="field-input" style={{ marginTop: 8 }} value={obmenDrugoe} onChange={(e) => setObmenDrugoe(e.target.value)} placeholder="Уточнить, если «Другое»" />
           </div>
         )}
@@ -482,28 +525,43 @@ export default function PervichkaForm() {
         <div className="section-divider-title big">ДОПОЛНИТЕЛЬНО <span style={{ fontSize: "0.4em", fontWeight: 500, textTransform: "none", letterSpacing: "0.02em" }}>(не обязательно)</span></div>
       </div>
       <div className="field-group">
+        <MiniChips label="Класс жилья" options={JILYE_CLASS_OPTS} value={extra.jilyeClass || ""} onChange={setEx("jilyeClass")} />
+        <MiniChips label="Год постройки" options={YEAR_BUILT_PERVICHKA} value={extra.godPostroiki || ""} onChange={setEx("godPostroiki")} />
         <MiniYesNo label="Красная книга застройщика" value={extra.krasnayaKniga || ""} onChange={setEx("krasnayaKniga")} />
         <MiniYesNo label="Разрешение на строительство" value={extra.razreshenie || ""} onChange={setEx("razreshenie")} />
         <MiniField label="Стадия строительства" value={extra.stadiya || ""} onChange={setEx("stadiya")} />
       </div>
       <Accordion title="ДОМ И ТЕРРИТОРИЯ" defaultOpen={true}>
-        <MiniField label="Количество блоков" value={extra.blokov || ""} onChange={setEx("blokov")} />
+        <MiniFieldWithUnit
+          label="Территория проекта / площадь земельного участка"
+          value={extra.territoriyaValue} unit={extra.territoriyaUnit || "соток"}
+          onChangeValue={setEx("territoriyaValue")} onChangeUnit={setEx("territoriyaUnit")}
+          units={["соток", "Га"]}
+        />
+        <MiniField label="Количество блоков в ЖК" value={extra.blokov || ""} onChange={setEx("blokov")} />
+        <MiniChips label="Количество квартир на этаже" options={APARTMENTS_PER_FLOOR_OPTS} value={extra.kvNaEtazhe || ""} onChange={setEx("kvNaEtazhe")} />
         <MiniField label="Количество подъездов" value={extra.podjezdov || ""} onChange={setEx("podjezdov")} />
         <MiniField label="Этажность дома (всего)" value={extra.domEtazhnost || ""} onChange={setEx("domEtazhnost")} />
-        <MiniField label="Количество квартир в ЖК" value={extra.kolvoKvartir || ""} onChange={setEx("kolvoKvartir")} />
         <MiniField label="Производитель лифта" value={extra.liftProizvoditel || ""} onChange={setEx("liftProizvoditel")} />
         <MiniYesNo label="Лифт уже работает" value={extra.liftRabotaet || ""} onChange={setEx("liftRabotaet")} />
         <MiniField label="Количество лифтов" value={extra.liftKolvo || ""} onChange={setEx("liftKolvo")} />
         <MiniYesNo label="Детские площадки" value={extra.detskaya || ""} onChange={setEx("detskaya")} />
         <MiniChips label="Парковка" options={["Подземная", "Наземная", "Подземная и наземная", "Нет"]} value={extra.parkovka || ""} onChange={setEx("parkovka")} />
         <MiniYesNo label="Коммерческие помещения в доме" value={extra.kommercheskie || ""} onChange={setEx("kommercheskie")} />
-        <MiniMultiChips label="Инфраструктура рядом" options={["Магазины", "Школы", "Детские сады", "Остановки", "Торговый центр", "Рынок/базар"]} value={extra.infra} onChange={setEx("infra")} />
+      </Accordion>
+
+      <Accordion title="ИНФРАСТРУКТУРА ЖК">
+        <CategoryMultiSelect categories={INFRA_CATEGORIES} value={extra.infraZhk} onChange={setEx("infraZhk")} />
+      </Accordion>
+
+      <Accordion title="АРХИТЕКТУРА И КОНЦЕПЦИЯ">
+        <MiniMultiChips options={ARCHITECTURE_OPTS} value={extra.arhitektura} onChange={setEx("arhitektura")} />
       </Accordion>
 
       <Accordion title="КВАРТИРА" defaultOpen={true}>
         <MiniChips label="Полноценная квартира или студия" options={["Полноценная", "Студия"]} value={extra.polnCenPloshad || ""} onChange={setEx("polnCenPloshad")} />
         <MiniMultiChips label="Расположение окон (можно несколько)" options={WINDOW_DIRS} value={extra.okna} onChange={setEx("okna")} />
-        <MiniField label="Материал стен" value={extra.stenyMaterial || ""} onChange={setEx("stenyMaterial")} />
+        <MiniChips label="Конструкция стен" options={WALL_CONSTRUCTION_OPTS} value={extra.stenyKonstrukciya || ""} onChange={setEx("stenyKonstrukciya")} />
         <MiniField label="Утепление" value={extra.uteplenie || ""} onChange={setEx("uteplenie")} />
         <MiniField label="Высота потолков" value={extra.potolki || ""} onChange={setEx("potolki")} />
         <MiniField label="Планировка (описание)" value={extra.planirovkaOpisanie || ""} onChange={setEx("planirovkaOpisanie")} />
@@ -511,27 +569,11 @@ export default function PervichkaForm() {
         <MiniField label="Жилая площадь, м²" value={extra.zhilayaPloshad || ""} onChange={setEx("zhilayaPloshad")} />
         <MiniField label="Площадь кухни, м²" value={extra.kuhnyaPloshad || ""} onChange={setEx("kuhnyaPloshad")} />
         <MiniChips label="Ремонт / отделка" options={["ПСО", "Предчистовая", "Черновая", "Евро", "Дизайнерский", "Без отделки", "Другое"]} value={extra.remont || ""} onChange={setEx("remont")} />
-        <MiniField label="Год ремонта" value={extra.remontGod || ""} onChange={setEx("remontGod")} />
 
-        <MiniYesNo label="Мебель остаётся" value={extra.mebelDaNet || ""} onChange={setEx("mebelDaNet")} />
-        {extra.mebelDaNet === "Да" && (
-          <>
-            <MiniChips label="Мебель — объём" options={["Частично", "Полностью"]} value={extra.mebelObyem || ""} onChange={setEx("mebelObyem")} />
-            <MiniField label="Что из мебели остаётся" value={extra.mebelChto || ""} onChange={setEx("mebelChto")} />
-          </>
-        )}
-
-        <MiniYesNo label="Техника остаётся" value={extra.tehnikaDaNet || ""} onChange={setEx("tehnikaDaNet")} />
-        {extra.tehnikaDaNet === "Да" && (
-          <>
-            <MiniChips label="Техника — объём" options={["Частично", "Полностью"]} value={extra.tehnikaObyem || ""} onChange={setEx("tehnikaObyem")} />
-            <MiniField label="Что из техники остаётся" value={extra.tehnikaChto || ""} onChange={setEx("tehnikaChto")} />
-          </>
-        )}
+        <MiniYesNo label="Мебель" value={extra.mebelDaNet || ""} onChange={setEx("mebelDaNet")} />
+        <MiniYesNo label="Техника" value={extra.tehnikaDaNet || ""} onChange={setEx("tehnikaDaNet")} />
 
         <MiniField label="Вид из окон" value={extra.vidOkna || ""} onChange={setEx("vidOkna")} />
-        <MiniField label="Состояние окон" value={extra.sostOkna || ""} onChange={setEx("sostOkna")} />
-        <MiniChips label="Количество квартир на этаже" options={FLOOR_COUNT_OPTS} value={extra.kvNaEtazhe || ""} onChange={setEx("kvNaEtazhe")} />
       </Accordion>
 
       <Accordion title="ДОКУМЕНТЫ — ПОДРОБНО">
@@ -542,11 +584,11 @@ export default function PervichkaForm() {
         <div>
           <div className="mini-field-label">Проверка Госрегистра</div>
           <div className="chip-group">
-            <div className={`chip required-chip ${extra.gosregistr === "Проверено" ? "selected" : ""}`} onClick={() => setEx("gosregistr")("Проверено")}>Проверено</div>
-            <div className={`chip required-chip ${extra.gosregistr === "Не проверено" ? "selected" : ""}`} onClick={() => setEx("gosregistr")("Не проверено")}>Не проверено</div>
+            <div className={`chip required-chip ${extra.gosregistrProverka === "Проверено" ? "selected" : ""}`} onClick={() => setEx("gosregistrProverka")("Проверено")}>Проверено</div>
+            <div className={`chip required-chip ${extra.gosregistrProverka === "Не проверено" ? "selected" : ""}`} onClick={() => setEx("gosregistrProverka")("Не проверено")}>Не проверено</div>
           </div>
         </div>
-        {extra.gosregistr === "Проверено" && (
+        {extra.gosregistrProverka === "Проверено" && (
           <div>
             <div className="mini-field-label">Фото выписки из Тундук</div>
             <label className="doc-upload-btn" style={{ display: "inline-flex" }}>
@@ -557,11 +599,6 @@ export default function PervichkaForm() {
         )}
 
         <MiniYesNo label="Совпадает ли фактическая площадь с документами" value={extra.ploshadSootv || ""} onChange={setEx("ploshadSootv")} />
-        <MiniYesNo label="Если ДДУ — возможно оформление через нотариуса и Госрегистр" value={extra.dduNotarius || ""} onChange={setEx("dduNotarius")} />
-        <MiniYesNo label="Есть ли перепланировка" value={extra.pereplanirovka || ""} onChange={setEx("pereplanirovka")} />
-        {extra.pereplanirovka === "Да" && (
-          <MiniChips label="Перепланировка" options={["Узаконена", "Не узаконена"]} value={extra.pereplanirovkaStatus || ""} onChange={setEx("pereplanirovkaStatus")} />
-        )}
       </Accordion>
 
       <Accordion title="УСЛОВИЯ ПОКУПКИ">
@@ -583,7 +620,7 @@ export default function PervichkaForm() {
 
       <div className="field-group">
         <div className="field-label">Описание для клиента <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-        <textarea className="field-textarea required-input" value={description} onChange={(e) => setDescription(e.target.value)} />
+        <textarea className={`field-textarea required-input ${attemptedSubmit && !description ? "field-error" : ""}`} value={description} onChange={(e) => setDescription(e.target.value)} />
         <button className="ai-btn" type="button" disabled>✨ Сформировать описание с ИИ (следующий этап)</button>
       </div>
 
@@ -598,7 +635,7 @@ export default function PervichkaForm() {
         <input className="field-input" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} />
       </div>
       <div className="field-group">
-        <PhoneInput label="Телефон собственника" required value={ownerPhone} onChange={setOwnerPhone} whiteBg />
+        <PhoneInput label="Телефон собственника" required value={ownerPhone} onChange={setOwnerPhone} whiteBg error={attemptedSubmit && !isPhoneComplete(ownerPhone)} />
       </div>
       <div className="field-group">
         <div className="field-label">Точный адрес</div>
@@ -636,7 +673,7 @@ export default function PervichkaForm() {
       </div>
       <div className="field-group">
         <div className="field-label">Цена в руки <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-        <input className="field-input required-input" type="number" value={vRuki} onChange={(e) => setVRuki(e.target.value)} />
+        <input className={`field-input required-input ${attemptedSubmit && !vRuki ? "field-error" : ""}`} type="number" value={vRuki} onChange={(e) => setVRuki(e.target.value)} />
         <div className="currency-toggle">
           {["USD", "KGS"].map((c) => (
             <div key={c} className={`currency-btn required-chip ${vRukiCurrency === c ? "selected" : ""}`} onClick={() => setVRukiCurrency(c)}>{c === "USD" ? "$ USD" : "KGS сом"}</div>
@@ -645,11 +682,11 @@ export default function PervichkaForm() {
       </div>
       <div className="field-group">
         <div className="field-label">Комиссия, % / сумма <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-        <input className="field-input required-input" value={commissionPercent} onChange={(e) => setCommissionPercent(e.target.value)} placeholder="3% или $500" />
+        <input className={`field-input required-input ${attemptedSubmit && !commissionPercent ? "field-error" : ""}`} value={commissionPercent} onChange={(e) => setCommissionPercent(e.target.value)} placeholder="3% или $500" />
       </div>
       <div className="field-group">
         <div className="field-label">Условия комиссии <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-        <input className="field-input required-input" value={commissionTerms} onChange={(e) => setCommissionTerms(e.target.value)} placeholder="50/50, 100% и т.д." />
+        <input className={`field-input required-input ${attemptedSubmit && !commissionTerms ? "field-error" : ""}`} value={commissionTerms} onChange={(e) => setCommissionTerms(e.target.value)} placeholder="50/50, 100% и т.д." />
       </div>
       <div className="field-group">
         <div className="field-label">Комментарий агента</div>
@@ -701,15 +738,18 @@ export default function PervichkaForm() {
         <input className="field-input required-input" value={agentName} onChange={(e) => setAgentName(e.target.value)} />
       </div>
       <div className="field-group">
-        <PhoneInput label="Телефон агента" required value={agentPhone} onChange={setAgentPhone} whiteBg />
+        <PhoneInput label="Телефон агента" required value={agentPhone} onChange={setAgentPhone} whiteBg error={attemptedSubmit && !isPhoneComplete(agentPhone)} />
       </div>
 
       {error && <div className="status-msg error">Ошибка: {error}</div>}
       {success && <div className="status-msg success">Объект сохранён! Возвращаемся на главную...</div>}
 
-      <button className="next-btn" disabled={!canSubmit || saving} onClick={handleSubmit}>
+      <button className="next-btn" disabled={saving} onClick={() => { if (!canSubmit) { setAttemptedSubmit(true); } else { handleSubmit(); } }}>
         {saving ? "СОХРАНЕНИЕ..." : "ОТПРАВИТЬ НА ПРОВЕРКУ"}
       </button>
+      {attemptedSubmit && !canSubmit && (
+        <div className="status-msg error">Заполните поля, отмеченные красным выше</div>
+      )}
       <div className="progress-note">Поля со звёздочкой * обязательны</div>
     </div>
   );
