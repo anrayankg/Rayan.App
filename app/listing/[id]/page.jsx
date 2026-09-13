@@ -149,8 +149,8 @@ export default function ListingDetailPage() {
 
       <div className="detail-section">
         <div className="detail-section-title">Новостройка</div>
-        <Row label="Проходит через Госрегистр" value={listing.gosregistr === true ? "да" : listing.gosregistr === false ? "нет" : null} />
-        <Row label="Сдан / не сдан" value={listing.is_delivered === true ? "Сдан" : listing.is_delivered === false ? "Не сдан" : null} />
+        <Row label="Проходит через Госрегистр и нотариуса" value={listing.gosregistr === true ? "да" : listing.gosregistr === false ? "нет" : null} />
+        <Row label="Статус строительства" value={listing.construction_status} />
         <Row label="Срок сдачи" value={listing.delivery_year ? `${listing.delivery_quarter ? listing.delivery_quarter + " кв. " : ""}${listing.delivery_year}` : null} />
       </div>
 
