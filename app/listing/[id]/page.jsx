@@ -35,6 +35,43 @@ function yesNo(v) {
   return null;
 }
 
+// Человеческие подписи для служебных полей "Дополнительно" —
+// без этого словаря там были бы видны названия переменных из кода (okna, arest и т.д.)
+const EXTRA_LABELS = {
+  planirovka: "Планировка", balkon: "Балкон/лоджия", lift: "Лифт", liftProizvoditel: "Производитель лифта",
+  liftRabotaet: "Лифт работает", liftKolvo: "Количество лифтов", tehEtazh: "Технический этаж",
+  potolki: "Высота потолков", okna: "Расположение окон", fasadMaterial: "Материал фасада",
+  fasadSostoyanie: "Состояние фасада", podjezdSostoyanie: "Состояние подъезда", dvorSostoyanie: "Состояние двора",
+  dvor: "Двор", detskaya: "Детские площадки", infra: "Инфраструктура рядом", infraDrugoe: "Другая инфраструктура",
+  zhilayaPloshad: "Жилая площадь, м²", kuhnyaPloshad: "Площадь кухни, м²", remont: "Ремонт/отделка",
+  remontGod: "Год ремонта", mebelDaNet: "Мебель", mebelObyem: "Мебель — объём", mebelChto: "Что из мебели остаётся",
+  tehnikaDaNet: "Техника", tehnikaObyem: "Техника — объём", tehnikaChto: "Что из техники остаётся",
+  vidOkna: "Вид из окон", sostOkna: "Состояние окон", kvNaEtazhe: "Количество квартир на этаже",
+  arest: "Есть ли арест", zalog: "Есть ли залог в банке", obremeneniyaDrugie: "Другие обременения",
+  gosregistr: "Проверка Госрегистра", gosregistrProverka: "Проверка Госрегистра",
+  ploshadSootv: "Площадь совпадает с документами", pereplanirovka: "Есть ли перепланировка",
+  pereplanirovkaStatus: "Перепланировка", jilyeClass: "Класс жилья", stenyKonstrukciya: "Конструкция стен",
+  stenyMaterial: "Материал стен", godPostroiki: "Год постройки", krasnayaKniga: "Красная книга застройщика",
+  razreshenie: "Разрешение на строительство", stadiya: "Стадия строительства", territoriyaValue: "Площадь территории",
+  territoriyaUnit: "Единица измерения территории", blokov: "Количество блоков в ЖК", podjezdov: "Количество подъездов",
+  domEtazhnost: "Этажность дома", parkovka: "Парковка", kommercheskie: "Коммерческие помещения в доме",
+  infraZhk: "Инфраструктура ЖК", arhitektura: "Архитектура и концепция", polnCenPloshad: "Полноценная или студия",
+  uteplenie: "Утепление", planirovkaOpisanie: "Планировка (описание)", planirovkaGde: "Где взять планировку",
+  summaDkp: "Сумма в договоре купли-продажи", summaDdu: "Сумма в ДДУ", summaFakt: "Фактическая сумма сделки",
+  ipoteka: "Ипотека через банк", rassrochkaZastroy: "Рассрочка от застройщика", rassrochkaUsloviya: "Условия рассрочки",
+  cenaM2: "Цена за м²", komUslugi: "Коммунальные платежи перед сделкой",
+};
+
+function extraLabel(key) {
+  return EXTRA_LABELS[key] || key;
+}
+
+function extraDisplayValue(v) {
+  if (Array.isArray(v)) return v.join(", ");
+  if (typeof v === "object" && v !== null) return JSON.stringify(v);
+  return v;
+}
+
 export default function ListingDetailPage() {
   const router = useRouter();
   const params = useParams();
@@ -45,6 +82,7 @@ export default function ListingDetailPage() {
   const [financial, setFinancial] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [approving, setApproving] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -69,6 +107,19 @@ export default function ListingDetailPage() {
     if (id) load();
   }, [id]);
 
+  async function approve() {
+    setApproving(true);
+    try {
+      const { error: e } = await supabase.from("listings").update({ status: "активен" }).eq("id", id);
+      if (e) throw e;
+      setListing((l) => ({ ...l, status: "активен" }));
+    } catch (err) {
+      alert("Не удалось одобрить: " + err.message);
+    } finally {
+      setApproving(false);
+    }
+  }
+
   if (loading) return <div className="app-shell"><div className="empty-state">Загрузка…</div></div>;
   if (error) return <div className="app-shell"><div className="status-msg error" style={{ margin: 20 }}>Не удалось загрузить: {error}</div></div>;
   if (!listing) return <div className="app-shell"><div className="empty-state">Объект не найден</div></div>;
@@ -83,6 +134,14 @@ export default function ListingDetailPage() {
         <div className="page-title">{listing.display_id || listing.legacy_id || "Объект"}</div>
       </div>
 
+      {listing.status === "на проверке" && (
+        <div style={{ margin: "0 20px 16px" }}>
+          <button className="next-btn" disabled={approving} onClick={approve}>
+            {approving ? "Одобряю…" : "✓ Одобрить (сделать активным)"}
+          </button>
+        </div>
+      )}
+
       <div className="detail-section">
         <div className="detail-section-title">Основное</div>
         <Row label="Статус" value={listing.status} />
@@ -96,6 +155,9 @@ export default function ListingDetailPage() {
         <Row label="Точка на карте" value={listing.map_lat && listing.map_lng ? `${listing.map_lat}, ${listing.map_lng}` : "не указана"} />
         <Row label="ЖК" value={listing.zhk} />
         <Row label="СК / Застройщик" value={listing.sk} />
+        <Row label="Проходит через Госрегистр и нотариуса" value={yesNo(listing.gosregistr)} />
+        <Row label="Статус строительства" value={listing.construction_status} />
+        <Row label="Срок сдачи" value={listing.delivery_year ? `${listing.delivery_quarter ? listing.delivery_quarter + " кв. " : ""}${listing.delivery_year}` : null} />
         <Row label="Документы" value={listing.documents} />
         <Row label="Отопление" value={listing.heating} />
         <Row label="Газ" value={yesNo(listing.gas)} />
@@ -148,21 +210,15 @@ export default function ListingDetailPage() {
         <PhoneRow label="Телефон" value={listing.agent_phone} />
       </div>
 
-      <div className="detail-section">
-        <div className="detail-section-title">Новостройка</div>
-        <Row label="Проходит через Госрегистр и нотариуса" value={listing.gosregistr === true ? "да" : listing.gosregistr === false ? "нет" : null} />
-        <Row label="Статус строительства" value={listing.construction_status} />
-        <Row label="Срок сдачи" value={listing.delivery_year ? `${listing.delivery_quarter ? listing.delivery_quarter + " кв. " : ""}${listing.delivery_year}` : null} />
-      </div>
-
       {Object.keys(extra).length > 0 && (
         <div className="detail-section">
           <div className="detail-section-title">Дополнительно</div>
           {Object.entries(extra).map(([k, v]) => (
-            <Row key={k} label={k} value={typeof v === "object" ? JSON.stringify(v) : v} />
+            <Row key={k} label={extraLabel(k)} value={extraDisplayValue(v)} />
           ))}
         </div>
       )}
     </div>
   );
 }
+
