@@ -127,6 +127,7 @@ export default function ListingDetailPage() {
           <Row label="Источник" value={contact.source_type} />
           <Row label="ФИО собственника" value={contact.owner_name} />
           <PhoneRow label="Телефон собственника" value={contact.owner_phone} />
+          <PhoneRow label="WhatsApp собственника" value={contact.owner_whatsapp} />
           <Row label="Точный адрес" value={contact.exact_address} />
         </div>
       )}
