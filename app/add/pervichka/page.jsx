@@ -302,6 +302,7 @@ export default function PervichkaForm() {
     docs.length === 0 && "Документы", !heating && "Отопление",
     throughGosregistr === null && "Проходит через Госрегистр и нотариуса",
     !constructionStatus && "Статус строительства",
+    constructionStatus && !extra.stadiya && "Стадия строительства",
     constructionStatus && !delivered && !deliveryYear && "Год сдачи",
     constructionStatus && !delivered && !deliveryQuarter && "Квартал",
     !commsTouched && "Коммуникации", !price && "Цена",
@@ -499,6 +500,11 @@ export default function PervichkaForm() {
       </div>
 
       <div className="field-group">
+        <div className="field-label">Стадия строительства (на каком этапе стройка, что сейчас построено) <span className="star">*</span><span className="required-note">(обязательно)</span></div>
+        <input className={`field-input required-input ${attemptedSubmit && !extra.stadiya ? "field-error" : ""}`} value={extra.stadiya || ""} onChange={(e) => setEx("stadiya")(e.target.value)} />
+      </div>
+
+      <div className="field-group">
         <Picker label="Отопление" required options={HEATING_OPTS_PERVICHKA} value={heating} onChange={setHeating} error={attemptedSubmit && !heating} />
       </div>
 
@@ -542,7 +548,6 @@ export default function PervichkaForm() {
         <MiniChips label="Класс жилья" options={JILYE_CLASS_OPTS} value={extra.jilyeClass || ""} onChange={setEx("jilyeClass")} />
         <MiniYesNo label="Красная книга застройщика" value={extra.krasnayaKniga || ""} onChange={setEx("krasnayaKniga")} />
         <MiniYesNo label="Разрешение на строительство" value={extra.razreshenie || ""} onChange={setEx("razreshenie")} />
-        <MiniField label="Стадия строительства (на каком этапе стройка, что сейчас построено)" value={extra.stadiya || ""} onChange={setEx("stadiya")} />
       </div>
       <Accordion title="ДОМ И ТЕРРИТОРИЯ" defaultOpen={true}>
         <MiniFieldWithUnit
