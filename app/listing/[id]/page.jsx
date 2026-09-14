@@ -82,6 +82,8 @@ export default function ListingDetailPage() {
   const [financial, setFinancial] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [approving, setApproving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -106,6 +108,32 @@ export default function ListingDetailPage() {
     if (id) load();
   }, [id]);
 
+  async function approve() {
+    setApproving(true);
+    try {
+      const { error: e } = await supabase.from("listings").update({ status: "активен" }).eq("id", id);
+      if (e) throw e;
+      setListing((l) => ({ ...l, status: "активен" }));
+    } catch (err) {
+      alert("Не удалось одобрить: " + err.message);
+    } finally {
+      setApproving(false);
+    }
+  }
+
+  async function remove() {
+    if (!confirm("Удалить этот объект насовсем? Это нельзя отменить.")) return;
+    setDeleting(true);
+    try {
+      const { error: e } = await supabase.from("listings").delete().eq("id", id);
+      if (e) throw e;
+      router.push("/my");
+    } catch (err) {
+      alert("Не удалось удалить: " + err.message);
+      setDeleting(false);
+    }
+  }
+
   if (loading) return <div className="app-shell"><div className="empty-state">Загрузка…</div></div>;
   if (error) return <div className="app-shell"><div className="status-msg error" style={{ margin: 20 }}>Не удалось загрузить: {error}</div></div>;
   if (!listing) return <div className="app-shell"><div className="empty-state">Объект не найден</div></div>;
@@ -118,6 +146,17 @@ export default function ListingDetailPage() {
       <div className="page-header">
         <a className="back-link" onClick={() => router.push("/my")}>←</a>
         <div className="page-title">{listing.display_id || listing.legacy_id || "Объект"}</div>
+      </div>
+
+      <div style={{ margin: "0 20px 16px", display: "flex", gap: 10 }}>
+        {listing.status === "на проверке" && (
+          <button className="next-btn" style={{ flex: 1 }} disabled={approving || deleting} onClick={approve}>
+            {approving ? "Одобряю…" : "✓ Одобрить"}
+          </button>
+        )}
+        <button className="next-btn" style={{ flex: 1, background: "#E8877A", color: "#3A1512" }} disabled={approving || deleting} onClick={remove}>
+          {deleting ? "Удаляю…" : "✕ Удалить"}
+        </button>
       </div>
 
       <div className="detail-section">
