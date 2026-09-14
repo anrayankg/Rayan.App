@@ -84,7 +84,7 @@ function MyListingsInner() {
               </div>
               <div className="listing-row-bottom">
                 <span className={badgeClass(l.status)}>{l.status || "без статуса"}</span>
-                <span className="listing-row-id">{l.display_id || l.legacy_id || l.id.slice(0, 8)}</span>
+                <span className="listing-row-id">id: {l.display_id || l.legacy_id || l.id.slice(0, 8)}</span>
               </div>
             </a>
           ))}
