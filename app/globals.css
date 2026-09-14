@@ -159,7 +159,7 @@ body { background: #021712; margin: 0; font-family: 'Manrope', sans-serif; min-h
 .listing-row-sub { color: #7FA396; font-size: 12.5px; margin-top: 3px; }
 .listing-row-price { color: var(--gold-light); font-weight: 800; font-size: 15px; white-space: nowrap; }
 .listing-row-bottom { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
-.listing-row-id { color: #7FA396; font-size: 11.5px; }
+.listing-row-id { color: var(--gold-light); font-size: 15px; font-weight: 700; }
 
 .status-badge { display: inline-block; padding: 4px 10px; border-radius: 10px; font-size: 11px; font-weight: 700; }
 .status-badge.st-активен { background: rgba(90,200,140,0.18); color: #7FE0A8; }
