@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 // Бишкек по умолчанию — старт карты
 const DEFAULT_CENTER = [42.8746, 74.5698];
 
-// Грубые границы Кыргызстана — чтобы автопоиск не мог случайно
+// Грубые границы Кыргызстана — чтобы поиск не мог случайно
 // улететь на похожее по названию место в другой стране
 const KG_BOUNDS = { minLat: 39.0, maxLat: 43.3, minLng: 69.0, maxLng: 80.5 };
 
@@ -12,15 +12,46 @@ function inKyrgyzstan(pLat, pLng) {
   return pLat >= KG_BOUNDS.minLat && pLat <= KG_BOUNDS.maxLat && pLng >= KG_BOUNDS.minLng && pLng <= KG_BOUNDS.maxLng;
 }
 
-async function geocode(query) {
+async function geocodeCandidates(query) {
   try {
     const r = await fetch(`/api/geocode?q=${encodeURIComponent(query)}`);
     const data = await r.json();
-    if (data && data.lat != null && data.lng != null && inKyrgyzstan(data.lat, data.lng)) {
-      return [data.lat, data.lng];
+    return (data && data.candidates) || [];
+  } catch {
+    return [];
+  }
+}
+
+function firstValid(candidates) {
+  return candidates.find((c) => inKyrgyzstan(c.lat, c.lng)) || null;
+}
+
+// Ищем район. Для номерных микрорайонов ("8 мкр") пробуем несколько
+// формулировок запроса и проверяем, что в найденном названии реально
+// встречается этот номер — иначе геосервис путает "8 мкр" с "Аламедин"
+// и подобными. Для обычных (не номерных) районов ищем как есть.
+async function geocodeDistrict(district, cityPart) {
+  if (!district) return null;
+  const m = district.match(/^(\d+)\s*мкр\.?$/i);
+  if (m) {
+    const num = m[1];
+    const queries = [
+      `${num}-й микрорайон, ${cityPart}, Киргизия`,
+      `микрорайон ${num}, ${cityPart}, Киргизия`,
+      `${num} микрорайон, ${cityPart}, Киргизия`,
+      `${district}, ${cityPart}, Киргизия`,
+    ];
+    const numRe = new RegExp(`(^|\\D)${num}(\\D|$)`);
+    for (const q of queries) {
+      const candidates = await geocodeCandidates(q);
+      const match = candidates.find((c) => inKyrgyzstan(c.lat, c.lng) && numRe.test(c.name));
+      if (match) return { lat: match.lat, lng: match.lng, zoom: 15 };
     }
-  } catch {}
-  return null;
+    return null;
+  }
+  const candidates = await geocodeCandidates(`${district}, ${cityPart}, Киргизия`);
+  const valid = firstValid(candidates);
+  return valid ? { lat: valid.lat, lng: valid.lng, zoom: 15 } : null;
 }
 
 export default function MapPicker({ label, required, lat, lng, flyToQuery, flyToCity, onChange }) {
@@ -85,27 +116,25 @@ export default function MapPicker({ label, required, lat, lng, flyToQuery, flyTo
 
   const [flyStatus, setFlyStatus] = useState(null);
 
-  // Авто-перелёт карты примерно в нужный район, когда его выбрали —
-  // сначала пробуем "район + город", если не нашли — хотя бы "город",
-  // и в любом случае проверяем, что результат в Кыргызстане
+  // Авто-перелёт карты к нужному району при выборе — сначала пробуем район
+  // (с несколькими формулировками для номерных микрорайонов), если не
+  // нашли ничего подтверждённого — хотя бы до уровня города.
   useEffect(() => {
     if (!mapInstance.current) return;
     if (!flyToQuery && !flyToCity) return;
     let cancelled = false;
     setFlyStatus(null);
+    const cityPart = flyToCity || "Бишкек";
     (async () => {
-      let point = null;
-      let zoom = 15;
-      if (flyToQuery) {
-        point = await geocode(`${flyToQuery}, ${flyToCity || "Бишкек"}, Киргизия`);
-      }
-      if (!point && flyToCity) {
-        point = await geocode(`${flyToCity}, Киргизия`);
-        zoom = 12;
+      let result = flyToQuery ? await geocodeDistrict(flyToQuery, cityPart) : null;
+      if (!result && flyToCity) {
+        const candidates = await geocodeCandidates(`${flyToCity}, Киргизия`);
+        const valid = firstValid(candidates);
+        if (valid) result = { lat: valid.lat, lng: valid.lng, zoom: 12 };
       }
       if (cancelled) return;
-      if (point) {
-        mapInstance.current.flyTo(point, zoom);
+      if (result) {
+        mapInstance.current.flyTo([result.lat, result.lng], result.zoom);
         setFlyStatus("found");
       } else {
         setFlyStatus("notfound");
