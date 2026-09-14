@@ -8,12 +8,12 @@ export async function GET(request) {
   const q = searchParams.get("q");
 
   if (!q) {
-    return Response.json({ lat: null, lng: null });
+    return Response.json({ candidates: [] });
   }
 
   try {
     const r = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`,
+      `https://nominatim.openstreetmap.org/search?format=json&limit=3&q=${encodeURIComponent(q)}`,
       {
         headers: {
           "Accept-Language": "ru",
@@ -22,15 +22,18 @@ export async function GET(request) {
       }
     );
     const results = await r.json();
-    if (results && results[0]) {
+    if (results && results.length > 0) {
       return Response.json({
-        lat: parseFloat(results[0].lat),
-        lng: parseFloat(results[0].lon),
+        candidates: results.map((r) => ({
+          lat: parseFloat(r.lat),
+          lng: parseFloat(r.lon),
+          name: r.display_name || "",
+        })),
       });
     }
   } catch (e) {
     // молча возвращаем "не нашли" — форма не должна падать из-за карты
   }
 
-  return Response.json({ lat: null, lng: null });
+  return Response.json({ candidates: [] });
 }
