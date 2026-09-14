@@ -28,7 +28,7 @@ const NAV = [
 
 export default function HomePage() {
   const router = useRouter();
-  const [counts, setCounts] = useState({ активен: 0, "на проверке": 0, архив: 0, всего: 0 });
+  const [counts, setCounts] = useState({ активен: 0, "на проверке": 0, архив: 0, всего: 0, сегодня: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -39,8 +39,10 @@ export default function HomePage() {
         const { count: active, error: e2 } = await supabase.from("listings").select("*", { count: "exact", head: true }).eq("status", "активен");
         const { count: review, error: e3 } = await supabase.from("listings").select("*", { count: "exact", head: true }).eq("status", "на проверке");
         const { count: archived, error: e4 } = await supabase.from("listings").select("*", { count: "exact", head: true }).eq("status", "архив");
-        if (e1 || e2 || e3 || e4) throw e1 || e2 || e3 || e4;
-        setCounts({ всего: total || 0, активен: active || 0, "на проверке": review || 0, архив: archived || 0 });
+        const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+        const { count: today, error: e5 } = await supabase.from("listings").select("*", { count: "exact", head: true }).gte("created_at", todayStart.toISOString());
+        if (e1 || e2 || e3 || e4 || e5) throw e1 || e2 || e3 || e4 || e5;
+        setCounts({ всего: total || 0, активен: active || 0, "на проверке": review || 0, архив: archived || 0, сегодня: today || 0 });
       } catch (err) {
         setError(err.message);
       } finally {
@@ -73,6 +75,12 @@ export default function HomePage() {
               <div className="stat-label">{label}</div>
             </div>
           ))}
+        </div>
+        <div className="stats" style={{ marginTop: 10 }}>
+          <div className="stat-card" style={{ cursor: "pointer", flex: 1 }} onClick={() => router.push("/my")}>
+            <div className="stat-num">{loading ? "…" : counts["сегодня"]}</div>
+            <div className="stat-label">Новых сегодня</div>
+          </div>
         </div>
 
         {error && <div className="status-msg error">Не удалось загрузить данные: {error}</div>}
