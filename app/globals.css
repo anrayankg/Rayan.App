@@ -157,7 +157,7 @@ body { background: #021712; margin: 0; font-family: 'Manrope', sans-serif; min-h
 .listing-row-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
 .listing-row-title { color: var(--cream); font-weight: 700; font-size: 15px; }
 .listing-row-sub { color: #7FA396; font-size: 12.5px; margin-top: 3px; }
-.listing-row-price { color: var(--gold-light); font-weight: 800; font-size: 15px; white-space: nowrap; }
+.listing-row-price { color: var(--gold-light); font-weight: 800; font-size: 24px; white-space: nowrap; }
 .listing-row-bottom { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
 .listing-row-id { color: var(--gold-light); font-size: 15px; font-weight: 700; }
 
