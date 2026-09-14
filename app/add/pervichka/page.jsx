@@ -23,7 +23,7 @@ const HEATING_OPTS_PERVICHKA = [
 ];
 
 const CURRENT_YEAR = new Date().getFullYear();
-const DELIVERY_YEARS = Array.from({ length: 11 }, (_, i) => String(CURRENT_YEAR + i));
+const DELIVERY_YEARS = Array.from({ length: 26 }, (_, i) => String(CURRENT_YEAR - 15 + i));
 const QUARTERS = ["1 квартал", "2 квартал", "3 квартал", "4 квартал"];
 
 const CONSTRUCTION_STATUS_OPTS = [
@@ -295,11 +295,23 @@ export default function PervichkaForm() {
   const districtRequired = city === "Бишкек";
   const delivered = constructionStatus === "Сдан ПСО (ключи)";
   const deliveryOk = constructionStatus && (delivered || (deliveryYear && deliveryQuarter));
-  const canSubmit =
-    city && (!districtRequired || district) && mapLat && mapLng && roomType && zhk && sk && area && floor && floorsTotal &&
-    docs.length > 0 && heating && throughGosregistr !== null && deliveryOk && commsTouched &&
-    price && isPhoneComplete(ownerPhone) && isPhoneComplete(ownerWhatsapp) &&
-    isPhoneComplete(agentPhone) && commissionPercent && commissionTerms && vRuki && dealTerms.length > 0 && description;
+  const missingFields = [
+    !city && "Город", city && districtRequired && !district && "Район", !(mapLat && mapLng) && "Точка на карте",
+    !roomType && "Комнатность", !zhk && "Название ЖК", !sk && "Название застройщика",
+    !area && "Площадь", !floor && "Этаж", !floorsTotal && "Этажность",
+    docs.length === 0 && "Документы", !heating && "Отопление",
+    throughGosregistr === null && "Проходит через Госрегистр и нотариуса",
+    !constructionStatus && "Статус строительства",
+    constructionStatus && !delivered && !deliveryYear && "Год сдачи",
+    constructionStatus && !delivered && !deliveryQuarter && "Квартал",
+    !commsTouched && "Коммуникации", !price && "Цена",
+    !isPhoneComplete(ownerPhone) && "Телефон собственника",
+    !isPhoneComplete(ownerWhatsapp) && "WhatsApp собственника",
+    !isPhoneComplete(agentPhone) && "Телефон агента",
+    !commissionPercent && "Комиссия", !commissionTerms && "Условия комиссии",
+    !vRuki && "Цена в руки", dealTerms.length === 0 && "Условия сделки", !description && "Описание",
+  ].filter(Boolean);
+  const canSubmit = missingFields.length === 0;
 
   async function handleSubmit() {
     setSaving(true);
@@ -528,10 +540,9 @@ export default function PervichkaForm() {
       </div>
       <div className="field-group">
         <MiniChips label="Класс жилья" options={JILYE_CLASS_OPTS} value={extra.jilyeClass || ""} onChange={setEx("jilyeClass")} />
-        <MiniChips label="Год постройки" options={YEAR_BUILT_PERVICHKA} value={extra.godPostroiki || ""} onChange={setEx("godPostroiki")} />
         <MiniYesNo label="Красная книга застройщика" value={extra.krasnayaKniga || ""} onChange={setEx("krasnayaKniga")} />
         <MiniYesNo label="Разрешение на строительство" value={extra.razreshenie || ""} onChange={setEx("razreshenie")} />
-        <MiniField label="Стадия строительства" value={extra.stadiya || ""} onChange={setEx("stadiya")} />
+        <MiniField label="Стадия строительства (на каком этапе стройка, что сейчас построено)" value={extra.stadiya || ""} onChange={setEx("stadiya")} />
       </div>
       <Accordion title="ДОМ И ТЕРРИТОРИЯ" defaultOpen={true}>
         <MiniFieldWithUnit
@@ -754,7 +765,7 @@ export default function PervichkaForm() {
         {saving ? "СОХРАНЕНИЕ..." : "ОТПРАВИТЬ НА ПРОВЕРКУ"}
       </button>
       {attemptedSubmit && !canSubmit && (
-        <div className="status-msg error">Заполните поля, отмеченные красным выше</div>
+        <div className="status-msg error">Не заполнено: {missingFields.join(", ")}</div>
       )}
       <div className="progress-note">Поля со звёздочкой * обязательны</div>
     </div>
