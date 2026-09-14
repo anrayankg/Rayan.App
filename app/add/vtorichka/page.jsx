@@ -231,11 +231,19 @@ export default function VtorichkaForm() {
   }
 
   const districtRequired = city === "Бишкек";
-  const canSubmit =
-    city && (!districtRequired || district) && mapLat && mapLng && roomType && series && area && floor && floorsTotal &&
-    docs.length > 0 && heating && commsTouched &&
-    price && isPhoneComplete(ownerPhone) && isPhoneComplete(ownerWhatsapp) &&
-    isPhoneComplete(agentPhone) && commissionPercent && commissionTerms && vRuki && dealTerms.length > 0 && description;
+  const missingFields = [
+    !city && "Город", city && districtRequired && !district && "Район", !(mapLat && mapLng) && "Точка на карте",
+    !roomType && "Комнатность", !series && "Серия дома",
+    !area && "Площадь", !floor && "Этаж", !floorsTotal && "Этажность",
+    docs.length === 0 && "Документы", !heating && "Отопление", !commsTouched && "Коммуникации",
+    !price && "Цена",
+    !isPhoneComplete(ownerPhone) && "Телефон собственника",
+    !isPhoneComplete(ownerWhatsapp) && "WhatsApp собственника",
+    !isPhoneComplete(agentPhone) && "Телефон агента",
+    !commissionPercent && "Комиссия", !commissionTerms && "Условия комиссии",
+    !vRuki && "Цена в руки", dealTerms.length === 0 && "Условия сделки", !description && "Описание",
+  ].filter(Boolean);
+  const canSubmit = missingFields.length === 0;
 
   async function handleSubmit() {
     setSaving(true);
@@ -660,7 +668,7 @@ export default function VtorichkaForm() {
         {saving ? "СОХРАНЕНИЕ..." : "ОТПРАВИТЬ НА ПРОВЕРКУ"}
       </button>
       {attemptedSubmit && !canSubmit && (
-        <div className="status-msg error">Заполните поля, отмеченные красным выше</div>
+        <div className="status-msg error">Не заполнено: {missingFields.join(", ")}</div>
       )}
       <div className="progress-note">Поля со звёздочкой * обязательны</div>
     </div>
