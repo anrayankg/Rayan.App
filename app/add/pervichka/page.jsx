@@ -185,6 +185,7 @@ export default function PervichkaForm() {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
+  const [commsTouched, setCommsTouched] = useState(false);
 
   const [city, setCity] = useState("Бишкек");
   const [district, setDistrict] = useState("");
@@ -207,6 +208,7 @@ export default function PervichkaForm() {
   const [torg, setTorg] = useState(false);
   const [currency, setCurrency] = useState("USD");
   const [ownerPhone, setOwnerPhone] = useState("");
+  const [ownerWhatsapp, setOwnerWhatsapp] = useState("");
   const [commissionPercent, setCommissionPercent] = useState("");
   const [commissionTerms, setCommissionTerms] = useState("");
   const [vRuki, setVRuki] = useState("");
@@ -295,8 +297,8 @@ export default function PervichkaForm() {
   const deliveryOk = constructionStatus && (delivered || (deliveryYear && deliveryQuarter));
   const canSubmit =
     city && (!districtRequired || district) && mapLat && mapLng && roomType && zhk && sk && area && floor && floorsTotal &&
-    docs.length > 0 && heating && throughGosregistr !== null && deliveryOk && gas !== null && water !== null &&
-    electricity !== null && sewerage !== null && hotWater !== null && price && isPhoneComplete(ownerPhone) &&
+    docs.length > 0 && heating && throughGosregistr !== null && deliveryOk && commsTouched &&
+    price && isPhoneComplete(ownerPhone) && isPhoneComplete(ownerWhatsapp) &&
     isPhoneComplete(agentPhone) && commissionPercent && commissionTerms && vRuki && dealTerms.length > 0 && description;
 
   async function handleSubmit() {
@@ -346,6 +348,7 @@ export default function PervichkaForm() {
         source_type: "собственник",
         owner_name: ownerName,
         owner_phone: ownerPhone,
+        owner_whatsapp: ownerWhatsapp,
         exact_address: exactAddress,
         document_photos: docPhotos,
         contract_photos: contractPhotos,
@@ -488,14 +491,13 @@ export default function PervichkaForm() {
       </div>
 
       <div className="field-group">
-        <div className="field-label">Коммуникации <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-        <div className="chip-group">
-          {[["Газ", gas, setGas], ["Вода", water, setWater], ["Электричество", electricity, setElectricity], ["Канализация", sewerage, setSewerage], ["Горячая вода", hotWater, setHotWater]].map(([label, val, setter]) => (
-            <div key={label} className={`chip required-chip ${val === true ? "selected" : ""}`} onClick={() => setter(val === true ? false : true)}>
-              {label}: {val === null ? "?" : val ? "да" : "нет"}
-            </div>
-          ))}
-        </div>
+        <MultiPicker
+          label="Коммуникации" required
+          options={["Газ", "Вода", "Электричество", "Канализация", "Горячая вода"]}
+          value={[gas && "Газ", water && "Вода", electricity && "Электричество", sewerage && "Канализация", hotWater && "Горячая вода"].filter(Boolean)}
+          onChange={(sel) => { setGas(sel.includes("Газ")); setWater(sel.includes("Вода")); setElectricity(sel.includes("Электричество")); setSewerage(sel.includes("Канализация")); setHotWater(sel.includes("Горячая вода")); setCommsTouched(true); }}
+          error={attemptedSubmit && !commsTouched}
+        />
       </div>
 
       <div className="field-group">
@@ -636,6 +638,10 @@ export default function PervichkaForm() {
       </div>
       <div className="field-group">
         <PhoneInput label="Телефон собственника" required value={ownerPhone} onChange={setOwnerPhone} whiteBg error={attemptedSubmit && !isPhoneComplete(ownerPhone)} />
+      </div>
+
+      <div className="field-group">
+        <PhoneInput label="Номер WhatsApp собственника" required value={ownerWhatsapp} onChange={setOwnerWhatsapp} whiteBg error={attemptedSubmit && !isPhoneComplete(ownerWhatsapp)} />
       </div>
       <div className="field-group">
         <div className="field-label">Точный адрес</div>
