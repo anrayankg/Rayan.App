@@ -7,6 +7,7 @@ import LocationPicker from "../../../components/LocationPicker";
 import MapPicker from "../../../components/MapPicker";
 import PhoneInput, { isPhoneComplete } from "../../../components/PhoneInput";
 import { Picker, MultiPicker } from "../../../components/Picker";
+import PhotoUploader from "../../../components/PhotoUploader";
 
 
 const ROOM_TYPES = [
@@ -161,6 +162,7 @@ export default function VtorichkaForm() {
   const [zhk, setZhk] = useState("");
   const [sk, setSk] = useState("");
   const [description, setDescription] = useState("");
+  const [photos, setPhotos] = useState([]);
 
   const [ownerName, setOwnerName] = useState("");
   const [agentName, setAgentName] = useState("");
@@ -274,6 +276,7 @@ export default function VtorichkaForm() {
           obmen_na: dealTerms.includes("Обмен") ? [...obmenNa, obmenDrugoe].filter(Boolean).join(", ") : null,
           torg,
           description,
+          photos,
           contract_status: contractStatus,
           extra_details: extra,
           agent_phone: agentPhone,
@@ -540,7 +543,7 @@ export default function VtorichkaForm() {
         <button className="ai-btn" type="button" disabled>✨ Сформировать описание с ИИ (следующий этап)</button>
       </div>
 
-      <div className="photo-drop">📷 Загрузка фото/видео — следующий этап</div>
+      <PhotoUploader photos={photos} onChange={setPhotos} />
 
       <div className="section-divider private">
         <div className="section-divider-title big">Информация для агента</div>
