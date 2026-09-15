@@ -3,6 +3,11 @@ import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 
+function photoUrl(path) {
+  const { data } = supabase.storage.from("listing-photos").getPublicUrl(path);
+  return data?.publicUrl || "";
+}
+
 function Row({ label, value }) {
   if (value === null || value === undefined || value === "") return null;
   return (
@@ -158,6 +163,20 @@ export default function ListingDetailPage() {
           {deleting ? "Удаляю…" : "✕ Удалить"}
         </button>
       </div>
+
+      {listing.photos && listing.photos.length > 0 && (
+        <div className="detail-section">
+          <div className="detail-section-title">Фото ({listing.photos.length})</div>
+          <div className="photo-grid">
+            {listing.photos.map((p, i) => (
+              <div key={p} className="photo-thumb-wrap">
+                <img src={photoUrl(p)} className="photo-thumb" style={{ height: 110 }} alt="" />
+                {i === 0 && <span className="photo-main-badge">Главное</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="detail-section">
         <div className="detail-section-title">Основное</div>
