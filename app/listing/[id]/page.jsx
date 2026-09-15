@@ -2,10 +2,62 @@
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
+import PhotoUploader from "../../../components/PhotoUploader";
 
 function photoUrl(path) {
   const { data } = supabase.storage.from("listing-photos").getPublicUrl(path);
   return data?.publicUrl || "";
+}
+
+function EditableRow({ label, rawValue, displayValue, field, listingId, onSaved, type = "text" }) {
+  const [editing, setEditing] = useState(false);
+  const [val, setVal] = useState(rawValue ?? "");
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    setSaving(true);
+    try {
+      const toSave = type === "number" ? (val === "" ? null : Number(val)) : val;
+      const { error } = await supabase.from("listings").update({ [field]: toSave }).eq("id", listingId);
+      if (error) throw error;
+      onSaved(toSave);
+      setEditing(false);
+    } catch (err) {
+      alert("Не удалось сохранить: " + err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (editing) {
+    return (
+      <div className="detail-row">
+        <div className="detail-label">{label}</div>
+        <div className="detail-value" style={{ display: "flex", gap: 6 }}>
+          <input
+            className="field-input required-input"
+            style={{ padding: "6px 10px", fontSize: 13, width: 120 }}
+            type={type}
+            value={val}
+            onChange={(e) => setVal(e.target.value)}
+            autoFocus
+          />
+          <button className="phone-action-btn" disabled={saving} onClick={save}>{saving ? "…" : "✓"}</button>
+          <button className="phone-action-btn" onClick={() => { setVal(rawValue ?? ""); setEditing(false); }}>✕</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="detail-row">
+      <div className="detail-label">{label}</div>
+      <div className="detail-value" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span>{displayValue || "—"}</span>
+        <span onClick={() => setEditing(true)} style={{ cursor: "pointer", opacity: 0.6 }}>✏️</span>
+      </div>
+    </div>
+  );
 }
 
 function Row({ label, value }) {
@@ -164,26 +216,27 @@ export default function ListingDetailPage() {
         </button>
       </div>
 
-      {listing.photos && listing.photos.length > 0 && (
-        <div className="detail-section">
-          <div className="detail-section-title">Фото ({listing.photos.length})</div>
-          <div className="photo-grid">
-            {listing.photos.map((p, i) => (
-              <div key={p} className="photo-thumb-wrap">
-                <img src={photoUrl(p)} className="photo-thumb" style={{ height: 110 }} alt="" />
-                {i === 0 && <span className="photo-main-badge">Главное</span>}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      <div className="detail-section">
+        <div className="detail-section-title">Фото ({(listing.photos || []).length})</div>
+        <PhotoUploader
+          photos={listing.photos || []}
+          onChange={async (newPhotos) => {
+            setListing((l) => ({ ...l, photos: newPhotos }));
+            const { error: e } = await supabase.from("listings").update({ photos: newPhotos }).eq("id", id);
+            if (e) alert("Не удалось сохранить фото: " + e.message);
+          }}
+        />
+      </div>
 
       <div className="detail-section">
         <div className="detail-section-title">Основное</div>
         <Row label="Статус" value={listing.status} />
         <Row label="Тип" value={listing.type} />
         <Row label="Комнатность" value={listing.room_type || listing.rooms} />
-        <Row label="Цена" value={listing.price ? `${Number(listing.price).toLocaleString("ru-RU")} ${listing.currency || ""}` : null} />
+        <EditableRow label="Цена" field="price" type="number" listingId={id}
+          rawValue={listing.price}
+          displayValue={listing.price ? `${Number(listing.price).toLocaleString("ru-RU")} ${listing.currency || ""}` : null}
+          onSaved={(newPrice) => setListing((l) => ({ ...l, price: newPrice }))} />
         <Row label="Площадь" value={listing.area_m2 ? `${listing.area_m2} м²` : null} />
         <Row label="Этаж/Этажность" value={listing.floor && listing.floors_total ? `${listing.floor}/${listing.floors_total}` : null} />
         <Row label="Город" value={listing.city} />
