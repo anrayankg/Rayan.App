@@ -291,8 +291,8 @@ body { background: var(--bg-main); margin: 0; font-family: 'Manrope', sans-serif
 .brand-strip { position: relative; justify-content: space-between; }
 .brand-strip-left { display: flex; align-items: center; gap: 10px; }
 .brand-strip-icon { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; }
-.lang-switch { background: rgba(255,255,255,0.08); border: 1px solid rgba(212,164,55,0.3); border-radius: 20px;
-  padding: 6px 10px; display: flex; align-items: center; gap: 5px; color: var(--gold-light); font-size: 12px; font-weight: 700; }
+.lang-switch { background: rgba(255,255,255,0.08); border: 1px solid var(--border-subtle); border-radius: 20px;
+  padding: 6px 10px; display: flex; align-items: center; gap: 5px; color: var(--text-primary); font-size: 12px; font-weight: 700; }
 .lang-dropdown { position: absolute; top: 54px; right: 20px; background: var(--bg-card); border: 1px solid var(--border-subtle);
   border-radius: 12px; overflow: hidden; z-index: 20; box-shadow: 0 10px 30px rgba(0,0,0,0.5); min-width: 140px; }
 .lang-option { padding: 12px 16px; color: var(--text-primary); font-size: 14px; font-weight: 600; }
@@ -307,7 +307,7 @@ body { background: var(--bg-main); margin: 0; font-family: 'Manrope', sans-serif
 .search-row .search { margin-bottom: 0; flex: 1; }
 .filter-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
   background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 18px; padding: 8px 14px;
-  color: var(--gold-light); font-size: 11px; font-weight: 700; }
+  color: var(--text-primary); font-size: 11px; font-weight: 700; }
 
 /* ===== Категории — горизонтальная лента (как в pozitiv.kg), без обилия золота/зелёного ===== */
 .cats-row { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 14px; -webkit-overflow-scrolling: touch; }
@@ -323,11 +323,33 @@ body { background: var(--bg-main); margin: 0; font-family: 'Manrope', sans-serif
 
 /* ===== Модалка "Все категории" — тёмный список в стиле Lalafo ===== */
 .cats-modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 50; display: flex; align-items: flex-end; }
-.cats-modal { background: #161618; width: 100%; max-width: 480px; margin: 0 auto; border-radius: 20px 20px 0 0;
+.cats-modal { background: var(--bg-card); width: 100%; max-width: 480px; margin: 0 auto; border-radius: 20px 20px 0 0;
   padding: 10px 16px 24px; max-height: 80vh; overflow-y: auto; }
-.cats-modal-handle { width: 40px; height: 4px; background: #444; border-radius: 2px; margin: 6px auto 14px; }
-.cats-modal-header { display: flex; justify-content: space-between; align-items: center; color: #fff; font-size: 19px; font-weight: 800; margin-bottom: 14px; }
-.cats-modal-close { color: #8B8B90; font-size: 18px; cursor: pointer; }
-.cats-modal-row { display: flex; align-items: center; gap: 12px; background: #1F1F22; border-radius: 14px; padding: 10px 12px; margin-bottom: 10px; }
-.cats-modal-icon { width: 40px; height: 40px; border-radius: 10px; background: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.cats-modal-label { flex: 1; color: #fff; font-size: 15px; font-weight: 600; }
+.cats-modal-handle { width: 40px; height: 4px; background: var(--text-muted); border-radius: 2px; margin: 6px auto 14px; }
+.cats-modal-header { display: flex; justify-content: space-between; align-items: center; color: var(--text-primary); font-size: 19px; font-weight: 800; margin-bottom: 14px; }
+.cats-modal-close { color: var(--text-secondary); font-size: 18px; cursor: pointer; }
+.cats-modal-row { display: flex; align-items: center; gap: 12px; background: var(--bg-card-alt); border-radius: 14px; padding: 10px 12px; margin-bottom: 10px; }
+.cats-modal-icon { width: 40px; height: 40px; border-radius: 10px; background: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden; }
+.cats-modal-img { width: 100%; height: 100%; object-fit: contain; }
+.cats-modal-label { flex: 1; color: var(--text-primary); font-size: 15px; font-weight: 600; }
+
+/* ===== Картинки в плитках категорий ===== */
+.cat-tile-img { width: 100%; height: 100%; object-fit: contain; }
+
+/* ===== Плюс по центру нижней навигации (как в Лалафо) ===== */
+.nav-fab-wrap { display: flex; align-items: flex-end; justify-content: center; flex: 0 0 auto; margin: 0 4px; }
+.nav-fab { width: 52px; height: 52px; border-radius: 50%; background: var(--green-accent);
+  display: flex; align-items: center; justify-content: center; margin-bottom: 6px;
+  box-shadow: 0 6px 18px rgba(31,163,92,0.45); }
+
+/* ===== Светлая тема — автоматически по настройке телефона ===== */
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg-main: #F5F5F7; --bg-card: #FFFFFF; --bg-card-alt: #EFEFF2; --bg-card-hover: #E6E6EA;
+    --border-subtle: rgba(0,0,0,0.09);
+    --text-primary: #101012; --text-secondary: #6B6B70; --text-muted: #A9A9AE;
+  }
+  .search input { color: #101012; }
+  .cats-modal-icon { background: var(--bg-card-alt); border: 1px solid var(--border-subtle); }
+  .filter-btn svg, .lang-switch svg { stroke: #101012 !important; }
+}
