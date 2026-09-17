@@ -96,6 +96,8 @@ export default function HomePage() {
     return [l.district, l.zhk].filter(Boolean).join(" · ") || "Бишкек";
   }
   const [catsOpen, setCatsOpen] = useState(false);
+  const [langOpen, setLangOpen] = useState(false);
+  const [lang, setLang] = useState("ru");
   const carouselRef = useRef(null);
 
   useEffect(() => {
