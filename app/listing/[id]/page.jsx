@@ -213,7 +213,7 @@ export default function ListingDetailPage() {
         )}
         {(listing.type === "вторичка" || listing.type === "первичка") && (
           <button className="next-btn" style={{ flex: 1, background: "rgba(212,164,55,0.15)", color: "var(--gold-light)" }}
-            onClick={() => router.push(`/add/${listing.type}?edit=${id}`)}>
+            onClick={() => router.push(`/add/${listing.type === "вторичка" ? "vtorichka" : "pervichka"}?edit=${id}`)}>
             ✎ Редактировать
           </button>
         )}
