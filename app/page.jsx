@@ -115,22 +115,32 @@ export default function HomePage() {
   }
 
   function characteristicsLine(l) {
-    const parts = [];
-    const rooms = roomsShort(l);
-    if (rooms) parts.push(rooms);
+    const t = l.type || "";
+    const rooms = roomsShort(l) || "—";
+    const floors = l.floor && l.floors_total ? `${l.floor}/${l.floors_total} эт.`
+      : (l.floors_total ? `${l.floors_total} эт.` : "—");
+    const area = l.area_m2 ? `${l.area_m2} м²` : "—";
 
-    if (l.type === "вторичка" && l.series) {
-      parts.push(`${l.series} серии`);
-    } else if (l.type === "первичка") {
-      if (l.construction_status === "Сдан ПСО (ключи)") parts.push("ПСО СДАН.");
-      else if (l.delivery_year && l.delivery_quarter) parts.push(`сдача ${l.delivery_year}г ${l.delivery_quarter} квартал`);
+    if (t === "первичка") {
+      let status = "—";
+      if (l.construction_status === "Сдан ПСО (ключи)") status = "ПСО сдан";
+      else if (l.delivery_year && l.delivery_quarter) status = `сдача ${l.delivery_year}г ${l.delivery_quarter} квартал`;
+      // Всегда 4 позиции — если какой-то параметр не заполнен, на его месте прочерк.
+      // Так на карточке сразу видно, что у объекта не хватает данных, а не молча пропадает поле.
+      return [rooms, status, floors, area].join(" · ");
+    }
+    if (t === "вторичка") {
+      const series = l.series ? `${l.series} серии` : "—";
+      return [rooms, series, floors, area].join(" · ");
     }
 
-    if (l.floor && l.floors_total) parts.push(`${l.floor}/${l.floors_total} эт.`);
-    else if (l.floors_total) parts.push(`${l.floors_total} эт.`);
+    // Дом/Участок/Коммерция и остальные типы — для них формат карточки
+    // ещё не согласован, показываем то, что есть, без 4 обязательных полей вторички/первички.
+    const parts = [];
+    if (l.plot_sotka) parts.push(`${l.plot_sotka} сот.`);
     if (l.area_m2) parts.push(`${l.area_m2} м²`);
-
-    return parts.join(" · ") || "—";
+    if (l.floor && l.floors_total) parts.push(`${l.floor}/${l.floors_total} эт.`);
+    return parts.length ? parts.join(" · ") : "—";
   }
 
   // Адрес — сначала ЖК/район (это можно показывать клиенту), город — только если
@@ -167,13 +177,16 @@ export default function HomePage() {
     if (!el) return;
     let raf;
     let paused = false;
-    const speed = 0.4; // px за кадр — медленный, ровный ход
+    const speed = 0.7; // px за кадр — заметный, но не дёрганый ход
     const step = () => {
       if (!paused && el) {
-        const maxScroll = el.scrollWidth - el.clientWidth;
-        if (maxScroll > 0) {
+        // Баннеры отрисованы ДВАЖДЫ подряд (см. JSX) — это ровно половина scrollWidth.
+        // Когда доезжаем до конца первого набора, тихо возвращаемся на 0: там в этот
+        // момент как раз показан такой же (второй) набор, поэтому скачок не заметен.
+        const singleSetWidth = el.scrollWidth / 2;
+        if (singleSetWidth > 0) {
           let next = el.scrollLeft + speed;
-          if (next >= maxScroll) next = 0;
+          if (next >= singleSetWidth) next -= singleSetWidth;
           el.scrollLeft = next;
         }
       }
@@ -249,11 +262,23 @@ export default function HomePage() {
         <div className="banner-card banner-invest">
           <div className="banner-invest-text">Инвестиции в строительство<br />от 50 000$</div>
         </div>
+        {/* Второй набор тех же баннеров подряд — нужен только для бесшовной автопрокрутки
+            (когда доезжаем до середины, тихо перескакиваем в начало, и это незаметно,
+            потому что там точно такая же картинка). Пользователю показывать вслух не нужно. */}
+        <div className="banner-card banner-rayan" aria-hidden="true">
+          <img src={LOGO_TRANSPARENT} alt="" className="banner-fg-logo" />
+        </div>
+        <div className="banner-card banner-royal" aria-hidden="true">
+          <img src={ROYAL_PARK_LOGO} alt="" className="banner-fg-logo" />
+        </div>
+        <div className="banner-card banner-invest" aria-hidden="true">
+          <div className="banner-invest-text">Инвестиции в строительство<br />от 50 000$</div>
+        </div>
       </div>
 
       <div className="search-row">
         <div className="search">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#062E22" strokeWidth="2">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--search-text)" strokeWidth="2">
             <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>
           <input placeholder="Поиск объектов..." onFocus={() => router.push("/search/vse")} readOnly />
