@@ -218,7 +218,9 @@ export default function HomePage() {
         const { count: review, error: e3 } = await supabase.from("listings").select("*", { count: "exact", head: true }).eq("status", "на проверке");
         const { count: archived, error: e4 } = await supabase.from("listings").select("*", { count: "exact", head: true }).eq("status", "архив");
         const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
-        const { count: today, error: e5 } = await supabase.from("listings").select("*", { count: "exact", head: true }).gte("created_at", todayStart.toISOString());
+        // "Новые" — это дата, когда объект РЕАЛЬНО стал активным (published_at), а не когда
+        // запись впервые появилась в базе (created_at) — черновик мог пролежать несколько дней.
+        const { count: today, error: e5 } = await supabase.from("listings").select("*", { count: "exact", head: true }).eq("status", "активен").gte("published_at", todayStart.toISOString());
         if (e1 || e2 || e3 || e4 || e5) throw e1 || e2 || e3 || e4 || e5;
         setCounts({ всего: total || 0, активен: active || 0, "на проверке": review || 0, архив: archived || 0, сегодня: today || 0 });
       } catch (err) {
