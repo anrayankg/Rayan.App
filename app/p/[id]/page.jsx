@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 import { publicExtraEntries, extraLabel, extraDisplayValue } from "../../../lib/extraFields";
@@ -8,6 +8,12 @@ import { publicExtraEntries, extraLabel, extraDisplayValue } from "../../../lib/
 // Специально запрашивает только таблицу listings (без listing_contacts/listing_financial) —
 // так собственник, комиссия, точный адрес и сканы документов физически не попадают
 // в эту страницу, даже если Supabase-права (RLS) ещё не настроены до конца.
+
+// Официальные соцсети RAYAN (компании) — показываются в карточке контактов ВСЕГДА,
+// как дополнительные ссылки НИЖЕ основного телефона/WhatsApp агента.
+const RAYAN_INSTAGRAM = "https://www.instagram.com/rayan.pro.kg?stkn=MTQzaGJ6c3huZXFtdQ%3D%3D&utm_source=qr";
+const RAYAN_TELEGRAM = "https://t.me/anrayankg"; // группа
+const RAYAN_WHATSAPP_CHANNEL = "https://whatsapp.com/channel/0029VbBTYlpKLaHpsIwRnk32";
 
 const USD_KGS_RATE = 87.45;
 
@@ -45,13 +51,37 @@ export default function PublicListingPage() {
   const [listing, setListing] = useState(null);
   const [error, setError] = useState(null);
   const [activePhoto, setActivePhoto] = useState(0);
+  const [favorited, setFavorited] = useState(false);
+  const [contactsOpen, setContactsOpen] = useState(false);
+  const touchX = useRef(null);
+
+  useEffect(() => {
+    // Избранное — пока без входа в приложение, храним на этом устройстве (localStorage).
+    try { setFavorited(localStorage.getItem(`rayan_fav_${id}`) === "1"); } catch {}
+  }, [id]);
+
+  function toggleFavorite() {
+    const next = !favorited;
+    setFavorited(next);
+    try { localStorage.setItem(`rayan_fav_${id}`, next ? "1" : "0"); } catch {}
+  }
+
+  function handleShare() {
+    const url = window.location.href;
+    if (navigator.share) {
+      navigator.share({ title: "RAYAN — объект недвижимости", url }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(url);
+      alert("Ссылка скопирована");
+    }
+  }
 
   useEffect(() => {
     async function load() {
       const { data, error: e } = await supabase
         .from("listings")
         // Только публичные колонки — сознательно НЕ трогаем listing_contacts / listing_financial.
-        .select("id, display_id, type, status, price, currency, currency_new, district, city, zhk, sk, series, room_type, rooms, area_m2, floor, floors_total, construction_status, delivery_year, delivery_quarter, documents, heating, description, photos, extra_details, agent_name, agent_phone")
+        .select("id, display_id, type, status, price, currency, currency_new, district, city, zhk, sk, series, room_type, rooms, area_m2, floor, floors_total, construction_status, delivery_year, delivery_quarter, documents, heating, description, photos, extra_details, agent_name, agent_phone, created_at")
         .eq("id", id).eq("status", "активен").single();
       if (e) { setError("Объект не найден или снят с публикации"); return; }
       setListing(data);
@@ -86,13 +116,36 @@ export default function PublicListingPage() {
   return (
     <div style={sx.page}>
       {/* Фото */}
-      <div style={sx.photoWrap}>
+      <div
+        style={sx.photoWrap}
+        onTouchStart={(e) => { touchX.current = e.touches[0].clientX; }}
+        onTouchEnd={(e) => {
+          if (touchX.current === null || photos.length < 2) return;
+          const dx = e.changedTouches[0].clientX - touchX.current;
+          if (Math.abs(dx) > 40) {
+            if (dx < 0) setActivePhoto((p) => (p + 1) % photos.length);
+            else setActivePhoto((p) => (p - 1 + photos.length) % photos.length);
+          }
+          touchX.current = null;
+        }}
+      >
         {photos.length > 0 ? (
-          <img src={photoUrl(photos[activePhoto])} alt="" style={sx.photo} />
+          <img src={photoUrl(photos[activePhoto])} alt="" style={sx.photo} draggable={false} />
         ) : (
           <div style={sx.photoPlaceholder}>Нет фото</div>
         )}
         <button style={sx.backBtn} onClick={() => router.back()}>‹</button>
+        <button style={sx.shareBtn} onClick={handleShare} aria-label="Поделиться">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2">
+            <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
+            <line x1="8.6" y1="10.6" x2="15.4" y2="6.4" /><line x1="8.6" y1="13.4" x2="15.4" y2="17.6" />
+          </svg>
+        </button>
+        <button style={sx.heartBtn} onClick={toggleFavorite} aria-label="В избранное">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill={favorited ? "#FF5D8A" : "none"} stroke={favorited ? "#FF5D8A" : "#fff"} strokeWidth="2">
+            <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z" />
+          </svg>
+        </button>
         {photos.length > 1 && <div style={sx.photoCounter}>{activePhoto + 1} / {photos.length}</div>}
       </div>
       {photos.length > 1 && (
@@ -165,9 +218,96 @@ export default function PublicListingPage() {
             <div style={sx.agentSub}>Агент по объекту</div>
           </div>
         </div>
+
+        {/* Контакты — компактно, в духе Лалафо */}
+        <div style={sx.contactBlock}>
+          <div style={sx.contactTopRow}>
+            <div style={sx.contactPhoneLine}>
+              <IconPhone />
+              <span style={sx.contactPhoneText}>{l.agent_phone || "—"}</span>
+              {waNumber && (
+                <a href={`https://t.me/+${waNumber}`} target="_blank" rel="noopener noreferrer" style={sx.iconLink}><IconTelegram /></a>
+              )}
+              {waNumber && (
+                <a href={`https://wa.me/${waNumber}`} target="_blank" rel="noopener noreferrer" style={sx.iconLink}><IconWhatsapp /></a>
+              )}
+            </div>
+            <a href={`tel:${(l.agent_phone || "").replace(/[^\d+]/g, "")}`} style={sx.contactCallLink}>Позвонить</a>
+          </div>
+          {waNumber && (
+            <a href={`https://wa.me/${waNumber}`} target="_blank" rel="noopener noreferrer" style={sx.contactLinkRow}>
+              <IconWhatsapp /><span style={{ flex: 1, marginLeft: 8 }}>Написать в WhatsApp</span><span style={{ color: "#8B8B90" }}>›</span>
+            </a>
+          )}
+          <button onClick={() => setContactsOpen(true)} style={sx.showAllBtn}>Показать все контакты</button>
+        </div>
+
+        <div style={sx.metaRow}>
+          {l.created_at && <span>Создано: {new Date(l.created_at).toLocaleDateString("ru-RU")}</span>}
+          {l.display_id && <span> &nbsp;|&nbsp; ID {l.display_id}</span>}
+        </div>
       </div>
+
+      {contactsOpen && (
+        <div style={sx.modalOverlay} onClick={() => setContactsOpen(false)}>
+          <div style={sx.modalSheet} onClick={(e) => e.stopPropagation()}>
+            <div style={sx.modalHandle} />
+            <div style={sx.modalTitle}>Контакты</div>
+            <div style={sx.modalSubtitle}>Агент по объекту</div>
+
+            <div style={sx.modalCard}>
+              <div style={sx.modalRow}>
+                <IconPhone /><span style={{ flex: 1, marginLeft: 10 }}>{l.agent_phone || "—"}</span>
+                <a href={`tel:${(l.agent_phone || "").replace(/[^\d+]/g, "")}`} style={{ color: "#5BD98A", fontWeight: 700, fontSize: 13 }}>Позвонить</a>
+              </div>
+              {waNumber && (
+                <a href={`https://wa.me/${waNumber}`} target="_blank" rel="noopener noreferrer" style={sx.modalRow}>
+                  <IconWhatsapp /><span style={{ flex: 1, marginLeft: 10 }}>Написать в WhatsApp</span><span style={{ color: "#8B8B90" }}>›</span>
+                </a>
+              )}
+            </div>
+
+            <div style={sx.modalSubtitle}>Ещё RAYAN</div>
+            <div style={sx.modalCard}>
+              {RAYAN_INSTAGRAM && (
+                <a href={RAYAN_INSTAGRAM} target="_blank" rel="noopener noreferrer" style={sx.modalRow}>
+                  <IconInstagramSmall /><span style={{ flex: 1, marginLeft: 10 }}>Instagram RAYAN</span><span style={{ color: "#8B8B90" }}>›</span>
+                </a>
+              )}
+              {RAYAN_TELEGRAM && (
+                <a href={RAYAN_TELEGRAM} target="_blank" rel="noopener noreferrer" style={sx.modalRow}>
+                  <IconTelegram /><span style={{ flex: 1, marginLeft: 10 }}>Telegram-группа RAYAN</span><span style={{ color: "#8B8B90" }}>›</span>
+                </a>
+              )}
+              {RAYAN_WHATSAPP_CHANNEL && (
+                <a href={RAYAN_WHATSAPP_CHANNEL} target="_blank" rel="noopener noreferrer" style={{ ...sx.modalRow, borderBottom: "none" }}>
+                  <IconWhatsapp /><span style={{ flex: 1, marginLeft: 10 }}>WhatsApp-канал RAYAN</span><span style={{ color: "#8B8B90" }}>›</span>
+                </a>
+              )}
+            </div>
+
+            <button onClick={() => setContactsOpen(false)} style={sx.modalCloseBtn}>Закрыть</button>
+          </div>
+        </div>
+      )}
     </div>
   );
+}
+
+function IconPhone() {
+  return <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#8B8B90" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" /></svg>;
+}
+function IconTelegram() {
+  return <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#4BA3E3" strokeWidth="2"><path d="M22 2 11 13" /><path d="M22 2 15 22l-4-9-9-4 20-7z" /></svg>;
+}
+function IconWhatsapp() {
+  return <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#3ED07A" strokeWidth="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" /></svg>;
+}
+function IconInstagramSmall() {
+  return <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#E1306C" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5" /><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" /><line x1="17.5" y1="6.5" x2="17.5" y2="6.5" /></svg>;
+}
+function IconInstagram() {
+  return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5" /><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" /><line x1="17.5" y1="6.5" x2="17.5" y2="6.5" /></svg>;
 }
 
 function Row({ label, value }) {
@@ -189,6 +329,10 @@ const sx = {
   photoPlaceholder: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#8B8B90", background: "#FFFFFF" },
   backBtn: { position: "absolute", top: 14, left: 14, width: 36, height: 36, borderRadius: "50%",
     background: "rgba(0,0,0,0.45)", color: "#fff", border: "none", fontSize: 22, lineHeight: "36px" },
+  shareBtn: { position: "absolute", top: 14, right: 14, width: 36, height: 36, borderRadius: "50%",
+    background: "rgba(0,0,0,0.45)", border: "none", display: "flex", alignItems: "center", justifyContent: "center" },
+  heartBtn: { position: "absolute", bottom: 14, left: 14, width: 36, height: 36, borderRadius: "50%",
+    background: "rgba(0,0,0,0.45)", border: "none", display: "flex", alignItems: "center", justifyContent: "center" },
   photoCounter: { position: "absolute", bottom: 12, right: 12, background: "rgba(0,0,0,0.55)", color: "#fff",
     fontSize: 12, padding: "3px 10px", borderRadius: 10 },
   thumbRow: { display: "flex", gap: 6, padding: "8px 16px", overflowX: "auto" },
@@ -218,4 +362,25 @@ const sx = {
     display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 15 },
   agentName: { fontSize: 14, fontWeight: 700 },
   agentSub: { fontSize: 12, color: "#8B8B90" },
+
+  contactBlock: { marginTop: 6, background: "rgba(255,255,255,0.04)", borderRadius: 12, overflow: "hidden" },
+  contactTopRow: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 14px", borderBottom: "1px solid rgba(255,255,255,0.06)" },
+  contactPhoneLine: { display: "flex", alignItems: "center", gap: 10 },
+  contactPhoneText: { fontSize: 14, fontWeight: 700 },
+  iconLink: { display: "flex" },
+  contactCallLink: { color: "#5BD98A", fontWeight: 700, fontSize: 13.5, textDecoration: "none" },
+  contactLinkRow: { display: "flex", alignItems: "center", padding: "13px 14px", borderBottom: "1px solid rgba(255,255,255,0.06)", textDecoration: "none", color: "#fff" },
+  showAllBtn: { width: "100%", background: "none", border: "none", color: "#5BD98A", fontWeight: 700, fontSize: 13.5, padding: "13px 0" },
+  metaRow: { fontSize: 11.5, color: "#7FA396", marginTop: 14, paddingBottom: 10 },
+
+  modalOverlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "flex-end", zIndex: 50 },
+  modalSheet: { width: "100%", maxWidth: 480, margin: "0 auto", background: "#18181A", borderRadius: "16px 16px 0 0", padding: "10px 20px 28px" },
+  modalHandle: { width: 40, height: 4, background: "rgba(255,255,255,0.2)", borderRadius: 2, margin: "0 auto 16px" },
+  modalTitle: { fontSize: 17, fontWeight: 800, marginBottom: 4 },
+  modalSubtitle: { fontSize: 11.5, fontWeight: 700, color: "#7FA396", textTransform: "uppercase", letterSpacing: 0.4, margin: "16px 0 8px" },
+  modalSocialRow: { display: "flex", gap: 20, marginBottom: 18 },
+  modalSocialItem: { display: "flex", flexDirection: "column", alignItems: "center", gap: 6, color: "#fff", fontSize: 11.5, textDecoration: "none" },
+  modalCard: { background: "rgba(255,255,255,0.04)", borderRadius: 12, overflow: "hidden" },
+  modalRow: { display: "flex", alignItems: "center", padding: "13px 14px", borderBottom: "1px solid rgba(255,255,255,0.06)", textDecoration: "none", color: "#fff", fontSize: 13.5 },
+  modalCloseBtn: { width: "100%", marginTop: 16, background: "rgba(255,255,255,0.06)", border: "none", color: "#fff", borderRadius: 10, padding: "12px 0", fontWeight: 700, fontSize: 14 },
 };
