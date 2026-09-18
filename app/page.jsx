@@ -213,16 +213,16 @@ export default function HomePage() {
   useEffect(() => {
     async function loadCounts() {
       try {
-        const { count: total, error: e1 } = await supabase.from("listings").select("*", { count: "exact", head: true });
-        const { count: active, error: e2 } = await supabase.from("listings").select("*", { count: "exact", head: true }).eq("status", "активен");
-        const { count: review, error: e3 } = await supabase.from("listings").select("*", { count: "exact", head: true }).eq("status", "на проверке");
-        const { count: archived, error: e4 } = await supabase.from("listings").select("*", { count: "exact", head: true }).eq("status", "архив");
+        const { count: total } = await supabase.from("listings").select("*", { count: "exact", head: true });
+        const { count: active } = await supabase.from("listings").select("*", { count: "exact", head: true }).eq("status", "активен");
+        const { count: review } = await supabase.from("listings").select("*", { count: "exact", head: true }).eq("status", "на проверке");
+        const { count: archived } = await supabase.from("listings").select("*", { count: "exact", head: true }).eq("status", "архив");
         const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
-        // "Новые" — это дата, когда объект РЕАЛЬНО стал активным (published_at), а не когда
-        // запись впервые появилась в базе (created_at) — черновик мог пролежать несколько дней.
+        // "Новые" — дата, когда объект РЕАЛЬНО стал активным (published_at), а не когда запись
+        // впервые появилась в базе. Если поле published_at ещё не добавлено в Supabase, этот
+        // ОДИН запрос вернёт ошибку — но это больше не должно обнулять остальные счётчики.
         const { count: today, error: e5 } = await supabase.from("listings").select("*", { count: "exact", head: true }).eq("status", "активен").gte("published_at", todayStart.toISOString());
-        if (e1 || e2 || e3 || e4 || e5) throw e1 || e2 || e3 || e4 || e5;
-        setCounts({ всего: total || 0, активен: active || 0, "на проверке": review || 0, архив: archived || 0, сегодня: today || 0 });
+        setCounts({ всего: total || 0, активен: active || 0, "на проверке": review || 0, архив: archived || 0, сегодня: e5 ? 0 : (today || 0) });
       } catch (err) {
         setError(err.message);
       } finally {
