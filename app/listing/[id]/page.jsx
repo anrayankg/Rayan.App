@@ -141,6 +141,7 @@ export default function ListingDetailPage() {
   const [error, setError] = useState(null);
   const [approving, setApproving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -239,6 +240,25 @@ export default function ListingDetailPage() {
           Реклама →
         </button>
       </div>
+
+      {(listing.type === "вторичка" || listing.type === "первичка") && listing.status === "активен" && (
+        <div style={{ margin: "0 20px 16px", display: "flex", alignItems: "center", justifyContent: "space-between",
+          background: "rgba(31,163,92,0.08)", border: "1px solid rgba(31,163,92,0.25)", borderRadius: 12, padding: "10px 14px" }}>
+          <div>
+            <div style={{ fontSize: 11, color: "#7FA396" }}>Для клиента</div>
+            <div style={{ fontSize: 13, color: "#F6F1E4", fontWeight: 700 }}>{linkCopied ? "Ссылка скопирована ✓" : "Публичная ссылка на объект"}</div>
+          </div>
+          <button onClick={() => {
+              navigator.clipboard.writeText(`${window.location.origin}/p/${id}`);
+              setLinkCopied(true);
+              setTimeout(() => setLinkCopied(false), 2000);
+            }}
+            style={{ background: "#1FA35C", border: "none", color: "#fff",
+              borderRadius: 8, padding: "7px 12px", fontSize: 12, fontWeight: 700 }}>
+            Копировать
+          </button>
+        </div>
+      )}
 
       <div className="detail-section">
         <div className="detail-section-title">Фото ({(listing.photos || []).length})</div>
