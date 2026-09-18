@@ -211,8 +211,32 @@ export default function ListingDetailPage() {
             {approving ? "Одобряю…" : "✓ Одобрить"}
           </button>
         )}
+        {(listing.type === "вторичка" || listing.type === "первичка") && (
+          <button className="next-btn" style={{ flex: 1, background: "rgba(212,164,55,0.15)", color: "var(--gold-light)" }}
+            onClick={() => router.push(`/add/${listing.type}?edit=${id}`)}>
+            ✎ Редактировать
+          </button>
+        )}
         <button className="next-btn" style={{ flex: 1, background: "#E8877A", color: "#3A1512" }} disabled={approving || deleting} onClick={remove}>
           {deleting ? "Удаляю…" : "✕ Удалить"}
+        </button>
+      </div>
+      {!(listing.type === "вторичка" || listing.type === "первичка") && (
+        <div style={{ margin: "0 20px 16px", color: "#7FA396", fontSize: 12 }}>
+          Для типа «{listing.type}» подробная форма редактирования пока не готова — можно править цену и фото прямо здесь.
+        </div>
+      )}
+
+      <div style={{ margin: "0 20px 16px", display: "flex", alignItems: "center", justifyContent: "space-between",
+        background: "rgba(255,255,255,0.04)", border: "1px solid rgba(212,164,55,0.18)", borderRadius: 12, padding: "10px 14px" }}>
+        <div>
+          <div style={{ fontSize: 11, color: "#7FA396" }}>Реклама</div>
+          <div style={{ fontSize: 13, color: "#F6F1E4", fontWeight: 700 }}>Пока не настроена</div>
+        </div>
+        <button onClick={() => router.push("/ads")}
+          style={{ background: "none", border: "1px solid var(--gold-light)", color: "var(--gold-light)",
+            borderRadius: 8, padding: "7px 12px", fontSize: 12, fontWeight: 700 }}>
+          Реклама →
         </button>
       </div>
 
