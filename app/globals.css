@@ -188,6 +188,7 @@ body { background: var(--bg-main); margin: 0; font-family: -apple-system, BlinkM
 .status-badge.st-забронирован { background: rgba(120,160,230,0.2); color: #A9C4F5; }
 .status-badge.st-снят_с_продажи { background: rgba(232,135,122,0.18); color: #E8877A; }
 .status-badge.st-архив { background: rgba(120,120,120,0.2); color: #9AA; }
+.status-badge.st-черновик { background: rgba(139,139,144,0.2); color: #B8B8BE; }
 
 .empty-state { text-align: center; color: #7FA396; padding: 60px 20px; font-size: 14px; }
 
@@ -292,10 +293,12 @@ body { background: var(--bg-main); margin: 0; font-family: -apple-system, BlinkM
 .brand-strip-sub { font-size: 10.5px; color: var(--gold); letter-spacing: 0.12em; text-transform: uppercase; display: block; margin-top: 6px; }
 
 /* ===== Рекламная карусель баннеров ===== */
-.banner-carousel { display: flex; gap: 12px; overflow-x: auto; padding: 14px 20px 4px;
-  -webkit-overflow-scrolling: touch; }
-.banner-carousel::-webkit-scrollbar { display: none; }
-.banner-card { flex: 0 0 86%; height: 150px; border-radius: 12px; overflow: hidden;
+/* .banner-carousel — просто "окно", обрезающее край; едет не оно, а .banner-track внутри
+   (через transform в JS) — так надёжнее, чем двигать scrollLeft, который на iOS Safari
+   спорит с собственной инерцией скролла. */
+.banner-carousel { overflow: hidden; padding: 14px 20px 4px; }
+.banner-track { display: flex; gap: 12px; width: max-content; }
+.banner-card { flex: 0 0 86vw; max-width: 410px; height: 150px; border-radius: 12px; overflow: hidden;
   position: relative; display: flex; align-items: center; justify-content: center; }
 .banner-invest-text { color: #FFFFFF; font-family: 'Manrope', sans-serif; font-weight: 800; font-size: 21px;
   text-align: center; letter-spacing: 0.02em; line-height: 1.35; padding: 0 18px; }
@@ -308,7 +311,7 @@ body { background: var(--bg-main); margin: 0; font-family: -apple-system, BlinkM
 /* ===== Плашка сверху: обновлено — иконка + переключатель языка ===== */
 .brand-strip { position: relative; justify-content: space-between; }
 .brand-strip-left { display: flex; align-items: flex-start; gap: 10px; }
-.brand-strip-icon { height: 30px; width: auto; display: block; }
+.brand-strip-icon { height: 40px; width: auto; display: block; }
 .lang-switch { background: rgba(255,255,255,0.08); border: 1px solid var(--border-subtle); border-radius: 10px;
   padding: 6px 10px; display: flex; align-items: center; gap: 5px; color: var(--text-primary); font-size: 12px; font-weight: 700; }
 .lang-dropdown { position: absolute; top: 54px; right: 20px; background: var(--bg-card); border: 1px solid var(--border-subtle);
