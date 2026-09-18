@@ -1,6 +1,6 @@
 "use client";
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 import { CITIES, CITY_DISTRICTS } from "../../../lib/locations";
 import LocationPicker from "../../../components/LocationPicker";
@@ -121,8 +121,11 @@ function MiniYesNo({ label, value, onChange }) {
   return <MiniChips label={label} options={["Да", "Нет"]} value={value} onChange={onChange} />;
 }
 
-export default function VtorichkaForm() {
+function VtorichkaForm() {
   const router = useRouter();
+  const editId = useSearchParams().get("edit");
+  const [loadingEdit, setLoadingEdit] = useState(!!editId);
+  const [currentStatus, setCurrentStatus] = useState(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
@@ -247,48 +250,175 @@ export default function VtorichkaForm() {
   ].filter(Boolean);
   const canSubmit = missingFields.length === 0;
 
+  // Режим редактирования (?edit=ID) — подтягиваем то, что уже есть в базе,
+  // в те же самые поля формы, которыми обычно создают объект.
+  useEffect(() => {
+    if (!editId) return;
+    async function loadExisting() {
+      const { data: l } = await supabase.from("listings").select("*").eq("id", editId).single();
+      const { data: c } = await supabase.from("listing_contacts").select("*").eq("listing_id", editId).maybeSingle();
+      const { data: f } = await supabase.from("listing_financial").select("*").eq("listing_id", editId).maybeSingle();
+      if (l) {
+        setCurrentStatus(l.status || null);
+        setCity(l.city || "Бишкек");
+        setDistrict(l.district || "");
+        setRoomType(l.room_type || l.rooms || "");
+        setSeries(l.series || "");
+        setArea(l.area_m2 != null ? String(l.area_m2) : "");
+        setFloor(l.floor != null ? String(l.floor) : "");
+        setFloorsTotal(l.floors_total != null ? String(l.floors_total) : "");
+        setDocs(l.documents || []);
+        setHeating(l.heating || "");
+        setGas(l.gas ?? null); setWater(l.water ?? null); setElectricity(l.electricity ?? null);
+        setSewerage(l.sewerage ?? null); setHotWater(l.hot_water ?? null);
+        if (l.heating || l.gas != null || l.water != null) setCommsTouched(true);
+        setPrice(l.price != null ? String(l.price) : "");
+        setTorg(!!l.torg);
+        setCurrency(l.currency_new || l.currency || "USD");
+        setDealTerms(l.deal_terms ? l.deal_terms.split(", ").filter(Boolean) : []);
+        if (l.obmen_na) setObmenDrugoe(l.obmen_na);
+        setMapLat(l.map_lat ?? null);
+        setMapLng(l.map_lng ?? null);
+        setZhk(l.zhk || "");
+        setSk(l.sk || "");
+        setDescription(l.description || "");
+        setPhotos(l.photos || []);
+        setContractStatus(l.contract_status || "без договора");
+        setExtra(l.extra_details || {});
+        setAgentName(l.agent_name || "");
+        setAgentPhone(l.agent_phone || "");
+      }
+      if (c) {
+        setOwnerName(c.owner_name || "");
+        setOwnerPhone(c.owner_phone || "");
+        setOwnerWhatsapp(c.owner_whatsapp || "");
+        setExactAddress(c.exact_address || "");
+        const docPaths = c.document_photos || [];
+        const contractPaths = c.contract_photos || [];
+        setDocPhotos(docPaths);
+        setContractPhotos(contractPaths);
+        setDocPreviews(docPaths.map((p) => supabase.storage.from("listing-documents").getPublicUrl(p).data?.publicUrl || ""));
+        setContractPreviews(contractPaths.map((p) => supabase.storage.from("listing-documents").getPublicUrl(p).data?.publicUrl || ""));
+      }
+      if (f) {
+        setCommissionPercent(f.commission_percent || "");
+        setCommissionTerms(f.commission_terms || "");
+        setVRuki(f.v_ruki != null ? String(f.v_ruki) : "");
+        setVRukiCurrency(f.v_ruki_currency || "USD");
+        setAgentComment(f.agent_notes || "");
+      }
+      setLoadingEdit(false);
+    }
+    loadExisting();
+  }, [editId]);
+
+  function numOrNull(v) { return v === "" || v === null || v === undefined ? null : Number(v); }
+
+  // Сохранить как есть, даже если обязательные поля ещё не заполнены — чтобы агент
+  // не терял введённое, если его отвлекли и он не успел закончить объект целиком.
+  async function handleSaveDraft() {
+    setSaving(true);
+    setError(null);
+    try {
+      const payload = {
+        type: "вторичка",
+        price: numOrNull(price),
+        currency_new: currency,
+        district, city,
+        room_type: roomType, rooms: roomType, series,
+        area_m2: numOrNull(area), floor: numOrNull(floor), floors_total: numOrNull(floorsTotal),
+        zhk, sk,
+        documents: docs, heating,
+        gas, water, electricity, sewerage, hot_water: hotWater,
+        map_lat: mapLat, map_lng: mapLng,
+        deal_terms: dealTerms.join(", "),
+        obmen_na: dealTerms.includes("Обмен") ? [...obmenNa, obmenDrugoe].filter(Boolean).join(", ") : null,
+        torg, description, photos,
+        contract_status: contractStatus,
+        extra_details: extra,
+        agent_phone: agentPhone, agent_name: agentName,
+      };
+      // Черновик не публикуется, пока сам агент не дозаполнит и не нажмёт финальную кнопку —
+      // но если объект уже был опубликован (активен/архив и т.п.), статус не трогаем.
+      if (!editId || !currentStatus) payload.status = "черновик";
+
+      let listingId = editId;
+      if (editId) {
+        const { error: eUpd } = await supabase.from("listings").update(payload).eq("id", editId);
+        if (eUpd) throw eUpd;
+      } else {
+        const { data: listing, error: e1 } = await supabase.from("listings").insert(payload).select().single();
+        if (e1) throw e1;
+        listingId = listing.id;
+      }
+      await supabase.from("listing_contacts").upsert({
+        listing_id: listingId, source_type: "собственник",
+        owner_name: ownerName, owner_phone: ownerPhone, owner_whatsapp: ownerWhatsapp,
+        exact_address: exactAddress, document_photos: docPhotos, contract_photos: contractPhotos,
+      }, { onConflict: "listing_id" });
+      await supabase.from("listing_financial").upsert({
+        listing_id: listingId, commission_percent: commissionPercent, commission_terms: commissionTerms,
+        v_ruki: vRuki ? Number(vRuki) : null, v_ruki_currency: vRukiCurrency, agent_notes: agentComment,
+      }, { onConflict: "listing_id" });
+
+      router.push("/my");
+    } catch (err) {
+      setError("Не удалось сохранить черновик: " + err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function handleSubmit() {
     setSaving(true);
     setError(null);
     try {
-      const { data: listing, error: e1 } = await supabase
-        .from("listings")
-        .insert({
-          type: "вторичка",
-          status: "на проверке",
-          price: Number(price),
-          currency_new: currency,
-          district,
-          city,
-          room_type: roomType,
-          rooms: roomType,
-          series,
-          area_m2: Number(area),
-          floor: Number(floor),
-          floors_total: Number(floorsTotal),
-          zhk, sk,
-          documents: docs,
-          heating,
-          gas, water, electricity, sewerage, hot_water: hotWater,
-          map_lat: mapLat,
-          map_lng: mapLng,
-          deal_terms: dealTerms.join(", "),
-          obmen_na: dealTerms.includes("Обмен") ? [...obmenNa, obmenDrugoe].filter(Boolean).join(", ") : null,
-          torg,
-          description,
-          photos,
-          contract_status: contractStatus,
-          extra_details: extra,
-          agent_phone: agentPhone,
-          agent_name: agentName,
-        })
-        .select()
-        .single();
+      const payload = {
+        type: "вторичка",
+        price: Number(price),
+        currency_new: currency,
+        district,
+        city,
+        room_type: roomType,
+        rooms: roomType,
+        series,
+        area_m2: Number(area),
+        floor: Number(floor),
+        floors_total: Number(floorsTotal),
+        zhk, sk,
+        documents: docs,
+        heating,
+        gas, water, electricity, sewerage, hot_water: hotWater,
+        map_lat: mapLat,
+        map_lng: mapLng,
+        deal_terms: dealTerms.join(", "),
+        obmen_na: dealTerms.includes("Обмен") ? [...obmenNa, obmenDrugoe].filter(Boolean).join(", ") : null,
+        torg,
+        description,
+        photos,
+        contract_status: contractStatus,
+        extra_details: extra,
+        agent_phone: agentPhone,
+        agent_name: agentName,
+      };
+      if (!editId) {
+        payload.status = "активен"; // заполнил обязательные поля и отправил — сразу публикуется, без отдельного одобрения
+      } else if (!currentStatus || currentStatus === "черновик" || currentStatus === "на проверке") {
+        payload.status = "активен"; // черновик дозаполнили до конца — тоже публикуется
+      } // если объект уже активен/в архиве/продан и т.п. — статус при обычном редактировании не трогаем
 
-      if (e1) throw e1;
+      let listingId = editId;
+      if (editId) {
+        const { error: eUpd } = await supabase.from("listings").update(payload).eq("id", editId);
+        if (eUpd) throw eUpd;
+      } else {
+        const { data: listing, error: e1 } = await supabase.from("listings").insert(payload).select().single();
+        if (e1) throw e1;
+        listingId = listing.id;
+      }
 
-      const { error: e2 } = await supabase.from("listing_contacts").insert({
-        listing_id: listing.id,
+      const { error: e2 } = await supabase.from("listing_contacts").upsert({
+        listing_id: listingId,
         source_type: "собственник",
         owner_name: ownerName,
         owner_phone: ownerPhone,
@@ -296,29 +426,37 @@ export default function VtorichkaForm() {
         exact_address: exactAddress,
         document_photos: docPhotos,
         contract_photos: contractPhotos,
-      });
+      }, { onConflict: "listing_id" });
       if (e2) throw e2;
 
-      const { error: e3 } = await supabase.from("listing_financial").insert({
-        listing_id: listing.id,
+      const { error: e3 } = await supabase.from("listing_financial").upsert({
+        listing_id: listingId,
         commission_percent: commissionPercent,
         commission_terms: commissionTerms,
         v_ruki: vRuki ? Number(vRuki) : null,
         v_ruki_currency: vRukiCurrency,
         agent_notes: agentComment,
-      });
+      }, { onConflict: "listing_id" });
       if (e3) throw e3;
 
       localStorage.setItem("rayan_agent_name", agentName);
       localStorage.setItem("rayan_agent_phone", agentPhone);
 
       setSuccess(true);
-      setTimeout(() => router.push("/"), 1200);
+      setTimeout(() => router.push(editId ? `/listing/${editId}` : "/"), 1200);
     } catch (err) {
       setError(err.message);
     } finally {
       setSaving(false);
     }
+  }
+
+  if (loadingEdit) {
+    return (
+      <div className="app-shell" style={{ paddingBottom: 40, display: "flex", alignItems: "center", justifyContent: "center", minHeight: "60vh" }}>
+        <div style={{ color: "#7FA396" }}>Загружаю объект…</div>
+      </div>
+    );
   }
 
   return (
@@ -327,7 +465,7 @@ export default function VtorichkaForm() {
         <button className="back-btn" onClick={() => router.back()}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F6F1E4" strokeWidth="2"><path d="M15 18l-6-6 6-6" /></svg>
         </button>
-        <div className="page-title">Вторичка</div>
+        <div className="page-title">{editId ? "Редактирование — Вторичка" : "Вторичка"}</div>
       </div>
 
       <div className="steps">
@@ -665,15 +803,30 @@ export default function VtorichkaForm() {
       </div>
 
       {error && <div className="status-msg error">Ошибка: {error}</div>}
-      {success && <div className="status-msg success">Объект сохранён! Возвращаемся на главную...</div>}
+      {success && <div className="status-msg success">{editId ? "Изменения сохранены! Возвращаемся к объекту..." : "Объект сохранён! Возвращаемся на главную..."}</div>}
 
       <button className="next-btn" disabled={saving} onClick={() => { if (!canSubmit) { setAttemptedSubmit(true); } else { handleSubmit(); } }}>
-        {saving ? "СОХРАНЕНИЕ..." : "ОТПРАВИТЬ НА ПРОВЕРКУ"}
+        {saving ? "СОХРАНЕНИЕ..." : (editId ? "СОХРАНИТЬ ИЗМЕНЕНИЯ" : "ОПУБЛИКОВАТЬ")}
       </button>
       {attemptedSubmit && !canSubmit && (
         <div className="status-msg error">Не заполнено: {missingFields.join(", ")}</div>
       )}
+      <button
+        disabled={saving}
+        onClick={handleSaveDraft}
+        style={{ width: "100%", marginTop: 10, background: "none", border: "none", color: "#7FA396", fontSize: 13, fontWeight: 700, padding: "10px 0" }}
+      >
+        Сохранить черновик и продолжить позже
+      </button>
       <div className="progress-note">Поля со звёздочкой * обязательны</div>
     </div>
+  );
+}
+
+export default function VtorichkaPage() {
+  return (
+    <Suspense fallback={<div className="app-shell" style={{ paddingBottom: 40 }} />}>
+      <VtorichkaForm />
+    </Suspense>
   );
 }
