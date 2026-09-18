@@ -3,7 +3,7 @@ import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "../../lib/supabase";
 
-const STATUSES = ["активен", "на проверке", "забронирован", "продан", "снят с продажи", "архив"];
+const STATUSES = ["активен", "черновик", "на проверке", "забронирован", "продан", "снят с продажи", "архив"];
 
 function badgeClass(status) {
   const slug = (status || "").replace(/ /g, "_");
