@@ -173,31 +173,38 @@ export default function HomePage() {
   const carouselRef = useRef(null);
 
   useEffect(() => {
-    const el = carouselRef.current;
-    if (!el) return;
+    const track = carouselRef.current;
+    if (!track) return;
     let raf;
     let paused = false;
+    let offset = 0;
     const speed = 0.7; // px за кадр — заметный, но не дёрганый ход
     const step = () => {
-      if (!paused && el) {
+      if (!paused && track) {
         // Баннеры отрисованы ДВАЖДЫ подряд (см. JSX) — это ровно половина scrollWidth.
-        // Когда доезжаем до конца первого набора, тихо возвращаемся на 0: там в этот
-        // момент как раз показан такой же (второй) набор, поэтому скачок не заметен.
-        const singleSetWidth = el.scrollWidth / 2;
+        // На середине тихо возвращаемся к 0: там в этот момент показан такой же
+        // (второй) набор, поэтому скачок не заметен — карусель выглядит бесконечной.
+        //
+        // Двигаем через CSS transform, а не через el.scrollLeft: на iOS Safari
+        // scrollLeft, выставляемый из JS, конфликтует с собственной физикой
+        // нативного скролла контейнера — это была настоящая причина, почему
+        // баннеры не ехали даже после предыдущих правок. transform ни с чем
+        // не спорит и всегда отрабатывает.
+        const singleSetWidth = track.scrollWidth / 2;
         if (singleSetWidth > 0) {
-          let next = el.scrollLeft + speed;
-          if (next >= singleSetWidth) next -= singleSetWidth;
-          el.scrollLeft = next;
+          offset += speed;
+          if (offset >= singleSetWidth) offset -= singleSetWidth;
+          track.style.transform = `translateX(-${offset}px)`;
         }
       }
       raf = requestAnimationFrame(step);
     };
     const pause = () => { paused = true; };
     const resume = () => { setTimeout(() => { paused = false; }, 2500); };
-    el.addEventListener("touchstart", pause);
-    el.addEventListener("touchend", resume);
-    el.addEventListener("mousedown", pause);
-    el.addEventListener("mouseup", resume);
+    track.addEventListener("touchstart", pause);
+    track.addEventListener("touchend", resume);
+    track.addEventListener("mousedown", pause);
+    track.addEventListener("mouseup", resume);
     raf = requestAnimationFrame(step);
     return () => { cancelAnimationFrame(raf); };
   }, []);
@@ -252,7 +259,8 @@ export default function HomePage() {
         )}
       </div>
 
-      <div className="banner-carousel" ref={carouselRef}>
+      <div className="banner-carousel">
+      <div className="banner-track" ref={carouselRef}>
         <div className="banner-card banner-rayan">
           <img src={LOGO_TRANSPARENT} alt="RAYAN центр недвижимости" className="banner-fg-logo" />
         </div>
@@ -274,6 +282,7 @@ export default function HomePage() {
         <div className="banner-card banner-invest" aria-hidden="true">
           <div className="banner-invest-text">Инвестиции в строительство<br />от 50 000$</div>
         </div>
+      </div>
       </div>
 
       <div className="search-row">
