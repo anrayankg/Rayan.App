@@ -255,7 +255,9 @@ function VtorichkaForm() {
   useEffect(() => {
     if (!editId) return;
     async function loadExisting() {
-      const { data: l } = await supabase.from("listings").select("*").eq("id", editId).single();
+     try {
+      const { data: l, error: eL } = await supabase.from("listings").select("*").eq("id", editId).single();
+      if (eL) throw eL;
       const { data: c } = await supabase.from("listing_contacts").select("*").eq("listing_id", editId).maybeSingle();
       const { data: f } = await supabase.from("listing_financial").select("*").eq("listing_id", editId).maybeSingle();
       if (l) {
@@ -307,7 +309,11 @@ function VtorichkaForm() {
         setVRukiCurrency(f.v_ruki_currency || "USD");
         setAgentComment(f.agent_notes || "");
       }
+     } catch (err) {
+       setError("Не удалось загрузить объект: " + err.message);
+     } finally {
       setLoadingEdit(false);
+     }
     }
     loadExisting();
   }, [editId]);
@@ -403,8 +409,10 @@ function VtorichkaForm() {
       };
       if (!editId) {
         payload.status = "активен"; // заполнил обязательные поля и отправил — сразу публикуется, без отдельного одобрения
+        payload.published_at = new Date().toISOString();
       } else if (!currentStatus || currentStatus === "черновик" || currentStatus === "на проверке") {
         payload.status = "активен"; // черновик дозаполнили до конца — тоже публикуется
+        payload.published_at = new Date().toISOString(); // именно СЕГОДНЯ объект стал активным, даже если черновик лежал 3 дня
       } // если объект уже активен/в архиве/продан и т.п. — статус при обычном редактировании не трогаем
 
       let listingId = editId;
