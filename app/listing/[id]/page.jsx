@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 import PhotoUploader from "../../../components/PhotoUploader";
+import VideoReviewBlock from "../../../components/VideoReviewBlock";
+import { PLATFORM_LABELS, PLATFORM_ICON } from "../../../lib/videoLinks";
 
 function photoUrl(path) {
   const { data } = supabase.storage.from("listing-photos").getPublicUrl(path);
@@ -268,6 +270,28 @@ export default function ListingDetailPage() {
             setListing((l) => ({ ...l, photos: newPhotos }));
             const { error: e } = await supabase.from("listings").update({ photos: newPhotos }).eq("id", id);
             if (e) alert("Не удалось сохранить фото: " + e.message);
+          }}
+        />
+      </div>
+
+      <div className="detail-section">
+        <div className="detail-section-title">Видеообзор</div>
+        {(listing.video_links || []).length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
+            {listing.video_links.map((v) => (
+              <a key={v.platform} href={v.url} target="_blank" rel="noopener noreferrer" className="video-platform-btn"
+                style={{ flex: "0 1 auto", textDecoration: "none", display: "inline-block" }}>
+                {PLATFORM_ICON[v.platform]} Видеообзор — {PLATFORM_LABELS[v.platform]}
+              </a>
+            ))}
+          </div>
+        )}
+        <VideoReviewBlock
+          videos={listing.video_links || []}
+          onChange={async (newVideos) => {
+            setListing((l) => ({ ...l, video_links: newVideos }));
+            const { error: e } = await supabase.from("listings").update({ video_links: newVideos }).eq("id", id);
+            if (e) alert("Не удалось сохранить видео: " + e.message);
           }}
         />
       </div>
