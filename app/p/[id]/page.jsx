@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 import { publicExtraEntries, extraLabel, extraDisplayValue } from "../../../lib/extraFields";
+import { PLATFORM_LABELS, PLATFORM_ICON } from "../../../lib/videoLinks";
 
 // Публичная страница объекта — то, что видит КЛИЕНТ по прямой ссылке, без входа.
 // Специально запрашивает только таблицу listings (без listing_contacts/listing_financial) —
@@ -81,7 +82,7 @@ export default function PublicListingPage() {
       const { data, error: e } = await supabase
         .from("listings")
         // Только публичные колонки — сознательно НЕ трогаем listing_contacts / listing_financial.
-        .select("id, display_id, type, status, price, currency, currency_new, district, city, zhk, sk, series, room_type, rooms, area_m2, floor, floors_total, construction_status, delivery_year, delivery_quarter, documents, heating, description, photos, extra_details, agent_name, agent_phone, created_at")
+        .select("id, display_id, type, status, price, currency, currency_new, district, city, zhk, sk, series, room_type, rooms, area_m2, floor, floors_total, construction_status, delivery_year, delivery_quarter, documents, heating, description, photos, video_links, extra_details, agent_name, agent_phone, created_at")
         .eq("id", id).eq("status", "активен").single();
       if (e) { setError("Объект не найден или снят с публикации"); return; }
       setListing(data);
@@ -173,6 +174,17 @@ export default function PublicListingPage() {
         <div style={sx.category}>{categoryLabel(l.type)}</div>
         <div style={sx.location}>{[l.zhk, l.district].filter(Boolean).join(", ") || l.city || "Бишкек"}</div>
 
+        {/* Видеообзор — прямая кнопка(и), если агент добавил */}
+        {(l.video_links || []).length > 0 && (
+          <div style={sx.videoRow}>
+            {l.video_links.map((v) => (
+              <a key={v.platform} href={v.url} target="_blank" rel="noopener noreferrer" style={sx.videoBtn}>
+                {PLATFORM_ICON[v.platform]} Видеообзор {l.video_links.length > 1 ? `— ${PLATFORM_LABELS[v.platform]}` : ""}
+              </a>
+            ))}
+          </div>
+        )}
+
         {/* Кнопки контакта — агент RAYAN, не собственник */}
         <div style={sx.ctaRow}>
           <a href={`tel:${(l.agent_phone || "").replace(/[^\d+]/g, "")}`} style={sx.callBtn}>Позвонить</a>
@@ -239,7 +251,7 @@ export default function PublicListingPage() {
               <IconWhatsapp /><span style={{ flex: 1, marginLeft: 8 }}>Написать в WhatsApp</span><span style={{ color: "#8B8B90" }}>›</span>
             </a>
           )}
-          <button onClick={() => setContactsOpen(true)} style={sx.showAllBtn}>Показать все контакты</button>
+          <button onClick={() => setContactsOpen(true)} style={sx.showAllBtn}>Соцсети и контакты</button>
         </div>
 
         <div style={sx.metaRow}>
@@ -343,6 +355,10 @@ const sx = {
   charLine: { fontSize: 14.5, fontWeight: 700, marginTop: 12 },
   category: { fontSize: 12.5, color: "#8B8B90", marginTop: 3 },
   location: { fontSize: 12.5, color: "#8B8B90" },
+  videoRow: { display: "flex", flexWrap: "wrap", gap: 8, marginTop: 14 },
+  videoBtn: { display: "flex", alignItems: "center", gap: 6, background: "rgba(212,164,55,0.14)",
+    border: "1px solid rgba(212,164,55,0.4)", color: "#F3D477", textDecoration: "none",
+    padding: "9px 14px", borderRadius: 10, fontSize: 13, fontWeight: 700 },
   ctaRow: { display: "flex", gap: 8, marginTop: 16 },
   callBtn: { flex: 1, background: "#1FA35C", color: "#fff", textAlign: "center", padding: "12px 0",
     borderRadius: 10, fontWeight: 700, fontSize: 14.5, textDecoration: "none" },
