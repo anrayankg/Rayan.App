@@ -8,6 +8,7 @@ import MapPicker from "../../../components/MapPicker";
 import PhoneInput, { isPhoneComplete } from "../../../components/PhoneInput";
 import { Picker, MultiPicker } from "../../../components/Picker";
 import PhotoUploader from "../../../components/PhotoUploader";
+import VideoReviewBlock from "../../../components/VideoReviewBlock";
 
 
 const ROOM_TYPES = [
@@ -228,6 +229,8 @@ function PervichkaForm() {
   const [sk, setSk] = useState("");
   const [description, setDescription] = useState("");
   const [photos, setPhotos] = useState([]);
+  const [videos, setVideos] = useState([]);
+  const [videoPendingError, setVideoPendingError] = useState(false);
 
   const [ownerName, setOwnerName] = useState("");
   const [agentName, setAgentName] = useState("");
@@ -317,7 +320,7 @@ function PervichkaForm() {
     !commissionPercent && "Комиссия", !commissionTerms && "Условия комиссии",
     !vRuki && "Цена в руки", dealTerms.length === 0 && "Условия сделки", !description && "Описание",
   ].filter(Boolean);
-  const canSubmit = missingFields.length === 0;
+  const canSubmit = missingFields.length === 0 && !videoPendingError;
 
   // Режим редактирования (?edit=ID) — подтягиваем то, что уже есть в базе.
   useEffect(() => {
@@ -356,6 +359,7 @@ function PervichkaForm() {
         setSk(l.sk || "");
         setDescription(l.description || "");
         setPhotos(l.photos || []);
+        setVideos(l.video_links || []);
         setContractStatus(l.contract_status || "без договора");
         setExtra(l.extra_details || {});
         setAgentName(l.agent_name || "");
@@ -412,7 +416,7 @@ function PervichkaForm() {
         map_lat: mapLat, map_lng: mapLng,
         deal_terms: dealTerms.join(", "),
         obmen_na: dealTerms.includes("Обмен") ? [...obmenNa, obmenDrugoe].filter(Boolean).join(", ") : null,
-        torg, description, photos,
+        torg, description, photos, video_links: videos,
         contract_status: contractStatus,
         extra_details: extra,
         agent_phone: agentPhone, agent_name: agentName,
@@ -476,6 +480,7 @@ function PervichkaForm() {
         torg,
         description,
         photos,
+        video_links: videos,
         contract_status: contractStatus,
         extra_details: extra,
         agent_phone: agentPhone,
@@ -795,6 +800,8 @@ function PervichkaForm() {
 
       <PhotoUploader photos={photos} onChange={setPhotos} />
 
+      <VideoReviewBlock videos={videos} onChange={setVideos} onPendingErrorChange={setVideoPendingError} />
+
       <div className="section-divider private">
         <div className="section-divider-title big">Информация для агента</div>
         <span className="lock-badge">🔒 ТОЛЬКО ДЛЯ ВАС</span>
@@ -924,7 +931,7 @@ function PervichkaForm() {
         <div className="status-msg error">Не заполнено: {missingFields.join(", ")}</div>
       )}
       <button
-        disabled={saving}
+        disabled={saving || videoPendingError}
         onClick={handleSaveDraft}
         style={{ width: "100%", marginTop: 10, background: "none", border: "none", color: "#7FA396", fontSize: 13, fontWeight: 700, padding: "10px 0" }}
       >
