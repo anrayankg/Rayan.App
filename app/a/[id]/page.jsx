@@ -63,7 +63,11 @@ export default function AgentListingPage() {
         .select("id, display_id, type, status, price, currency, currency_new, district, city, zhk, sk, series, room_type, rooms, area_m2, floor, floors_total, construction_status, delivery_year, delivery_quarter, documents, heating, description, photos, video_links, extra_details, agent_name, agent_phone, created_at, map_lat, map_lng")
         .eq("id", id).single();
       if (e) { setError("Объект не найден"); return; }
-      setListing(data);
+      // Коллеги-агенты ДОЛЖНЫ видеть комиссию, "в руки" и комментарий агента — это их
+      // рабочая информация для сделки. НЕ видят: контакты и точный адрес собственника
+      // (listing_contacts) и сканы документов — их эта страница сознательно не запрашивает.
+      const { data: fin } = await supabase.from("listing_financial").select("*").eq("listing_id", id).maybeSingle();
+      setListing({ ...data, financial: fin || null });
     }
     load();
   }, [id]);
@@ -90,6 +94,10 @@ export default function AgentListingPage() {
 
   const extraRows = publicExtraEntries(l.extra_details);
   const waNumber = (l.agent_phone || "").replace(/[^\d]/g, "");
+  // Когда один агент пишет другому по этому объекту — сразу вставляем ссылку на него,
+  // чтобы не объяснять словами, о каком объекте речь.
+  const agentPageUrl = typeof window !== "undefined" ? window.location.href : "";
+  const waMsgToColleague = encodeURIComponent(`Здравствуйте! По объекту ${l.display_id ? "№" + l.display_id : ""}: ${agentPageUrl}`);
   const hasMap = l.map_lat && l.map_lng;
 
   async function savePhotos(newPhotos) {
@@ -164,6 +172,15 @@ export default function AgentListingPage() {
           <span style={{ color: "#7FA396" }}>Реклама:</span> Пока не настроена
         </div>
 
+        {(l.financial && (l.financial.commission_percent || l.financial.v_ruki || l.financial.agent_notes)) && (
+          <div style={sx.workPanel}>
+            <div style={sx.workPanelTitle}>Рабочая информация (только для агентов)</div>
+            {l.financial.commission_percent && <Row label="Комиссия" value={`${l.financial.commission_percent}${l.financial.commission_terms ? " — " + l.financial.commission_terms : ""}`} />}
+            {l.financial.v_ruki && <Row label="В руки" value={`${l.financial.v_ruki} ${l.financial.v_ruki_currency || ""}`} />}
+            {l.financial.agent_notes && <Row label="Комментарий" value={l.financial.agent_notes} />}
+          </div>
+        )}
+
         {(l.video_links || []).length > 0 && (
           <div style={sx.videoRow}>
             {l.video_links.map((v) => (
@@ -176,7 +193,7 @@ export default function AgentListingPage() {
 
         <div style={sx.ctaRow}>
           <a href={`tel:${(l.agent_phone || "").replace(/[^\d+]/g, "")}`} style={sx.callBtn}>Позвонить</a>
-          {waNumber && <a href={`https://wa.me/${waNumber}`} target="_blank" rel="noopener noreferrer" style={sx.waBtn}>WhatsApp</a>}
+          {waNumber && <a href={`https://wa.me/${waNumber}?text=${waMsgToColleague}`} target="_blank" rel="noopener noreferrer" style={sx.waBtn}>WhatsApp</a>}
         </div>
 
         {l.description && (
@@ -215,7 +232,7 @@ export default function AgentListingPage() {
               <IconPhone />
               <span style={sx.contactPhoneText}>{l.agent_phone || "—"}</span>
               {waNumber && <a href={`https://t.me/+${waNumber}`} target="_blank" rel="noopener noreferrer" style={sx.iconLink}><IconTelegram /></a>}
-              {waNumber && <a href={`https://wa.me/${waNumber}`} target="_blank" rel="noopener noreferrer" style={sx.iconLink}><IconWhatsapp /></a>}
+              {waNumber && <a href={`https://wa.me/${waNumber}?text=${waMsgToColleague}`} target="_blank" rel="noopener noreferrer" style={sx.iconLink}><IconWhatsapp /></a>}
             </div>
             <a href={`tel:${(l.agent_phone || "").replace(/[^\d+]/g, "")}`} style={sx.contactCallLink}>Позвонить</a>
           </div>
@@ -275,6 +292,9 @@ const sx = {
   location: { fontSize: 12.5, color: "#8B8B90" },
   mapLink: { display: "inline-block", marginTop: 10, color: "#5BD98A", fontSize: 13, fontWeight: 700, textDecoration: "none" },
   adBadge: { marginTop: 10, fontSize: 12.5, color: "#EDEDEF" },
+  workPanel: { marginTop: 14, background: "rgba(212,164,55,0.08)", border: "1px solid rgba(212,164,55,0.25)",
+    borderRadius: 12, padding: "12px 14px" },
+  workPanelTitle: { fontSize: 11, fontWeight: 700, color: "#D4A437", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.4 },
   videoRow: { display: "flex", flexWrap: "wrap", gap: 8, marginTop: 14 },
   videoBtn: { display: "flex", alignItems: "center", gap: 6, background: "rgba(212,164,55,0.14)",
     border: "1px solid rgba(212,164,55,0.4)", color: "#F3D477", textDecoration: "none",
