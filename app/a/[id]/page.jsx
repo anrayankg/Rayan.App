@@ -4,7 +4,7 @@ import { useRouter, useParams } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 import { publicExtraEntries, extraLabel, extraDisplayValue } from "../../../lib/extraFields";
 import { PLATFORM_LABELS, PLATFORM_ICON } from "../../../lib/videoLinks";
-import PhotoUploader from "../../../components/PhotoUploader";
+import AddToCollectionButton from "../../../components/AddToCollectionButton";
 
 // Страница объекта для АГЕНТА, который смотрит ЧУЖОЙ объект (не свой) — ссылка вида /a/<id>.
 // Отличия от клиентской (/p/<id>): виден статус объекта, статус рекламы (без кнопки
@@ -53,7 +53,6 @@ export default function AgentListingPage() {
   const [listing, setListing] = useState(null);
   const [error, setError] = useState(null);
   const [activePhoto, setActivePhoto] = useState(0);
-  const [editingPhotos, setEditingPhotos] = useState(false);
   const touchX = useRef(null);
 
   useEffect(() => {
@@ -97,13 +96,17 @@ export default function AgentListingPage() {
   // Когда один агент пишет другому по этому объекту — сразу вставляем ссылку на него,
   // чтобы не объяснять словами, о каком объекте речь.
   const agentPageUrl = typeof window !== "undefined" ? window.location.href : "";
-  const waMsgToColleague = encodeURIComponent(`Здравствуйте! По объекту ${l.display_id ? "№" + l.display_id : ""}: ${agentPageUrl}`);
+  const waMsgToColleague = encodeURIComponent(`Здравствуйте, я по поводу объекта Id: ${l.display_id || id}\n${agentPageUrl}`);
   const hasMap = l.map_lat && l.map_lng;
 
-  async function savePhotos(newPhotos) {
-    setListing((prev) => ({ ...prev, photos: newPhotos }));
-    const { error: e } = await supabase.from("listings").update({ photos: newPhotos }).eq("id", id);
-    if (e) alert("Не удалось сохранить фото: " + e.message);
+  function handleShare() {
+    const url = window.location.href;
+    if (navigator.share) {
+      navigator.share({ title: "RAYAN — объект недвижимости", url }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(url);
+      alert("Ссылка скопирована");
+    }
   }
 
   return (
@@ -128,6 +131,12 @@ export default function AgentListingPage() {
         )}
         <button style={sx.backBtn} onClick={() => router.back()}>‹</button>
         <div style={sx.statusBadge}>{STATUS_LABELS[l.status] || l.status}</div>
+        <button style={sx.shareBtn} onClick={handleShare} aria-label="Поделиться">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2">
+            <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
+            <line x1="8.6" y1="10.6" x2="15.4" y2="6.4" /><line x1="8.6" y1="13.4" x2="15.4" y2="17.6" />
+          </svg>
+        </button>
         {photos.length > 1 && <div style={sx.photoCounter}>{activePhoto + 1} / {photos.length}</div>}
       </div>
       {photos.length > 1 && (
@@ -140,15 +149,6 @@ export default function AgentListingPage() {
       )}
 
       <div style={sx.body}>
-        <button onClick={() => setEditingPhotos((v) => !v)} style={sx.addPhotoBtn}>
-          {editingPhotos ? "Готово" : "+ Добавить фото"}
-        </button>
-        {editingPhotos && (
-          <div style={{ marginBottom: 16 }}>
-            <PhotoUploader photos={photos} onChange={savePhotos} />
-          </div>
-        )}
-
         <div style={sx.priceUsd}>${usd.toLocaleString("ru-RU")}</div>
         <div style={sx.priceKgs}>{kgs.toLocaleString("ru-RU")} сом</div>
 
@@ -168,9 +168,7 @@ export default function AgentListingPage() {
           </a>
         )}
 
-        <div style={sx.adBadge}>
-          <span style={{ color: "#7FA396" }}>Реклама:</span> Пока не настроена
-        </div>
+        <AddToCollectionButton listingId={l.id} />
 
         {(l.financial && (l.financial.commission_percent || l.financial.v_ruki || l.financial.agent_notes)) && (
           <div style={sx.workPanel}>
@@ -278,6 +276,8 @@ const sx = {
     background: "rgba(0,0,0,0.45)", color: "#fff", border: "none", fontSize: 22, lineHeight: "36px" },
   statusBadge: { position: "absolute", top: 14, right: 14, background: "rgba(31,163,92,0.85)", color: "#fff",
     fontSize: 11.5, fontWeight: 700, padding: "5px 11px", borderRadius: 8 },
+  shareBtn: { position: "absolute", bottom: 14, left: 14, width: 36, height: 36, borderRadius: "50%",
+    background: "rgba(0,0,0,0.45)", border: "none", display: "flex", alignItems: "center", justifyContent: "center" },
   photoCounter: { position: "absolute", bottom: 12, right: 12, background: "rgba(0,0,0,0.55)", color: "#fff",
     fontSize: 12, padding: "3px 10px", borderRadius: 10 },
   thumbRow: { display: "flex", gap: 6, padding: "8px 16px", overflowX: "auto" },
