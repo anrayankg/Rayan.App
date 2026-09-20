@@ -168,8 +168,6 @@ export default function AgentListingPage() {
           </a>
         )}
 
-        <AddToCollectionButton listingId={l.id} />
-
         {(l.financial && (l.financial.commission_percent || l.financial.v_ruki || l.financial.agent_notes)) && (
           <div style={sx.workPanel}>
             <div style={sx.workPanelTitle}>Рабочая информация (только для агентов)</div>
@@ -215,6 +213,11 @@ export default function AgentListingPage() {
             {extraRows.map(([k, v]) => <Row key={k} label={extraLabel(k)} value={extraDisplayValue(v)} />)}
           </div>
         )}
+
+        <div style={{ display: "flex", gap: 8, marginTop: 22 }}>
+          <AddToCollectionButton listingId={l.id} />
+          <button onClick={handleShare} className="action-btn">↗ Поделиться</button>
+        </div>
 
         <div style={sx.agentCard}>
           <div style={sx.agentAvatar}>R</div>
