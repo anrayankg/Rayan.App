@@ -5,7 +5,7 @@ import { supabase } from "../lib/supabase";
 // "Подборки" без личного кабинета (его пока нет): агент создаёт подборку — получает
 // уникальную ссылку /c/<id>, добавляет туда объекты. Ссылки на недавние свои подборки
 // запоминаются в localStorage ЭТОГО устройства — как только появится личный кабинет,
-// этот же список станет разделом "Мои подборки".
+// этот же список станет разделом "Мои подборки" там.
 
 function getRecentCollections() {
   try { return JSON.parse(localStorage.getItem("rayan_collections") || "[]"); } catch { return []; }
@@ -21,11 +21,14 @@ function saveRecentCollection(col) {
 export default function AddToCollectionButton({ listingId }) {
   const [open, setOpen] = useState(false);
   const [recent, setRecent] = useState([]);
+  const [creatingNew, setCreatingNew] = useState(false);
   const [newName, setNewName] = useState("");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(null);
 
-  useEffect(() => { if (open) setRecent(getRecentCollections()); }, [open]);
+  useEffect(() => {
+    if (open) { const r = getRecentCollections(); setRecent(r); setCreatingNew(r.length === 0); }
+  }, [open]);
 
   async function createAndAdd() {
     if (!newName.trim()) return;
@@ -43,9 +46,10 @@ export default function AddToCollectionButton({ listingId }) {
   async function addToExisting(col) {
     setBusy(true);
     const { data } = await supabase.from("collections").select("listing_ids").eq("id", col.id).single();
-    const ids = data?.listing_ids || [];
+    const existing = data?.listing_ids || [];
+    const ids = existing.map((x) => (typeof x === "string" ? x : x.id));
     if (!ids.includes(listingId)) {
-      await supabase.from("collections").update({ listing_ids: [...ids, listingId] }).eq("id", col.id);
+      await supabase.from("collections").update({ listing_ids: [...existing, listingId] }).eq("id", col.id);
     }
     setBusy(false);
     saveRecentCollection(col);
@@ -54,42 +58,57 @@ export default function AddToCollectionButton({ listingId }) {
 
   return (
     <>
-      <button type="button" onClick={() => { setOpen(true); setDone(null); }} className="collection-btn">
-        + Добавить в подборку
+      <button type="button" onClick={() => { setOpen(true); setDone(null); }} className="action-btn">
+        + Подборка
       </button>
       {open && (
         <div className="collection-modal-overlay" onClick={() => setOpen(false)}>
           <div className="collection-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="collection-modal-handle" />
             {done ? (
               <>
                 <div className="collection-modal-title">Добавлено ✓</div>
-                <div className="collection-modal-sub">В подборку «{done}»</div>
+                <div className="collection-modal-sub-text">В подборку «{done}»</div>
                 <button className="collection-modal-close" onClick={() => setOpen(false)}>Закрыть</button>
               </>
             ) : (
               <>
-                <div className="collection-modal-title">Добавить в подборку</div>
-                {recent.length > 0 && (
-                  <div style={{ marginBottom: 14 }}>
-                    <div className="collection-modal-sub">Недавние подборки</div>
-                    {recent.map((c) => (
-                      <button key={c.id} disabled={busy} onClick={() => addToExisting(c)} className="collection-existing-row">
-                        {c.name}
-                      </button>
-                    ))}
-                  </div>
+                <div className="collection-modal-title">Мои подборки</div>
+
+                {!creatingNew && recent.length > 0 && (
+                  <>
+                    <div className="collection-modal-sub-text">Выберите подборку, куда добавить объект</div>
+                    <div className="collection-list">
+                      {recent.map((c) => (
+                        <button key={c.id} disabled={busy} onClick={() => addToExisting(c)} className="collection-existing-row">
+                          {c.name}
+                        </button>
+                      ))}
+                    </div>
+                    <button className="collection-new-link" onClick={() => setCreatingNew(true)}>+ Создать новую подборку</button>
+                  </>
                 )}
-                <div className="collection-modal-sub">Новая подборка</div>
-                <input
-                  type="text"
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  placeholder="Например: Для Айгерим"
-                  className="collection-input"
-                />
-                <button disabled={busy || !newName.trim()} onClick={createAndAdd} className="collection-create-btn">
-                  Создать и добавить
-                </button>
+
+                {creatingNew && (
+                  <>
+                    <div className="collection-modal-sub-text">Название новой подборки</div>
+                    <input
+                      type="text"
+                      autoFocus
+                      value={newName}
+                      onChange={(e) => setNewName(e.target.value)}
+                      placeholder="Например: Для Айгерим"
+                      className="collection-input"
+                    />
+                    <button disabled={busy || !newName.trim()} onClick={createAndAdd} className="collection-create-btn">
+                      Создать и добавить
+                    </button>
+                    {recent.length > 0 && (
+                      <button className="collection-new-link" onClick={() => setCreatingNew(false)}>‹ К списку подборок</button>
+                    )}
+                  </>
+                )}
+
                 <button className="collection-modal-close" onClick={() => setOpen(false)}>Отмена</button>
               </>
             )}
