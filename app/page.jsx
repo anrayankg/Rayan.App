@@ -219,10 +219,13 @@ export default function HomePage() {
         const { count: review } = await supabase.from("listings").select("*", { count: "exact", head: true }).eq("status", "на проверке");
         const { count: archived } = await supabase.from("listings").select("*", { count: "exact", head: true }).eq("status", "архив");
         const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
-        // "Новые" — дата, когда объект РЕАЛЬНО стал активным (published_at), а не когда запись
-        // впервые появилась в базе. Если поле published_at ещё не добавлено в Supabase, этот
-        // ОДИН запрос вернёт ошибку — но это больше не должно обнулять остальные счётчики.
-        const { count: today, error: e5 } = await supabase.from("listings").select("*", { count: "exact", head: true }).eq("status", "активен").gte("published_at", todayStart.toISOString());
+        const todayIso = todayStart.toISOString();
+        // "Новые" — считаем и по published_at (стал активным сегодня через форму), И по
+        // created_at (запись вообще появилась в базе сегодня, любым способом — форма,
+        // ручной перенос и т.п.). Так счётчик не зависит от того, каким путём объект попал
+        // в систему, и не требует, чтобы published_at обязательно было проставлено.
+        const { count: today, error: e5 } = await supabase.from("listings").select("*", { count: "exact", head: true })
+          .eq("status", "активен").or(`published_at.gte.${todayIso},created_at.gte.${todayIso}`);
         setCounts({ всего: total || 0, активен: active || 0, "на проверке": review || 0, архив: archived || 0, сегодня: e5 ? 0 : (today || 0) });
       } catch (err) {
         setError(err.message);
@@ -314,7 +317,7 @@ export default function HomePage() {
                 {c.img ? (
                   <img src={c.img} alt="" className="cat-tile-img" />
                 ) : (
-                  <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#B8B8BE" strokeWidth="1.6">
+                  <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#B8B8BE" strokeWidth="1.4">
                     <path d={c.path} />
                   </svg>
                 )}
