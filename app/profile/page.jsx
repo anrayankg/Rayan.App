@@ -10,6 +10,15 @@ import { supabase } from "../../lib/supabase";
 // пока достаточно; когда понадобится реальная защита — это первое, что нужно будет заменить.
 
 function digitsOnly(s) { return (s || "").replace(/\D/g, ""); }
+function IconWhatsappSmall() {
+  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3ED07A" strokeWidth="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" /></svg>;
+}
+function IconTelegramSmall() {
+  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4BA3E3" strokeWidth="2"><path d="M22 2 11 13" /><path d="M22 2 15 22l-4-9-9-4 20-7z" /></svg>;
+}
+function IconMaxSmall() {
+  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5c-1.3 0-2.5-.3-3.6-.9L3 21l1.9-5.6a8.5 8.5 0 1 1 16.1-3.9z" /><circle cx="8.5" cy="12" r="1" fill="#8B5CF6" /><circle cx="12" cy="12" r="1" fill="#8B5CF6" /><circle cx="15.5" cy="12" r="1" fill="#8B5CF6" /></svg>;
+}
 function photoUrl(path) {
   const { data } = supabase.storage.from("listing-photos").getPublicUrl(path);
   return data?.publicUrl || "";
@@ -121,12 +130,35 @@ export default function ProfilePage() {
       {myCollections.length === 0 ? (
         <div style={sx.emptyMsg}>Подборок пока нет — создайте на странице любого объекта.</div>
       ) : (
-        myCollections.map((c) => (
-          <a key={c.id} href={`/c/${c.id}`} style={sx.collectionRow}>
-            <span>{c.name}</span>
-            <span style={{ color: "#7FA396" }}>{(c.listing_ids || []).length} объект(ов) ›</span>
-          </a>
-        ))
+        myCollections.map((c) => {
+          const link = typeof window !== "undefined" ? `${window.location.origin}/c/${c.id}` : "";
+          const shareText = encodeURIComponent(`Подборка «${c.name}»: ${link}`);
+          return (
+            <div key={c.id} style={sx.collectionRow}>
+              <a href={`/c/${c.id}`} style={sx.collectionRowLink}>
+                <span>{c.name}</span>
+                <span style={{ color: "#7FA396", fontSize: 11.5 }}>{(c.listing_ids || []).length} объект(ов)</span>
+              </a>
+              <div style={{ display: "flex", gap: 8 }}>
+                <a href={`https://wa.me/?text=${shareText}`} target="_blank" rel="noopener noreferrer" style={sx.shareIconBtn} aria-label="WhatsApp">
+                  <IconWhatsappSmall />
+                </a>
+                <a href={`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent("Подборка «" + c.name + "»")}`} target="_blank" rel="noopener noreferrer" style={sx.shareIconBtn} aria-label="Telegram">
+                  <IconTelegramSmall />
+                </a>
+                <button
+                  onClick={() => {
+                    if (navigator.share) navigator.share({ title: c.name, url: link }).catch(() => {});
+                    else { navigator.clipboard.writeText(link); alert("Ссылка скопирована — вставьте в MAX"); }
+                  }}
+                  style={sx.shareIconBtn} aria-label="MAX"
+                >
+                  <IconMaxSmall />
+                </button>
+              </div>
+            </div>
+          );
+        })
       )}
     </div>
   );
@@ -159,6 +191,9 @@ const sx = {
   cardPhotoWrap: { width: "100%", aspectRatio: "1/1", borderRadius: 8, overflow: "hidden", background: "#1A1A1C" },
   cardPhoto: { width: "100%", height: "100%", objectFit: "cover" },
   cardMeta: { fontSize: 10, color: "#8B8B90", marginTop: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
-  collectionRow: { display: "flex", justifyContent: "space-between", padding: "12px 0",
-    borderBottom: "1px solid rgba(255,255,255,0.06)", textDecoration: "none", color: "#fff", fontSize: 13.5 },
+  collectionRow: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0",
+    borderBottom: "1px solid rgba(255,255,255,0.06)" },
+  collectionRowLink: { display: "flex", flexDirection: "column", gap: 2, textDecoration: "none", color: "#fff", fontSize: 13.5, fontWeight: 700 },
+  shareIconBtn: { width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.08)",
+    border: "none", display: "flex", alignItems: "center", justifyContent: "center" },
 };
