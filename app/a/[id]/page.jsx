@@ -100,12 +100,21 @@ export default function AgentListingPage() {
   const hasMap = l.map_lat && l.map_lng;
 
   function handleShare() {
-    const url = window.location.href;
+    // "Поделиться" всегда ведёт на КЛИЕНТСКУЮ страницу (/p/...), никогда на эту (/a/...) —
+    // так агент физически не может случайно отправить клиенту внутреннюю информацию.
+    // Если агент вошёл в свой личный кабинет — в ссылку подставляется ЕГО телефон/имя
+    // вместо телефона, указанного в самом объекте (по просьбе Айгуль, это важно).
+    let agentOverride = null;
+    try { agentOverride = JSON.parse(localStorage.getItem("rayan_agent") || "null"); } catch {}
+    const base = `${window.location.origin}/p/${l.id}`;
+    const url = agentOverride
+      ? `${base}?agent_phone=${encodeURIComponent(agentOverride.phone)}&agent_name=${encodeURIComponent(agentOverride.name)}`
+      : base;
     if (navigator.share) {
       navigator.share({ title: "RAYAN — объект недвижимости", url }).catch(() => {});
     } else {
       navigator.clipboard.writeText(url);
-      alert("Ссылка скопирована");
+      alert("Клиентская ссылка скопирована" + (agentOverride ? ` (с вашим номером — ${agentOverride.name})` : ""));
     }
   }
 
