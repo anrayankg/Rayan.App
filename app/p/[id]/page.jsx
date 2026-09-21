@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 import { publicExtraEntries, extraLabel, extraDisplayValue } from "../../../lib/extraFields";
 import { PLATFORM_LABELS, PLATFORM_ICON } from "../../../lib/videoLinks";
@@ -49,6 +49,12 @@ function photoUrl(path) {
 export default function PublicListingPage() {
   const router = useRouter();
   const { id } = useParams();
+  const searchParams = useSearchParams();
+  // Если агент делится объектом из своего личного кабинета — ссылка несёт ЕГО телефон/имя
+  // (?agent_phone=...&agent_name=...), вместо телефона, указанного в самом объекте.
+  // Клиент при этом видит только клиентскую страницу — никаких внутренних данных, только замену контакта.
+  const overridePhone = searchParams.get("agent_phone");
+  const overrideName = searchParams.get("agent_name");
   const [listing, setListing] = useState(null);
   const [error, setError] = useState(null);
   const [activePhoto, setActivePhoto] = useState(0);
@@ -94,6 +100,8 @@ export default function PublicListingPage() {
   if (!listing) return <div style={sx.page}><div style={sx.centerMsg}>Загрузка…</div></div>;
 
   const l = listing;
+  const effectiveAgentPhone = overridePhone || l.agent_phone;
+  const effectiveAgentName = overrideName || l.agent_name;
   const { usd, kgs } = priceBlock(l);
   const photos = l.photos || [];
   const isPervichka = l.type === "первичка";
@@ -112,7 +120,7 @@ export default function PublicListingPage() {
   }
 
   const extraRows = publicExtraEntries(l.extra_details);
-  const waNumber = (l.agent_phone || "").replace(/[^\d]/g, "");
+  const waNumber = (effectiveAgentPhone || "").replace(/[^\d]/g, "");
 
   return (
     <div style={sx.page}>
@@ -187,7 +195,7 @@ export default function PublicListingPage() {
 
         {/* Кнопки контакта — агент RAYAN, не собственник */}
         <div style={sx.ctaRow}>
-          <a href={`tel:${(l.agent_phone || "").replace(/[^\d+]/g, "")}`} style={sx.callBtn}>Позвонить</a>
+          <a href={`tel:${(effectiveAgentPhone || "").replace(/[^\d+]/g, "")}`} style={sx.callBtn}>Позвонить</a>
           <a href={`https://wa.me/${waNumber}`} target="_blank" rel="noopener noreferrer" style={sx.waBtn}>WhatsApp</a>
         </div>
         <div style={sx.quickReplies}>
@@ -226,7 +234,7 @@ export default function PublicListingPage() {
         <div style={sx.agentCard}>
           <div style={sx.agentAvatar}>R</div>
           <div>
-            <div style={sx.agentName}>{l.agent_name || "RAYAN — центр недвижимости"}</div>
+            <div style={sx.agentName}>{effectiveAgentName || "RAYAN — центр недвижимости"}</div>
             <div style={sx.agentSub}>Агент по объекту</div>
           </div>
         </div>
@@ -236,7 +244,7 @@ export default function PublicListingPage() {
           <div style={sx.contactTopRow}>
             <div style={sx.contactPhoneLine}>
               <IconPhone />
-              <span style={sx.contactPhoneText}>{l.agent_phone || "—"}</span>
+              <span style={sx.contactPhoneText}>{effectiveAgentPhone || "—"}</span>
               {waNumber && (
                 <a href={`https://t.me/+${waNumber}`} target="_blank" rel="noopener noreferrer" style={sx.iconLink}><IconTelegram /></a>
               )}
@@ -244,7 +252,7 @@ export default function PublicListingPage() {
                 <a href={`https://wa.me/${waNumber}`} target="_blank" rel="noopener noreferrer" style={sx.iconLink}><IconWhatsapp /></a>
               )}
             </div>
-            <a href={`tel:${(l.agent_phone || "").replace(/[^\d+]/g, "")}`} style={sx.contactCallLink}>Позвонить</a>
+            <a href={`tel:${(effectiveAgentPhone || "").replace(/[^\d+]/g, "")}`} style={sx.contactCallLink}>Позвонить</a>
           </div>
           {waNumber && (
             <a href={`https://wa.me/${waNumber}`} target="_blank" rel="noopener noreferrer" style={sx.contactLinkRow}>
@@ -269,8 +277,8 @@ export default function PublicListingPage() {
 
             <div style={sx.modalCard}>
               <div style={sx.modalRow}>
-                <IconPhone /><span style={{ flex: 1, marginLeft: 10 }}>{l.agent_phone || "—"}</span>
-                <a href={`tel:${(l.agent_phone || "").replace(/[^\d+]/g, "")}`} style={{ color: "#5BD98A", fontWeight: 700, fontSize: 13 }}>Позвонить</a>
+                <IconPhone /><span style={{ flex: 1, marginLeft: 10 }}>{effectiveAgentPhone || "—"}</span>
+                <a href={`tel:${(effectiveAgentPhone || "").replace(/[^\d+]/g, "")}`} style={{ color: "#5BD98A", fontWeight: 700, fontSize: 13 }}>Позвонить</a>
               </div>
               {waNumber && (
                 <a href={`https://wa.me/${waNumber}`} target="_blank" rel="noopener noreferrer" style={sx.modalRow}>
