@@ -18,7 +18,7 @@ function saveRecentCollection(col) {
   } catch {}
 }
 
-export default function AddToCollectionButton({ listingId }) {
+export default function AddToCollectionButton({ listingId, compact }) {
   const [open, setOpen] = useState(false);
   const [recent, setRecent] = useState([]);
   const [creatingNew, setCreatingNew] = useState(false);
@@ -58,7 +58,7 @@ export default function AddToCollectionButton({ listingId }) {
 
   return (
     <>
-      <button type="button" onClick={() => { setOpen(true); setDone(null); }} className="action-btn">
+      <button type="button" onClick={() => { setOpen(true); setDone(null); }} className={`action-btn${compact ? " action-btn-compact" : ""}`}>
         + Подборка
       </button>
       {open && (
