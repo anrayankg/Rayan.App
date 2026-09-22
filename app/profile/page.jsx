@@ -76,6 +76,24 @@ function IconShareStandard() {
     </svg>
   );
 }
+function IconEyeOutline() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9A9AA0" strokeWidth="1.8">
+      <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+function IconRepliesBubble() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="11" fill="rgba(62,208,122,0.16)" />
+      <path d="M7 9.5a4.5 4.5 0 0 1 4.5-4.5h1A4.5 4.5 0 0 1 17 9.5v1c0 .9-.3 1.7-.8 2.4l.3 2.1-2-.9a4.5 4.5 0 0 1-1 .1h-1A4.5 4.5 0 0 1 7 10.5v-1z"
+        stroke="#3ED07A" strokeWidth="1.4" fill="none" />
+      <circle cx="12" cy="9.5" r="1.3" fill="#3ED07A" />
+    </svg>
+  );
+}
 
 function ListingThumb({ l, style }) {
   const [failed, setFailed] = useState(false);
@@ -341,10 +359,10 @@ export default function ProfilePage() {
                     <div style={sx.bigCardLoc}>{[l.zhk, l.district].filter(Boolean).join(", ")}</div>
                   </a>
                   <div style={sx.statsBox}>
-                    <span style={sx.statsEye}>👁 0</span>
-                    <span style={sx.statsReplies}>💬 0 откликов</span>
+                    <span style={sx.statsItem}><IconEyeOutline /> 0</span>
+                    <span style={sx.statsItem}><IconRepliesBubble /> 0</span>
                   </div>
-                  <div style={{ padding: "8px 10px 0" }}><AddToCollectionButton listingId={l.id} compact /></div>
+                  <div style={{ padding: "8px 10px 0", display: "flex" }}><AddToCollectionButton listingId={l.id} compact /></div>
                 </div>
               );
             })}
@@ -522,10 +540,8 @@ const sx = {
     fontSize: 13, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" },
   adBar: { position: "absolute", left: 0, right: 0, bottom: 0, padding: "6px 8px", color: "#fff",
     fontSize: 10.5, fontWeight: 800, textAlign: "center" },
-  statsBox: { display: "flex", alignItems: "center", gap: 10, margin: "6px 10px 0", fontSize: 10.5 },
-  statsShows: { color: "#8B8B90" },
-  statsEye: { color: "#8B8B90", fontWeight: 600 },
-  statsReplies: { color: "#3ED07A", fontWeight: 600 },
+  statsBox: { display: "flex", alignItems: "center", gap: 12, margin: "6px 10px 0", fontSize: 11 },
+  statsItem: { display: "flex", alignItems: "center", gap: 4, color: "#B8B8BE", fontWeight: 600 },
   cardPhotoWrap: { width: "100%", aspectRatio: "1/1", background: "#1A1A1C" },
   bigCardPrice: { fontSize: 15, fontWeight: 800, margin: "9px 10px 0" },
   bigCardMeta: { fontSize: 11.5, color: "#EDEDEF", margin: "3px 10px 0" },
