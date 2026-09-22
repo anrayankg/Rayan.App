@@ -34,18 +34,47 @@ function priceUsd(l) {
   return isUSD ? price : Math.round(price / USD_KGS_RATE);
 }
 function digitsOnly(s) { return (s || "").replace(/\D/g, ""); }
+function charLine(l) {
+  const isPervichka = l.type === "первичка";
+  let extra = {};
+  try { extra = l.extra_details ? (typeof l.extra_details === "string" ? JSON.parse(l.extra_details) : l.extra_details) : {}; } catch {}
+  let classOrSeries = null;
+  if (isPervichka && extra.jilyeClass) classOrSeries = extra.jilyeClass;
+  else if (!isPervichka && l.series) classOrSeries = l.series;
+  let statusLine = null;
+  if (isPervichka) {
+    statusLine = l.construction_status === "Сдан ПСО (ключи)" ? "ПСО сдан"
+      : (l.delivery_year && l.delivery_quarter ? `сдача ${l.delivery_year}г ${l.delivery_quarter} кв.` : null);
+  }
+  const parts = [
+    l.room_type || l.rooms || "—",
+    classOrSeries || statusLine || "—",
+    l.floor && l.floors_total ? `${l.floor}/${l.floors_total} эт.` : "—",
+    l.area_m2 ? `${l.area_m2} м²` : "—",
+  ];
+  return parts.join(" · ");
+}
 function photoUrl(path) {
   const { data } = supabase.storage.from("listing-photos").getPublicUrl(path);
   return data?.publicUrl || "";
 }
 function IconWhatsappSmall() {
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3ED07A" strokeWidth="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" /></svg>;
+  return (
+    <svg width="18" height="18" viewBox="0 0 32 32" fill="#3ED07A">
+      <path d="M16 3C9 3 3 9 3 16c0 2.4.7 4.7 1.9 6.6L3 29l6.6-1.9c1.8 1 3.9 1.6 6.4 1.6 7 0 13-6 13-13S23 3 16 3zm7.5 18.4c-.3.9-1.7 1.7-2.4 1.8-.6.1-1.4.1-2.2-.1-.5-.2-1.2-.4-2-.8-3.5-1.5-5.8-5-6-5.3-.2-.3-1.4-1.9-1.4-3.6 0-1.7.9-2.5 1.2-2.9.3-.3.7-.4.9-.4h.6c.2 0 .5 0 .7.6.3.7.9 2.3 1 2.5.1.2.2.4 0 .6-.1.2-.2.4-.4.6-.2.2-.4.5-.6.6-.2.2-.4.4-.2.8.2.4 1 1.6 2.1 2.6 1.4 1.3 2.6 1.7 3 1.9.4.2.6.1.8-.1.2-.3.9-1 1.1-1.4.2-.3.5-.3.8-.2.3.1 2 1 2.4 1.1.4.2.6.3.7.4.1.3.1.9-.2 1.7z"/>
+    </svg>
+  );
 }
 function IconTelegramSmall() {
   return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4BA3E3" strokeWidth="2"><path d="M22 2 11 13" /><path d="M22 2 15 22l-4-9-9-4 20-7z" /></svg>;
 }
-function IconMaxSmall() {
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5c-1.3 0-2.5-.3-3.6-.9L3 21l1.9-5.6a8.5 8.5 0 1 1 16.1-3.9z" /><circle cx="8.5" cy="12" r="1" fill="#8B5CF6" /><circle cx="12" cy="12" r="1" fill="#8B5CF6" /><circle cx="15.5" cy="12" r="1" fill="#8B5CF6" /></svg>;
+function IconShareStandard() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2">
+      <path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7" />
+      <path d="M16 6l-4-4-4 4" /><path d="M12 2v14" />
+    </svg>
+  );
 }
 
 function ListingThumb({ l, style }) {
@@ -93,7 +122,7 @@ export default function ProfilePage() {
     async function loadMine() {
       const myDigits = digitsOnly(agent.phone);
       const { data } = await supabase.from("listings")
-        .select("id, display_id, type, status, price, currency, currency_new, district, zhk, room_type, rooms, area_m2, photos, agent_phone, created_at, description")
+        .select("id, display_id, type, status, price, currency, currency_new, district, zhk, room_type, rooms, area_m2, floor, floors_total, series, construction_status, delivery_year, delivery_quarter, extra_details, photos, agent_phone, created_at, description")
         .not("agent_phone", "is", null);
       setMyListings((data || []).filter((l) => digitsOnly(l.agent_phone) === myDigits));
 
@@ -162,6 +191,7 @@ export default function ProfilePage() {
     setBulkBusy(false);
   }
 
+  const [bulkDone, setBulkDone] = useState(null);
   async function bulkAddToCollection(collectionId, isNew, name) {
     setBulkBusy(true);
     const ids = Array.from(selected);
@@ -176,9 +206,8 @@ export default function ProfilePage() {
       await supabase.from("collections").update({ listing_ids: merged }).eq("id", collectionId);
     }
     setBulkBusy(false);
-    setShowBulkCollection(false);
+    setBulkDone(name || (myCollections.find((c) => c.id === collectionId)?.name) || "подборку");
     setSelected(new Set());
-    alert("Добавлено в подборку");
   }
 
   async function handleLogin() {
@@ -234,14 +263,14 @@ export default function ProfilePage() {
         <div style={sx.avatarBig}>{(agent.name || "?")[0]}</div>
         <div style={sx.name}>{agent.name}</div>
         <div style={sx.phone}>{agent.phone}</div>
-        <button style={sx.editProfileBtn} onClick={() => alert("Редактирование профиля — скоро")}>
-          ✏️ Редактировать профиль ⭐
+        <button style={{ ...sx.editProfileBtn, opacity: 0.6 }} disabled>
+          ✏️ Редактировать профиль ⭐ <span style={{ fontSize: 10 }}>(скоро)</span>
         </button>
       </div>
 
       {/* Быстрые разделы — Мои подборки / Реклама / Клиенты */}
       <div style={sx.quickRow}>
-        <a href="#podborki" style={sx.quickTile}>
+        <a href="/collections" style={sx.quickTile}>
           <div style={sx.quickIcon}>📁</div>
           <div style={sx.quickLabel}>Мои подборки</div>
         </a>
@@ -308,14 +337,14 @@ export default function ProfilePage() {
                   </div>
                   <a href={`/listing/${l.id}`} style={{ textDecoration: "none", color: "#fff" }}>
                     <div style={sx.bigCardPrice}>${priceUsd(l).toLocaleString("ru-RU")}</div>
-                    <div style={sx.bigCardMeta}>{l.room_type || l.rooms} · {l.area_m2 ? l.area_m2 + " м²" : ""}</div>
+                    <div style={sx.bigCardMeta}>{charLine(l)}</div>
                     <div style={sx.bigCardLoc}>{[l.zhk, l.district].filter(Boolean).join(", ")}</div>
                   </a>
                   <div style={sx.statsBox}>
-                    <div style={sx.statsShows}>Показы: —</div>
-                    <div style={sx.statsRow}><span>👁 —</span><span>📩 —</span></div>
+                    <span style={sx.statsEye}>👁 0</span>
+                    <span style={sx.statsReplies}>💬 0 откликов</span>
                   </div>
-                  <AddToCollectionButton listingId={l.id} />
+                  <div style={{ padding: "8px 10px 0" }}><AddToCollectionButton listingId={l.id} compact /></div>
                 </div>
               );
             })}
@@ -324,31 +353,6 @@ export default function ProfilePage() {
       )}
 
       {/* Мои подборки */}
-      <div id="podborki" style={sx.sectionTitle}>Мои подборки ({myCollections.length})</div>
-      {myCollections.length === 0 ? (
-        <div style={sx.emptyMsg}>Подборок пока нет — создайте на странице любого объекта.</div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {myCollections.map((c) => {
-            const link = typeof window !== "undefined" ? `${window.location.origin}/c/${c.id}` : "";
-            const shareText = encodeURIComponent(`Подборка «${c.name}»: ${link}`);
-            return (
-              <div key={c.id} style={sx.collectionRow}>
-                <a href={`/c/${c.id}`} style={sx.collectionRowLink}>
-                  <span style={sx.collectionRowName}>{c.name}</span>
-                  <span style={sx.collectionRowCount}>{(c.listing_ids || []).length} объект(ов)</span>
-                </a>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <a href={`https://wa.me/?text=${shareText}`} target="_blank" rel="noopener noreferrer" style={sx.shareIconBtn} aria-label="WhatsApp"><IconWhatsappSmall /></a>
-                  <a href={`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent("Подборка «" + c.name + "»")}`} target="_blank" rel="noopener noreferrer" style={sx.shareIconBtn} aria-label="Telegram"><IconTelegramSmall /></a>
-                  <button onClick={() => { if (navigator.share) navigator.share({ title: c.name, url: link }).catch(() => {}); else { navigator.clipboard.writeText(link); alert("Ссылка скопирована — вставьте в MAX"); } }} style={sx.shareIconBtn} aria-label="MAX"><IconMaxSmall /></button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
       <button onClick={handleLogout} style={sx.logoutBtnBottom}>Выйти</button>
 
       {selected.size > 0 && (
@@ -362,9 +366,10 @@ export default function ProfilePage() {
       {showBulkCollection && (
         <BulkCollectionModal
           agent={agent}
-          onClose={() => setShowBulkCollection(false)}
+          onClose={() => { setShowBulkCollection(false); setBulkDone(null); }}
           onPick={bulkAddToCollection}
           busy={bulkBusy}
+          done={bulkDone}
         />
       )}
 
@@ -408,45 +413,50 @@ export default function ProfilePage() {
   );
 }
 
-function BulkCollectionModal({ agent, onClose, onPick, busy }) {
+function BulkCollectionModal({ agent, onClose, onPick, busy, done }) {
   const [recent, setRecent] = useState([]);
-  const [creatingNew, setCreatingNew] = useState(false);
   const [newName, setNewName] = useState("");
 
   useEffect(() => {
-    try {
-      const list = JSON.parse(localStorage.getItem("rayan_collections") || "[]");
-      setRecent(list);
-      setCreatingNew(list.length === 0);
-    } catch {}
+    try { setRecent(JSON.parse(localStorage.getItem("rayan_collections") || "[]")); } catch {}
   }, []);
+
+  if (done) {
+    return (
+      <div style={sx.modalOverlay} onClick={onClose}>
+        <div style={sx.modalSheet} onClick={(e) => e.stopPropagation()}>
+          <div style={sx.modalHandle} />
+          <div style={sx.modalTitle}>Добавлено ✓</div>
+          <div style={sx.selectHeaderText}>В подборку «{done}»</div>
+          <button onClick={onClose} style={{ ...sx.loginBtn, marginTop: 16 }}>Готово</button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={sx.modalOverlay} onClick={onClose}>
       <div style={sx.modalSheet} onClick={(e) => e.stopPropagation()}>
         <div style={sx.modalHandle} />
         <div style={sx.modalTitle}>Отправить в подборку</div>
-        {!creatingNew && recent.length > 0 && (
-          <>
-            {recent.map((c) => (
-              <button key={c.id} disabled={busy} onClick={() => onPick(c.id, false)} style={sx.categoryRow}>
-                {c.name}
-              </button>
-            ))}
-            <button onClick={() => setCreatingNew(true)} style={{ ...sx.categoryRow, color: "#5BD98A", textAlign: "center" }}>
-              + Создать новую подборку
+
+        <div style={{ ...sx.selectHeaderText, marginBottom: 6 }}>Новая подборка</div>
+        <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)}
+          placeholder="Например: Для Айгерим" style={sx.input} />
+        <button disabled={busy || !newName.trim()} onClick={() => onPick(null, true, newName.trim())}
+          style={{ ...sx.loginBtn, marginTop: 10, marginBottom: 18 }}>
+          Создать и добавить
+        </button>
+
+        <div style={{ ...sx.selectHeaderText, marginBottom: 6 }}>Мои подборки</div>
+        {recent.length === 0 ? (
+          <div style={sx.emptyMsg}>Пока нет ни одной подборки на этом устройстве.</div>
+        ) : (
+          recent.map((c) => (
+            <button key={c.id} disabled={busy} onClick={() => onPick(c.id, false)} style={sx.categoryRow}>
+              {c.name}
             </button>
-          </>
-        )}
-        {creatingNew && (
-          <>
-            <input type="text" autoFocus value={newName} onChange={(e) => setNewName(e.target.value)}
-              placeholder="Например: Для Айгерим" style={sx.input} />
-            <button disabled={busy || !newName.trim()} onClick={() => onPick(null, true, newName.trim())}
-              style={{ ...sx.loginBtn, marginTop: 12 }}>
-              Создать и добавить
-            </button>
-          </>
+          ))
         )}
         <button onClick={onClose} style={sx.logoutBtnBottom}>Отмена</button>
       </div>
@@ -505,16 +515,17 @@ const sx = {
   grid2: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 10 },
   bigCard: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, padding: "0 0 10px", overflow: "hidden" },
   bigCardPhotoWrap: { position: "relative", width: "100%", aspectRatio: "1/1", background: "#1A1A1C" },
-  checkCircle: { position: "absolute", top: 8, right: 8, width: 26, height: 26, borderRadius: "50%",
-    background: "rgba(0,0,0,0.35)", border: "none", display: "flex", alignItems: "center", justifyContent: "center" },
-  checkCircleEmpty: { width: 18, height: 18, borderRadius: "50%", border: "2px solid #fff" },
+  checkCircle: { position: "absolute", top: 8, right: 8, width: 22, height: 22, borderRadius: "50%",
+    background: "none", border: "none", padding: 0, display: "flex", alignItems: "center", justifyContent: "center" },
+  checkCircleEmpty: { width: 22, height: 22, borderRadius: "50%", border: "2px solid #fff", background: "transparent" },
   checkCircleFilled: { width: 22, height: 22, borderRadius: "50%", background: "#1FA35C", color: "#fff",
     fontSize: 13, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" },
   adBar: { position: "absolute", left: 0, right: 0, bottom: 0, padding: "6px 8px", color: "#fff",
     fontSize: 10.5, fontWeight: 800, textAlign: "center" },
-  statsBox: { margin: "6px 10px 0" },
-  statsShows: { fontSize: 10.5, color: "#8B8B90" },
-  statsRow: { display: "flex", gap: 10, fontSize: 10.5, color: "#8B8B90", marginTop: 2 },
+  statsBox: { display: "flex", alignItems: "center", gap: 10, margin: "6px 10px 0", fontSize: 10.5 },
+  statsShows: { color: "#8B8B90" },
+  statsEye: { color: "#8B8B90", fontWeight: 600 },
+  statsReplies: { color: "#3ED07A", fontWeight: 600 },
   cardPhotoWrap: { width: "100%", aspectRatio: "1/1", background: "#1A1A1C" },
   bigCardPrice: { fontSize: 15, fontWeight: 800, margin: "9px 10px 0" },
   bigCardMeta: { fontSize: 11.5, color: "#EDEDEF", margin: "3px 10px 0" },
