@@ -407,6 +407,7 @@ body { background: var(--bg-main); margin: 0; font-family: -apple-system, BlinkM
 /* Единая кнопка действия — тот же вид и цвет, что "Позвонить" */
 .action-btn { flex: 1; background: #1FA35C; color: #fff; text-align: center; padding: 13px 0;
   border-radius: 10px; font-weight: 700; font-size: 14.5px; border: none; text-decoration: none; }
+.action-btn-compact { padding: 8px 0; font-size: 12.5px; border-radius: 8px; }
 
 /* Окно "Мои подборки" — крупные, удобные для пальца поля */
 .collection-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex;
