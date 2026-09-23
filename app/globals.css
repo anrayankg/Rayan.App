@@ -42,7 +42,7 @@ body { background: var(--bg-main); margin: 0; font-family: -apple-system, BlinkM
 
 .body-px { padding: 0 20px; }
 
-.search { background: var(--search-bg); border-radius: 24px; padding: 9px 16px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.25); }
+.search { background: var(--search-bg); border-radius: 12px; padding: 9px 16px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.25); }
 .search input { border: none; outline: none; font-size: 15px; font-weight: 600; color: var(--search-text); width: 100%; background: transparent; }
 .search input::placeholder { color: var(--search-text); opacity: 0.6; }
 
@@ -383,11 +383,13 @@ body { background: var(--bg-main); margin: 0; font-family: -apple-system, BlinkM
 .feed-price-usd { color: var(--text-primary); font-size: 17px; font-weight: 800; }
 .feed-price-kgs { color: var(--text-secondary); font-size: 11px; margin-top: 1px; }
 .feed-chars { color: var(--text-primary); font-size: 12px; font-weight: 600; margin-top: 6px; }
-.feed-category { color: var(--text-secondary); font-size: 11px; margin-top: 2px; }
+.feed-category { color: var(--text-primary); font-size: 11px; font-weight: 600; margin-top: 2px; }
 .feed-location { color: var(--text-secondary); font-size: 11px; }
 .feed-desc { color: var(--text-primary); font-size: 11px; margin-top: 6px; line-height: 1.4; opacity: 0.85;
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
 .feed-agent { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+.feed-id-copy { display: flex; align-items: center; gap: 4px; margin-left: auto; background: none; border: none;
+  color: var(--text-secondary); font-size: 10.5px; font-weight: 600; padding: 4px; cursor: pointer; }
 .feed-agent-avatar { height: 16px; width: auto; }
 .feed-agent span { color: var(--text-secondary); font-size: 10.5px; font-weight: 700; }
 
