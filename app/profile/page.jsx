@@ -3,6 +3,8 @@ import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase";
 import { CAT_KVARTIRY, CAT_NOVOSTROYKI, CAT_DOMA, CAT_UCHASTOK, CAT_KOMMERCIYA, CAT_ARENDA } from "../../lib/categoryIcons";
+import { fullCharLine, priceBlock, categoryLabel } from "../../lib/listingFormat";
+import BottomNav from "../../components/BottomNav";
 import AddToCollectionButton from "../../components/AddToCollectionButton";
 
 // Личный кабинет агента. Входа с паролем пока нет (сознательно, по решению Айгуль) —
@@ -28,32 +30,7 @@ const ACTIVE_STATUSES = ["активен"];
 const DRAFT_STATUSES = ["черновик"];
 // Всё остальное (на проверке, забронирован, сделка в процессе, продан, снят с продажи, архив) — "Деактивировано"
 
-function priceUsd(l) {
-  const price = Number(l.price) || 0;
-  const isUSD = String(l.currency_new || l.currency || "USD").toUpperCase() === "USD";
-  return isUSD ? price : Math.round(price / USD_KGS_RATE);
-}
 function digitsOnly(s) { return (s || "").replace(/\D/g, ""); }
-function charLine(l) {
-  const isPervichka = l.type === "первичка";
-  let extra = {};
-  try { extra = l.extra_details ? (typeof l.extra_details === "string" ? JSON.parse(l.extra_details) : l.extra_details) : {}; } catch {}
-  let classOrSeries = null;
-  if (isPervichka && extra.jilyeClass) classOrSeries = extra.jilyeClass;
-  else if (!isPervichka && l.series) classOrSeries = l.series;
-  let statusLine = null;
-  if (isPervichka) {
-    statusLine = l.construction_status === "Сдан ПСО (ключи)" ? "ПСО сдан"
-      : (l.delivery_year && l.delivery_quarter ? `сдача ${l.delivery_year}г ${l.delivery_quarter} кв.` : null);
-  }
-  const parts = [
-    l.room_type || l.rooms || "—",
-    classOrSeries || statusLine || "—",
-    l.floor && l.floors_total ? `${l.floor}/${l.floors_total} эт.` : "—",
-    l.area_m2 ? `${l.area_m2} м²` : "—",
-  ];
-  return parts.join(" · ");
-}
 function photoUrl(path) {
   const { data } = supabase.storage.from("listing-photos").getPublicUrl(path);
   return data?.publicUrl || "";
@@ -94,6 +71,20 @@ function IconRepliesBubble() {
     </svg>
   );
 }
+function IconCopySmall() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#B8B8BE" strokeWidth="2">
+      <rect x="9" y="9" width="12" height="12" rx="2" /><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" />
+    </svg>
+  );
+}
+function IconCheckSmall() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5BD98A" strokeWidth="2.5">
+      <path d="M4 12l5 5L20 6" />
+    </svg>
+  );
+}
 
 function ListingThumb({ l, style }) {
   const [failed, setFailed] = useState(false);
@@ -125,6 +116,12 @@ export default function ProfilePage() {
   const [sortBy, setSortBy] = useState("new");
   const [showSortPicker, setShowSortPicker] = useState(false);
   const [selected, setSelected] = useState(new Set());
+  const [copiedId, setCopiedId] = useState(null);
+  function copyId(displayId) {
+    navigator.clipboard.writeText(String(displayId));
+    setCopiedId(displayId);
+    setTimeout(() => setCopiedId((cur) => (cur === displayId ? null : cur)), 1500);
+  }
   const [showBulkCollection, setShowBulkCollection] = useState(false);
   const [bulkBusy, setBulkBusy] = useState(false);
 
@@ -268,6 +265,7 @@ export default function ProfilePage() {
           {loginError && <div style={sx.error}>{loginError}</div>}
           <button onClick={handleLogin} disabled={busy} style={sx.loginBtn}>{busy ? "Проверяю…" : "Войти"}</button>
         </div>
+        <BottomNav active="Профиль" />
       </div>
     );
   }
@@ -320,6 +318,11 @@ export default function ProfilePage() {
       <div style={sx.searchRow}>
         <span style={{ opacity: 0.5 }}>🔍</span>
         <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Поиск по моим объектам" style={sx.searchInput} />
+        <button onClick={() => setShowCategoryPicker(true)} style={sx.searchFilterBtn} aria-label="Фильтр">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5BD98A" strokeWidth="2">
+            <path d="M4 5h16M7 12h10M11 19h2" />
+          </svg>
+        </button>
       </div>
       <div style={sx.filterRow}>
         <button onClick={() => setShowCategoryPicker(true)} style={sx.filterBtn}>Категории{categoryFilter ? " ✓" : ""}</button>
@@ -349,18 +352,27 @@ export default function ProfilePage() {
                   <div style={sx.bigCardPhotoWrap}>
                     <a href={`/listing/${l.id}`}><ListingThumb l={l} style={{ width: "100%", height: "100%" }} /></a>
                     <button onClick={() => toggleSelect(l.id)} style={sx.checkCircle} aria-label="Выбрать">
-                      {isSel ? <span style={sx.checkCircleFilled}>✓</span> : <span style={sx.checkCircleEmpty} />}
+                      {isSel ? <span style={sx.checkCircleFilled}>✓</span> : <span style={{ ...sx.checkCircleEmpty, borderColor: (l.photos || [])[0] ? "#fff" : "#111" }} />}
                     </button>
                     <div style={{ ...sx.adBar, background: ad.bg }}>{ad.icon} {ad.label}</div>
                   </div>
                   <a href={`/listing/${l.id}`} style={{ textDecoration: "none", color: "#fff" }}>
-                    <div style={sx.bigCardPrice}>${priceUsd(l).toLocaleString("ru-RU")}</div>
-                    <div style={sx.bigCardMeta}>{charLine(l)}</div>
+                    <div style={sx.bigCardPrice}>${priceBlock(l).usd.toLocaleString("ru-RU")}</div>
+                    <div style={sx.bigCardPriceKgs}>{priceBlock(l).kgs.toLocaleString("ru-RU")} сом</div>
+                    <div style={sx.bigCardMeta}>{fullCharLine(l)}</div>
+                    <div style={sx.bigCardCategory}>{categoryLabel(l.type)}</div>
                     <div style={sx.bigCardLoc}>{[l.zhk, l.district].filter(Boolean).join(", ")}</div>
+                    {l.description && <div style={sx.bigCardDesc}>{l.description}</div>}
                   </a>
                   <div style={sx.statsBox}>
                     <span style={sx.statsItem}><IconEyeOutline /> 0</span>
                     <span style={sx.statsItem}><IconRepliesBubble /> 0</span>
+                    {l.display_id && (
+                      <button onClick={() => copyId(l.display_id)} style={sx.idCopyBtn}>
+                        ID {l.display_id}
+                        {copiedId === l.display_id ? <IconCheckSmall /> : <IconCopySmall />}
+                      </button>
+                    )}
                   </div>
                   <div style={{ padding: "8px 10px 0", display: "flex" }}><AddToCollectionButton listingId={l.id} compact /></div>
                 </div>
@@ -427,6 +439,7 @@ export default function ProfilePage() {
           </div>
         </div>
       )}
+      <BottomNav active="Профиль" />
     </div>
   );
 }
@@ -484,7 +497,7 @@ function BulkCollectionModal({ agent, onClose, onPick, busy, done }) {
 
 const sx = {
   page: { maxWidth: 480, margin: "0 auto", minHeight: "100vh", background: "#0C0C0D",
-    fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif", color: "#fff", padding: "16px 20px 40px" },
+    fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif", color: "#fff", padding: "16px 20px 90px" },
   center: { display: "flex", alignItems: "center", justifyContent: "center", minHeight: "80vh", color: "#8B8B90" },
   backBtn: { width: 36, height: 36, borderRadius: "50%", background: "rgba(255,255,255,0.08)", color: "#fff",
     border: "none", fontSize: 22, lineHeight: "36px", marginBottom: 14 },
@@ -521,6 +534,7 @@ const sx = {
   searchRow: { display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.06)",
     border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, padding: "11px 14px", marginBottom: 10 },
   searchInput: { flex: 1, background: "none", border: "none", color: "#fff", fontSize: 14, outline: "none" },
+  searchFilterBtn: { background: "none", border: "none", display: "flex", alignItems: "center", padding: 0 },
   filterRow: { display: "flex", gap: 8, marginBottom: 18, flexWrap: "wrap" },
   filterBtn: { background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#fff",
     fontSize: 12, fontWeight: 600, padding: "8px 14px", borderRadius: 16 },
@@ -544,8 +558,14 @@ const sx = {
   statsItem: { display: "flex", alignItems: "center", gap: 4, color: "#B8B8BE", fontWeight: 600 },
   cardPhotoWrap: { width: "100%", aspectRatio: "1/1", background: "#1A1A1C" },
   bigCardPrice: { fontSize: 15, fontWeight: 800, margin: "9px 10px 0" },
-  bigCardMeta: { fontSize: 11.5, color: "#EDEDEF", margin: "3px 10px 0" },
-  bigCardLoc: { fontSize: 10.5, color: "#8B8B90", margin: "1px 10px 8px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+  bigCardPriceKgs: { fontSize: 11, color: "#8B8B90", margin: "1px 10px 0" },
+  bigCardMeta: { fontSize: 11.5, color: "#EDEDEF", margin: "5px 10px 0" },
+  bigCardCategory: { fontSize: 11, fontWeight: 600, color: "#fff", margin: "2px 10px 0" },
+  bigCardLoc: { fontSize: 10.5, color: "#8B8B90", margin: "1px 10px 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+  bigCardDesc: { fontSize: 10.5, color: "#B8B8BE", margin: "4px 10px 0", lineHeight: 1.4,
+    display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 3, overflow: "hidden" },
+  idCopyBtn: { display: "flex", alignItems: "center", gap: 4, background: "none", border: "none",
+    color: "#B8B8BE", fontSize: 11, fontWeight: 600, padding: 0, marginLeft: "auto" },
 
   cardPhoto: { width: "100%", height: "100%", objectFit: "cover", display: "block" },
   cardPhotoEmpty: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center",
