@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase";
+import BottomNav from "../../components/BottomNav";
 
 function IconWhatsappSmall() {
   return (
@@ -57,40 +58,46 @@ export default function CollectionsPage() {
             const shareText = encodeURIComponent(`Подборка «${c.name}»: ${link}`);
             return (
               <div key={c.id} style={sx.collectionRow}>
-                <a href={`/c/${c.id}?manage=1`} style={sx.collectionRowLink}>
+                <div style={sx.collectionTopLine}>
                   <span style={sx.collectionRowName}>{c.name}</span>
+                  <a href={`/c/${c.id}?manage=1`} style={sx.viewBtn}>Смотреть →</a>
+                </div>
+                <div style={sx.collectionBottomLine}>
                   <span style={sx.collectionRowCount}>{(c.listing_ids || []).length} объект(ов)</span>
-                </a>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <a href={`https://wa.me/?text=${shareText}`} target="_blank" rel="noopener noreferrer" style={sx.shareIconBtn} aria-label="WhatsApp"><IconWhatsappSmall /></a>
-                  <a href={`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent("Подборка «" + c.name + "»")}`} target="_blank" rel="noopener noreferrer" style={sx.shareIconBtn} aria-label="Telegram"><IconTelegramSmall /></a>
-                  <button
-                    onClick={() => { if (navigator.share) navigator.share({ title: c.name, url: link }).catch(() => {}); else navigator.clipboard.writeText(link); }}
-                    style={sx.shareIconBtn} aria-label="Поделиться"
-                  >
-                    <IconShareStandard />
-                  </button>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <a href={`https://wa.me/?text=${shareText}`} target="_blank" rel="noopener noreferrer" style={sx.shareIconBtn} aria-label="WhatsApp"><IconWhatsappSmall /></a>
+                    <a href={`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent("Подборка «" + c.name + "»")}`} target="_blank" rel="noopener noreferrer" style={sx.shareIconBtn} aria-label="Telegram"><IconTelegramSmall /></a>
+                    <button
+                      onClick={() => { if (navigator.share) navigator.share({ title: c.name, url: link }).catch(() => {}); else navigator.clipboard.writeText(link); }}
+                      style={sx.shareIconBtn} aria-label="Поделиться"
+                    >
+                      <IconShareStandard />
+                    </button>
+                  </div>
                 </div>
               </div>
             );
           })}
         </div>
       )}
+      <BottomNav active="Профиль" />
     </div>
   );
 }
 
 const sx = {
   page: { maxWidth: 480, margin: "0 auto", minHeight: "100vh", background: "#0C0C0D",
-    fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif", color: "#fff", padding: "16px 20px 40px" },
+    fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif", color: "#fff", padding: "16px 20px 90px" },
   center: { display: "flex", alignItems: "center", justifyContent: "center", minHeight: "80vh", color: "#8B8B90" },
   backBtn: { width: 36, height: 36, borderRadius: "50%", background: "rgba(255,255,255,0.08)", color: "#fff",
     border: "none", fontSize: 22, lineHeight: "36px", marginBottom: 14 },
   title: { fontSize: 19, fontWeight: 800 },
   emptyMsg: { color: "#8B8B90", fontSize: 13, lineHeight: 1.6, marginTop: 16 },
-  collectionRow: { display: "flex", justifyContent: "space-between", alignItems: "center",
-    background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "13px 14px" },
-  collectionRowLink: { display: "flex", flexDirection: "column", gap: 3, textDecoration: "none", color: "#fff" },
+  collectionRow: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "13px 14px" },
+  collectionTopLine: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
+  collectionBottomLine: { display: "flex", justifyContent: "space-between", alignItems: "center" },
+  viewBtn: { background: "#1FA35C", color: "#fff", textDecoration: "none", fontSize: 12, fontWeight: 700,
+    padding: "7px 13px", borderRadius: 16 },
   collectionRowName: { fontSize: 14, fontWeight: 700 },
   collectionRowCount: { color: "#7FA396", fontSize: 11.5 },
   shareIconBtn: { width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.08)",
