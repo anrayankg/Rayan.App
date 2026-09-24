@@ -1,4 +1,5 @@
 import "./globals.css";
+import Splash from "../components/Splash";
 
 export const metadata = {
   title: "RAYAN — центр недвижимости",
@@ -8,8 +9,12 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="ru">
-      <body>{children}</body>
+      <body>
+        <Splash />
+        {children}
+      </body>
     </html>
   );
 }
+
 
