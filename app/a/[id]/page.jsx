@@ -4,6 +4,8 @@ import { useRouter, useParams } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 import { publicExtraEntries, extraLabel, extraDisplayValue } from "../../../lib/extraFields";
 import { PLATFORM_LABELS, PLATFORM_ICON } from "../../../lib/videoLinks";
+import { fullCharLine } from "../../../lib/listingFormat";
+import BottomNav from "../../../components/BottomNav";
 import AddToCollectionButton from "../../../components/AddToCollectionButton";
 
 // Страница объекта для АГЕНТА, который смотрит ЧУЖОЙ объект (не свой) — ссылка вида /a/<id>.
@@ -161,13 +163,7 @@ export default function AgentListingPage() {
         <div style={sx.priceUsd}>${usd.toLocaleString("ru-RU")}</div>
         <div style={sx.priceKgs}>{kgs.toLocaleString("ru-RU")} сом</div>
 
-        <div style={sx.charLine}>
-          {roomsLabel(l)}
-          {classOrSeries && ` · ${classOrSeries.value}`}
-          {statusLine && ` · ${statusLine}`}
-          {l.floor && l.floors_total ? ` · ${l.floor}/${l.floors_total} эт.` : ""}
-          {l.area_m2 ? ` · ${l.area_m2} м²` : ""}
-        </div>
+        <div style={sx.charLine}>{fullCharLine(l)}</div>
         <div style={sx.category}>{categoryLabel(l.type)}</div>
         <div style={sx.location}>{[l.zhk, l.district].filter(Boolean).join(", ") || l.city || "Бишкек"}</div>
 
@@ -253,6 +249,7 @@ export default function AgentListingPage() {
           {l.display_id && <span> &nbsp;|&nbsp; ID {l.display_id}</span>}
         </div>
       </div>
+      <BottomNav active="Профиль" />
     </div>
   );
 }
@@ -279,7 +276,7 @@ function Row({ label, value }) {
 
 const sx = {
   page: { maxWidth: 480, margin: "0 auto", minHeight: "100vh", background: "#0C0C0D",
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", color: "#fff", paddingBottom: 40 },
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", color: "#fff", paddingBottom: 90 },
   centerMsg: { display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", color: "#8B8B90" },
   photoWrap: { position: "relative", width: "100%", aspectRatio: "1/1", background: "#1A1A1C" },
   photo: { width: "100%", height: "100%", objectFit: "cover", display: "block" },
