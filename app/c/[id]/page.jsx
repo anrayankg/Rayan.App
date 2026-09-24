@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
+import { fullCharLine } from "../../../lib/listingFormat";
+import BottomNav from "../../../components/BottomNav";
 
 // Подборка — то, что агент отправляет КЛИЕНТУ. Поэтому каждый объект внутри ссылается
 // на клиентскую страницу (/p/...), а не на агентскую (/a/...) — иначе клиент увидел бы
@@ -45,7 +47,7 @@ export default function CollectionPage() {
       const ids = entries.map((x) => (typeof x === "string" ? x : x.id));
       if (ids.length > 0) {
         const { data: ls } = await supabase.from("listings")
-          .select("id, display_id, type, price, currency, currency_new, district, zhk, room_type, rooms, area_m2, floor, floors_total, photos, status, city")
+          .select("id, display_id, type, price, currency, currency_new, district, zhk, room_type, rooms, area_m2, floor, floors_total, series, construction_status, delivery_year, delivery_quarter, extra_details, photos, status, city")
           .in("id", ids).eq("status", "активен");
         setListings(ls || []);
 
@@ -55,7 +57,7 @@ export default function CollectionPage() {
         for (const combo of combos) {
           const [city, type, roomType] = combo.split("|");
           const { data: sim } = await supabase.from("listings")
-            .select("id, display_id, type, price, currency, currency_new, district, zhk, room_type, rooms, area_m2, photos")
+            .select("id, display_id, type, price, currency, currency_new, district, zhk, room_type, rooms, area_m2, floor, floors_total, series, construction_status, delivery_year, delivery_quarter, extra_details, photos")
             .eq("status", "активен").eq("city", city).eq("type", type).in("room_type", similarRoomMatch(roomType))
             .not("id", "in", `(${ids.join(",")})`).limit(6);
           if (sim) found.push(...sim);
@@ -101,7 +103,7 @@ export default function CollectionPage() {
                     )}
                   </div>
                   <div style={sx.cardPrice}>${priceUsd(l).toLocaleString("ru-RU")}</div>
-                  <div style={sx.cardChar}>{l.room_type || l.rooms} · {l.area_m2} м²</div>
+                  <div style={sx.cardChar}>{fullCharLine(l)}</div>
                   <div style={sx.cardLoc}>{[l.zhk, l.district].filter(Boolean).join(", ")}</div>
                 </div>
               </a>
@@ -127,19 +129,20 @@ export default function CollectionPage() {
                   {(s.photos || [])[0] ? <img src={photoUrl(s.photos[0])} alt="" style={sx.cardPhoto} /> : <div style={{ ...sx.cardPhoto, display: "flex", alignItems: "center", justifyContent: "center", color: "#8B8B90", fontSize: 10 }}>Нет фото</div>}
                 </div>
                 <div style={sx.similarPrice}>${priceUsd(s).toLocaleString("ru-RU")}</div>
-                <div style={sx.similarChar}>{s.room_type || s.rooms} · {s.area_m2} м²</div>
+                <div style={sx.similarChar}>{fullCharLine(s)}</div>
               </a>
             ))}
           </div>
         </div>
       )}
+      {isManageMode && <BottomNav active="Профиль" />}
     </div>
   );
 }
 
 const sx = {
   page: { maxWidth: 480, margin: "0 auto", minHeight: "100vh", background: "#0C0C0D",
-    fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif", color: "#fff", padding: "18px 20px 40px" },
+    fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif", color: "#fff", padding: "18px 20px 90px" },
   center: { display: "flex", alignItems: "center", justifyContent: "center", minHeight: "80vh", color: "#8B8B90" },
   header: { display: "flex", alignItems: "center", gap: 12 },
   backBtn: { width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.08)", color: "#fff",
