@@ -153,7 +153,7 @@ export default function MapPicker({ label, required, lat, lng, flyToQuery, flyTo
       <div
         ref={mapRef}
         style={{
-          width: "100%", height: 220, borderRadius: 14, overflow: "hidden",
+          width: "100%", height: 220, borderRadius: "var(--r)", overflow: "hidden",
           border: "1px solid rgba(212,164,55,0.3)", background: "#0A4A38",
         }}
       />

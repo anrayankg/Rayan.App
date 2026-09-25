@@ -52,7 +52,7 @@ export default function LocationPicker({ label, options, value, onChange, requir
             position: "absolute", top: "100%", left: 0, right: 0, zIndex: 9999,
             marginTop: 4, maxHeight: 260, overflowY: "auto",
             background: "#0A4A38", border: "1px solid rgba(212,164,55,0.4)",
-            borderRadius: 12, boxShadow: "0 12px 30px rgba(0,0,0,0.5)",
+            borderRadius: "var(--r)", boxShadow: "0 12px 30px rgba(0,0,0,0.5)",
           }}
         >
           {filtered.length === 0 && (
