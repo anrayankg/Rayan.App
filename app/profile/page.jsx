@@ -6,6 +6,9 @@ import { CAT_KVARTIRY, CAT_NOVOSTROYKI, CAT_DOMA, CAT_UCHASTOK, CAT_KOMMERCIYA, 
 import { fullCharLine, priceBlock, categoryLabel } from "../../lib/listingFormat";
 import BottomNav from "../../components/BottomNav";
 import AddToCollectionButton from "../../components/AddToCollectionButton";
+import CollectionPickerSheet from "../../components/CollectionPickerSheet";
+import ShareSheet from "../../components/ShareSheet";
+import { clientListingLink } from "../../lib/agent";
 
 // Личный кабинет агента. Входа с паролем пока нет (сознательно, по решению Айгуль) —
 // агент вводит свой рабочий номер, если он найден в таблице agents, устройство
@@ -30,6 +33,7 @@ const ACTIVE_STATUSES = ["активен"];
 const DRAFT_STATUSES = ["черновик"];
 // Всё остальное (на проверке, забронирован, сделка в процессе, продан, снят с продажи, архив) — "Деактивировано"
 
+function priceUsd(l) { return priceBlock(l).usd; }
 function digitsOnly(s) { return (s || "").replace(/\D/g, ""); }
 function photoUrl(path) {
   const { data } = supabase.storage.from("listing-photos").getPublicUrl(path);
@@ -123,6 +127,7 @@ export default function ProfilePage() {
     setTimeout(() => setCopiedId((cur) => (cur === displayId ? null : cur)), 1500);
   }
   const [showBulkCollection, setShowBulkCollection] = useState(false);
+  const [showShare, setShowShare] = useState(false);
   const [bulkBusy, setBulkBusy] = useState(false);
 
   useEffect(() => {
@@ -384,24 +389,28 @@ export default function ProfilePage() {
 
       {/* Мои подборки */}
       <button onClick={handleLogout} style={sx.logoutBtnBottom}>Выйти</button>
+      {selected.size > 0 && <div style={{ height: 230 }} />}
 
       {selected.size > 0 && (
-        <div style={sx.bulkBar}>
-          <button onClick={() => router.push("/ads")} style={sx.bulkBtn}>Запустить рекламу ({selected.size})</button>
-          <button onClick={() => setShowBulkCollection(true)} style={sx.bulkBtn}>Отправить в подборку ({selected.size})</button>
+        <div className="bulk-bar">
+          <div className="bulk-bar-title"><span>Выбрано: {selected.size}</span><button onClick={() => setSelected(new Set())}>Отменить</button></div>
+          <button onClick={() => setShowBulkCollection(true)} className="btn-primary btn-block">Отправить в подборку ({selected.size})</button>
+          <button onClick={() => setShowShare(true)} className="btn-primary btn-block">Поделиться ({selected.size})</button>
+          <button onClick={() => router.push("/ads")} className="btn-secondary btn-block">Запустить рекламу ({selected.size})</button>
           <button onClick={bulkDeactivate} disabled={bulkBusy} style={sx.bulkDeactivateBtn}>Деактивировать</button>
         </div>
       )}
 
-      {showBulkCollection && (
-        <BulkCollectionModal
-          agent={agent}
-          onClose={() => { setShowBulkCollection(false); setBulkDone(null); }}
-          onPick={bulkAddToCollection}
-          busy={bulkBusy}
-          done={bulkDone}
-        />
-      )}
+      <CollectionPickerSheet open={showBulkCollection} onClose={() => setShowBulkCollection(false)}
+        listingIds={Array.from(selected)} agent={agent} onDone={() => setSelected(new Set())} />
+      {(() => {
+        const sel = myListings.filter((l) => selected.has(l.id));
+        const url = sel[0] ? clientListingLink(sel[0].id, agent) : "";
+        const text = sel.length <= 1 ? url : "Варианты от RAYAN — центр недвижимости:\n\n" + sel.map((l, i) =>
+          `${i + 1}) $${priceBlock(l).usd.toLocaleString("ru-RU")} · ${fullCharLine(l)}\n${clientListingLink(l.id, agent)}`).join("\n\n");
+        return <ShareSheet open={showShare} onClose={() => setShowShare(false)} url={url} text={text}
+          note={`В ссылке будет ваш номер: ${agent.name || ""} ${agent.phone || ""}`} />;
+      })()}
 
       {/* Модалка категорий */}
       {showCategoryPicker && (
@@ -433,64 +442,13 @@ export default function ProfilePage() {
             <div style={sx.modalTitle}>Сортировать</div>
             {[["new", "Сначала новые"], ["cheap", "Сначала дешевле"], ["expensive", "Сначала дороже"]].map(([key, label]) => (
               <button key={key} onClick={() => { setSortBy(key); setShowSortPicker(false); }} style={sx.categoryRow}>
-                <span>{label}</span>{sortBy === key && <span style={{ color: "#5BD98A" }}>✓</span>}
+                <span>{label}</span><span className={`radio ${sortBy === key ? "on" : ""}`} />
               </button>
             ))}
           </div>
         </div>
       )}
       <BottomNav active="Профиль" />
-    </div>
-  );
-}
-
-function BulkCollectionModal({ agent, onClose, onPick, busy, done }) {
-  const [recent, setRecent] = useState([]);
-  const [newName, setNewName] = useState("");
-
-  useEffect(() => {
-    try { setRecent(JSON.parse(localStorage.getItem("rayan_collections") || "[]")); } catch {}
-  }, []);
-
-  if (done) {
-    return (
-      <div style={sx.modalOverlay} onClick={onClose}>
-        <div style={sx.modalSheet} onClick={(e) => e.stopPropagation()}>
-          <div style={sx.modalHandle} />
-          <div style={sx.modalTitle}>Добавлено ✓</div>
-          <div style={sx.selectHeaderText}>В подборку «{done}»</div>
-          <button onClick={onClose} style={{ ...sx.loginBtn, marginTop: 16 }}>Готово</button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div style={sx.modalOverlay} onClick={onClose}>
-      <div style={sx.modalSheet} onClick={(e) => e.stopPropagation()}>
-        <div style={sx.modalHandle} />
-        <div style={sx.modalTitle}>Отправить в подборку</div>
-
-        <div style={{ ...sx.selectHeaderText, marginBottom: 6 }}>Новая подборка</div>
-        <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)}
-          placeholder="Например: Для Айгерим" style={sx.input} />
-        <button disabled={busy || !newName.trim()} onClick={() => onPick(null, true, newName.trim())}
-          style={{ ...sx.loginBtn, marginTop: 10, marginBottom: 18 }}>
-          Создать и добавить
-        </button>
-
-        <div style={{ ...sx.selectHeaderText, marginBottom: 6 }}>Мои подборки</div>
-        {recent.length === 0 ? (
-          <div style={sx.emptyMsg}>Пока нет ни одной подборки на этом устройстве.</div>
-        ) : (
-          recent.map((c) => (
-            <button key={c.id} disabled={busy} onClick={() => onPick(c.id, false)} style={sx.categoryRow}>
-              {c.name}
-            </button>
-          ))
-        )}
-        <button onClick={onClose} style={sx.logoutBtnBottom}>Отмена</button>
-      </div>
     </div>
   );
 }
@@ -507,10 +465,10 @@ const sx = {
   loginTitle: { fontSize: 21, fontWeight: 800, textAlign: "center" },
   loginSub: { fontSize: 13.5, color: "#8B8B90", textAlign: "center", marginTop: 6, marginBottom: 22 },
   input: { width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)",
-    borderRadius: 12, padding: "15px 14px", color: "#fff", fontSize: 16, textAlign: "center" },
+    borderRadius: "var(--r)", padding: "15px 14px", color: "#fff", fontSize: 16, textAlign: "center" },
   error: { color: "#E8877A", fontSize: 12.5, textAlign: "center", marginTop: 10 },
   loginBtn: { width: "100%", background: "#1FA35C", border: "none", color: "#fff", fontWeight: 700,
-    fontSize: 15.5, padding: "15px 0", borderRadius: 12, marginTop: 16 },
+    fontSize: 15.5, padding: "15px 0", borderRadius: "var(--r)", marginTop: 16 },
 
   profileHeader: { textAlign: "center", marginBottom: 20 },
   avatarBig: { width: 72, height: 72, borderRadius: "50%", background: "rgba(31,163,92,0.18)", color: "#5BD98A",
@@ -518,26 +476,26 @@ const sx = {
   name: { fontSize: 19, fontWeight: 800 },
   phone: { fontSize: 12.5, color: "#8B8B90", marginTop: 2 },
   editProfileBtn: { marginTop: 12, background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.14)",
-    color: "#fff", fontSize: 12.5, fontWeight: 600, padding: "8px 16px", borderRadius: 20 },
+    color: "#fff", fontSize: 12.5, fontWeight: 600, padding: "8px 16px", borderRadius: "var(--r)" },
 
   quickRow: { display: "flex", gap: 10, marginBottom: 20 },
   quickTile: { flex: 1, textDecoration: "none", background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.08)",
-    borderRadius: 14, padding: "14px 6px", textAlign: "center", color: "#fff" },
+    borderRadius: "var(--r)", padding: "14px 6px", textAlign: "center", color: "#fff" },
   quickIcon: { fontSize: 22, marginBottom: 6 },
   quickLabel: { fontSize: 11, fontWeight: 700 },
 
   statusTabsRow: { display: "flex", gap: 8, overflowX: "auto", marginBottom: 14, paddingBottom: 2 },
   statusTab: { flexShrink: 0, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)",
-    color: "#8B8B90", fontSize: 12.5, fontWeight: 700, padding: "9px 15px", borderRadius: 18 },
+    color: "#8B8B90", fontSize: 12.5, fontWeight: 700, padding: "9px 15px", borderRadius: "var(--r)" },
   statusTabActive: { background: "rgba(31,163,92,0.18)", border: "1px solid rgba(31,163,92,0.5)", color: "#5BD98A" },
 
   searchRow: { display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.06)",
-    border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, padding: "11px 14px", marginBottom: 10 },
+    border: "1px solid rgba(255,255,255,0.1)", borderRadius: "var(--r)", padding: "11px 14px", marginBottom: 10 },
   searchInput: { flex: 1, background: "none", border: "none", color: "#fff", fontSize: 14, outline: "none" },
   searchFilterBtn: { background: "none", border: "none", display: "flex", alignItems: "center", padding: 0 },
   filterRow: { display: "flex", gap: 8, marginBottom: 18, flexWrap: "wrap" },
   filterBtn: { background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#fff",
-    fontSize: 12, fontWeight: 600, padding: "8px 14px", borderRadius: 16 },
+    fontSize: 12, fontWeight: 600, padding: "8px 14px", borderRadius: "var(--r)" },
   resetBtn: { background: "none", border: "none", color: "#5BD98A", fontSize: 12, fontWeight: 700, padding: "8px 4px" },
 
   emptyMsg: { color: "#8B8B90", fontSize: 13, lineHeight: 1.6, marginBottom: 20 },
@@ -545,12 +503,12 @@ const sx = {
   selectHeaderText: { fontSize: 13, fontWeight: 700 },
   selectAllBtn: { background: "none", border: "none", color: "#5BD98A", fontSize: 13, fontWeight: 700 },
   grid2: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 10 },
-  bigCard: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, padding: "0 0 10px", overflow: "hidden" },
+  bigCard: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "var(--r)", padding: "0 0 10px", overflow: "hidden" },
   bigCardPhotoWrap: { position: "relative", width: "100%", aspectRatio: "1/1", background: "#1A1A1C" },
-  checkCircle: { position: "absolute", top: 8, right: 8, width: 22, height: 22, borderRadius: "50%",
-    background: "none", border: "none", padding: 0, display: "flex", alignItems: "center", justifyContent: "center" },
-  checkCircleEmpty: { width: 22, height: 22, borderRadius: "50%", border: "2px solid #fff", background: "transparent" },
-  checkCircleFilled: { width: 22, height: 22, borderRadius: "50%", background: "#1FA35C", color: "#fff",
+  checkCircle: { position: "absolute", top: 0, right: 0, width: 48, height: 48, padding: 8,
+    background: "none", border: "none", display: "flex", alignItems: "flex-start", justifyContent: "flex-end" },
+  checkCircleEmpty: { width: 24, height: 24, borderRadius: "50%", border: "2px solid #fff", background: "transparent" },
+  checkCircleFilled: { width: 24, height: 24, borderRadius: "50%", background: "#1FA35C", color: "#fff",
     fontSize: 13, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" },
   adBar: { position: "absolute", left: 0, right: 0, bottom: 0, padding: "6px 8px", color: "#fff",
     fontSize: 10.5, fontWeight: 800, textAlign: "center" },
@@ -574,7 +532,7 @@ const sx = {
   sectionTitle: { fontSize: 12.5, fontWeight: 700, color: "#7FA396", textTransform: "uppercase",
     letterSpacing: 0.5, marginTop: 30, marginBottom: 12, paddingTop: 4, borderTop: "1px solid rgba(255,255,255,0.07)" },
   collectionRow: { display: "flex", justifyContent: "space-between", alignItems: "center",
-    background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "13px 14px", marginBottom: 10 },
+    background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "var(--r)", padding: "13px 14px", marginBottom: 10 },
   collectionRowLink: { display: "flex", flexDirection: "column", gap: 3, textDecoration: "none", color: "#fff" },
   collectionRowName: { fontSize: 14, fontWeight: 700 },
   collectionRowCount: { color: "#7FA396", fontSize: 11.5 },
@@ -582,13 +540,13 @@ const sx = {
     border: "none", display: "flex", alignItems: "center", justifyContent: "center" },
 
   logoutBtnBottom: { width: "100%", marginTop: 30, background: "none", border: "1px solid rgba(255,255,255,0.15)",
-    color: "#8B8B90", fontSize: 13, padding: "12px 0", borderRadius: 10 },
+    color: "#8B8B90", fontSize: 13, padding: "12px 0", borderRadius: "var(--r)" },
 
   bulkBar: { position: "fixed", left: 0, right: 0, bottom: 0, maxWidth: 480, margin: "0 auto",
     background: "#18181A", borderTop: "1px solid rgba(255,255,255,0.1)", padding: "12px 20px 20px",
     display: "flex", flexDirection: "column", gap: 8, zIndex: 60 },
   bulkBtn: { width: "100%", background: "#1FA35C", border: "none", color: "#fff", fontWeight: 700,
-    fontSize: 14, padding: "13px 0", borderRadius: 12 },
+    fontSize: 14, padding: "13px 0", borderRadius: "var(--r)" },
   bulkDeactivateBtn: { width: "100%", background: "none", border: "none", color: "#E8877A", fontWeight: 700, fontSize: 13, padding: "4px 0" },
 
   modalOverlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 80 },
@@ -597,5 +555,5 @@ const sx = {
   modalHandle: { width: 40, height: 4, background: "rgba(255,255,255,0.22)", borderRadius: 2, margin: "4px auto 16px" },
   modalTitle: { fontSize: 18, fontWeight: 800, marginBottom: 12 },
   categoryRow: { display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%",
-    background: "rgba(255,255,255,0.05)", border: "none", color: "#fff", padding: "13px 14px", borderRadius: 12, marginBottom: 8, fontSize: 14, textAlign: "left" },
+    background: "rgba(255,255,255,0.05)", border: "none", color: "#fff", padding: "13px 14px", borderRadius: "var(--r)", marginBottom: 8, fontSize: 14, textAlign: "left" },
 };
