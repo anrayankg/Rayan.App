@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Home, Heart, User, Megaphone } from "lucide-react";
 import { supabase } from "../lib/supabase";
@@ -11,6 +11,11 @@ const ROYAL_PARK_LOGO = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAb8AAAG/C
 
 import { CAT_KVARTIRY, CAT_NOVOSTROYKI, CAT_DOMA, CAT_UCHASTOK, CAT_KOMMERCIYA, CAT_ARENDA } from "../lib/categoryIcons";
 import { fullCharLine, priceBlock as sharedPriceBlock, categoryLabel as sharedCategoryLabel } from "../lib/listingFormat";
+import { getCurrentAgent, clientListingLink, isOwnListing } from "../lib/agent";
+import ShareSheet from "../components/ShareSheet";
+import CollectionPickerSheet from "../components/CollectionPickerSheet";
+import FilterWizard from "../components/FilterWizard";
+import { EMPTY, FILTER_CATEGORIES, matchListing, sortListings, activeCount } from "../lib/filterConfig";
 const CATS = [
   { label: "Квартиры", key: "vtorichka", img: CAT_KVARTIRY, path: "M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" },
   { label: "Новостройки", key: "pervichka", img: CAT_NOVOSTROYKI, path: "M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6" },
@@ -21,6 +26,11 @@ const CATS = [
   { label: "Иссык-Куль", key: "issykkul", path: "M3 18l5-8 4 5 3-4 6 7H3z" },
   { label: "Инвестиции", key: "investicii", path: "M3 17l6-6 4 4 8-8M21 3h-6M21 3v6" },
 ];
+
+function todayStartIso() {
+  const d = new Date(); d.setHours(0, 0, 0, 0); // полночь по времени телефона (Бишкек)
+  return d.getTime();
+}
 
 const NAV = [
   { label: "Главная", active: true, path: "/" },
@@ -50,26 +60,64 @@ function renderNavIcon(n) {
 
 export default function HomePage() {
   const router = useRouter();
-  const [counts, setCounts] = useState({ активен: 0, "на проверке": 0, архив: 0, всего: 0, сегодня: 0 });
+  const [agent, setAgent] = useState(null);
+  const [allListings, setAllListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [feedTab, setFeedTab] = useState("активные");
-  const [feedListings, setFeedListings] = useState([]);
-  const [feedLoading, setFeedLoading] = useState(true);
+  const [visibleCount, setVisibleCount] = useState(40);
 
-  const USD_KGS_RATE = 87.45; // курс НБКР, обновлять вручную пока не подключён автокурс
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState(EMPTY);
+  const [filterOpen, setFilterOpen] = useState(false);
 
+  const [selected, setSelected] = useState(new Set());
+  const [collectionOpen, setCollectionOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+
+  useEffect(() => { setAgent(getCurrentAgent()); }, []);
+
+  // Загружаем ВСЕ активные объекты один раз — дальше поиск, фильтр и вкладки
+  // работают мгновенно прямо в телефоне, без новых запросов.
   useEffect(() => {
-    async function loadFeed() {
-      setFeedLoading(true);
-      let query = supabase.from("listings").select("*").eq("status", "активен").limit(20);
-      query = feedTab === "новые" ? query.order("created_at", { ascending: false }) : query.order("id", { ascending: false });
-      const { data, error } = await query;
-      if (!error && data) setFeedListings(data);
-      setFeedLoading(false);
+    async function load() {
+      setLoading(true);
+      const { data, error: e } = await supabase.from("listings").select("*")
+        .eq("status", "активен").order("created_at", { ascending: false }).limit(1000);
+      if (e) setError(e.message);
+      setAllListings(data || []);
+      setLoading(false);
     }
-    loadFeed();
-  }, [feedTab]);
+    load();
+  }, []);
+
+  function isNewToday(l) {
+    const t0 = todayStartIso();
+    const created = l.created_at ? new Date(l.created_at).getTime() : 0;
+    const published = l.published_at ? new Date(l.published_at).getTime() : 0;
+    return created >= t0 || published >= t0;
+  }
+
+  // Поиск + фильтр (общие для обеих вкладок) + сортировка из фильтра
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const list = allListings.filter((l) => {
+      if (!matchListing(l, filter)) return false;
+      if (q) {
+        const hay = [l.display_id, l.city, l.district, l.zhk, l.description, l.series, l.room_type, l.rooms, l.type]
+          .filter(Boolean).join(" ").toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+    return sortListings(list, (filter.v || {}).sort);
+  }, [allListings, search, filter]);
+
+  const newToday = useMemo(() => filtered.filter(isNewToday), [filtered]);
+  const feedListings = feedTab === "новые" ? newToday : filtered;
+  const shown = feedListings.slice(0, visibleCount);
+
+  const activeFilterCount = activeCount(filter);
 
   function photoUrl(listing) {
     const path = listing.photos && listing.photos.length > 0 ? listing.photos[0] : null;
@@ -78,26 +126,17 @@ export default function HomePage() {
     return data?.publicUrl || null;
   }
 
-  function priceBlock(listing) {
-    return sharedPriceBlock(listing);
-  }
-
-  function categoryLabel(type) {
-    return sharedCategoryLabel(type);
-  }
-
-  function characteristicsLine(l) {
-    return fullCharLine(l);
-  }
-
   // Адрес — сначала ЖК/район (это можно показывать клиенту), город — только если
-  // он отличается от Бишкека или если больше вообще нечего показать.
-  // Точный адрес (l.exact_address) сюда не попадает — он приватный, хранится
-  // отдельно в listing_contacts и не должен утекать в публичную карточку.
+  // он отличается от Бишкека. Точный адрес сюда не попадает — он приватный.
   function locationLine(l) {
     const parts = [l.district, l.zhk].filter(Boolean);
     if (l.city && l.city !== "Бишкек") parts.unshift(l.city);
     return parts.length > 0 ? parts.join(", ") : (l.city || "Бишкек");
+  }
+
+  function openListing(l) {
+    // Свой объект — страница владельца (редактирование), чужой — страница для агента.
+    router.push(isOwnListing(l, agent) ? `/listing/${l.id}` : `/a/${l.id}`);
   }
 
   const feedTouch = useRef({ x: 0, y: 0 });
@@ -111,8 +150,30 @@ export default function HomePage() {
     const dy = t.clientY - feedTouch.current.y;
     if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
       setFeedTab(dx < 0 ? "новые" : "активные");
+      setVisibleCount(40);
     }
   }
+
+  function toggleSelect(id) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleCat(key) {
+    setFilter((f) => (f.cat === key ? EMPTY : { cat: key, v: {} }));
+    setVisibleCount(40);
+  }
+
+  // Текст для "Поделиться": один объект — только ссылка (WhatsApp сам покажет карточку
+  // с фото и параметрами); несколько — список "параметры + ссылка".
+  const selectedListings = allListings.filter((l) => selected.has(l.id));
+  const shareUrl = selectedListings[0] ? clientListingLink(selectedListings[0].id, agent) : "";
+  const shareText = selectedListings.length <= 1 ? shareUrl
+    : "Варианты от RAYAN — центр недвижимости:\n\n" + selectedListings.map((l, i) =>
+      `${i + 1}) $${sharedPriceBlock(l).usd.toLocaleString("ru-RU")} · ${fullCharLine(l)}\n${clientListingLink(l.id, agent)}`).join("\n\n");
 
   const [catsOpen, setCatsOpen] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
@@ -131,18 +192,11 @@ export default function HomePage() {
     let raf;
     let paused = false;
     let offset = 0;
-    const speed = 0.7; // px за кадр — заметный, но не дёрганый ход
+    const speed = 0.7;
     const step = () => {
       if (!paused && track) {
-        // Баннеры отрисованы ДВАЖДЫ подряд (см. JSX) — это ровно половина scrollWidth.
-        // На середине тихо возвращаемся к 0: там в этот момент показан такой же
-        // (второй) набор, поэтому скачок не заметен — карусель выглядит бесконечной.
-        //
-        // Двигаем через CSS transform, а не через el.scrollLeft: на iOS Safari
-        // scrollLeft, выставляемый из JS, конфликтует с собственной физикой
-        // нативного скролла контейнера — это была настоящая причина, почему
-        // баннеры не ехали даже после предыдущих правок. transform ни с чем
-        // не спорит и всегда отрабатывает.
+        // Баннеры нарисованы дважды подряд — на середине тихо возвращаемся к 0 (бесшовно).
+        // Двигаем через transform (на iOS scrollLeft из JS не работает надёжно).
         const singleSetWidth = track.scrollWidth / 2;
         if (singleSetWidth > 0) {
           offset += speed;
@@ -160,36 +214,6 @@ export default function HomePage() {
     track.addEventListener("mouseup", resume);
     raf = requestAnimationFrame(step);
     return () => { cancelAnimationFrame(raf); };
-  }, []);
-
-
-  useEffect(() => {
-    async function loadCounts() {
-      try {
-        const { count: total } = await supabase.from("listings").select("*", { count: "exact", head: true });
-        const { count: active } = await supabase.from("listings").select("*", { count: "exact", head: true }).eq("status", "активен");
-        const { count: review } = await supabase.from("listings").select("*", { count: "exact", head: true }).eq("status", "на проверке");
-        const { count: archived } = await supabase.from("listings").select("*", { count: "exact", head: true }).eq("status", "архив");
-        const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
-        const todayIso = todayStart.toISOString();
-        // "Новые" — считаем и по published_at (стал активным сегодня через форму), И по
-        // created_at (запись вообще появилась в базе сегодня, любым способом — форма,
-        // ручной перенос и т.п.). Раньше это был один .or()-запрос строкой — при любой его
-        // ошибке счётчик тихо показывал 0, даже если внизу ленты новые объекты были видны.
-        // Теперь — два простых запроса и объединение по id, без хрупкой строки.
-        const [{ data: byPublished }, { data: byCreated }] = await Promise.all([
-          supabase.from("listings").select("id").eq("status", "активен").gte("published_at", todayIso),
-          supabase.from("listings").select("id").eq("status", "активен").gte("created_at", todayIso),
-        ]);
-        const todaySet = new Set([...(byPublished || []), ...(byCreated || [])].map((r) => r.id));
-        setCounts({ всего: total || 0, активен: active || 0, "на проверке": review || 0, архив: archived || 0, сегодня: todaySet.size });
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadCounts();
   }, []);
 
   return (
@@ -232,9 +256,6 @@ export default function HomePage() {
         <div className="banner-card banner-invest">
           <div className="banner-invest-text">Инвестиции в строительство<br />от 50 000$</div>
         </div>
-        {/* Второй набор тех же баннеров подряд — нужен только для бесшовной автопрокрутки
-            (когда доезжаем до середины, тихо перескакиваем в начало, и это незаметно,
-            потому что там точно такая же картинка). Пользователю показывать вслух не нужно. */}
         <div className="banner-card banner-rayan" aria-hidden="true">
           <img src={LOGO_TRANSPARENT} alt="" className="banner-fg-logo" />
         </div>
@@ -252,13 +273,16 @@ export default function HomePage() {
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--search-text)" strokeWidth="2">
             <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>
-          <input placeholder="Поиск объектов..." onFocus={() => router.push("/search/vse")} readOnly />
+          <input placeholder="Поиск: район, ЖК, ID…" value={search}
+            onChange={(e) => { setSearch(e.target.value); setVisibleCount(40); }} />
+          {search && <span onClick={() => setSearch("")} style={{ color: "var(--search-text)", opacity: 0.6, fontSize: 16, cursor: "pointer" }}>✕</span>}
         </div>
-        <button className="filter-btn" onClick={() => router.push("/search/vse")}>
+        <button className="filter-btn" onClick={() => setFilterOpen(true)}>
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--green-accent)" strokeWidth="1.8">
             <path d="M4 6h16M7 12h10M10 18h4" />
           </svg>
           <span>Фильтр</span>
+          {activeFilterCount > 0 && <span className="filter-badge">{activeFilterCount}</span>}
         </button>
       </div>
 
@@ -268,7 +292,7 @@ export default function HomePage() {
         <div className="section-label">ТИП НЕДВИЖИМОСТИ</div>
         <div className="cats-row">
           {CATS.map((c, i) => (
-            <button key={i} className="cat-tile" onClick={() => router.push(`/search/${c.key}`)}>
+            <button key={i} className={`cat-tile ${filter.cat === c.key ? "on" : ""}`} onClick={() => toggleCat(c.key)}>
               <div className="cat-tile-icon">
                 {c.img ? (
                   <img src={c.img} alt="" className="cat-tile-img" />
@@ -283,7 +307,7 @@ export default function HomePage() {
           ))}
         </div>
         <button className="all-cats-btn" onClick={() => setCatsOpen(true)}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" />
             <rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" />
           </svg>
@@ -292,30 +316,55 @@ export default function HomePage() {
 
         <div onTouchStart={onFeedTouchStart} onTouchEnd={onFeedTouchEnd}>
         <div className="feed-tabs">
-          <button className={`feed-tab ${feedTab === "активные" ? "active" : ""}`} onClick={() => setFeedTab("активные")}>
-            Активные{!loading && <span className="feed-tab-count">{counts.активен}</span>}
+          <button className={`feed-tab ${feedTab === "активные" ? "active" : ""}`} onClick={() => { setFeedTab("активные"); setVisibleCount(40); }}>
+            Активные{!loading && <span className="feed-tab-count">{filtered.length}</span>}
           </button>
-          <button className={`feed-tab ${feedTab === "новые" ? "active" : ""}`} onClick={() => setFeedTab("новые")}>
-            Новые{!loading && <span className="feed-tab-count">{counts.сегодня}</span>}
+          <button className={`feed-tab ${feedTab === "новые" ? "active" : ""}`} onClick={() => { setFeedTab("новые"); setVisibleCount(40); }}>
+            Новые{!loading && <span className="feed-tab-count">{newToday.length}</span>}
           </button>
         </div>
 
-        <div className="feed-grid">
-          {feedLoading && <div className="status-msg">Загрузка...</div>}
-          {!feedLoading && feedListings.length === 0 && <div className="status-msg">Пока нет объектов</div>}
-          {!feedLoading && feedListings.map((l) => {
-            const { usd, kgs } = priceBlock(l);
+        {activeFilterCount > 0 && (
+          <div className="active-filters">
+            <button className="active-filter-pill" onClick={() => setFilterOpen(true)}>
+              {(FILTER_CATEGORIES.find((c) => c.key === filter.cat) || {}).label}{activeFilterCount > 1 ? ` · ещё условий: ${activeFilterCount - 1}` : ""}
+            </button>
+            <button className="link-btn" onClick={() => setFilter(EMPTY)}>Сбросить</button>
+          </div>
+        )}
+
+        {!loading && feedListings.length > 0 && (
+          <div className="feed-select-head">
+            <span>{selected.size > 0 ? `Выбрано ${selected.size}` : `Найдено: ${feedListings.length}`}</span>
+            {selected.size > 0
+              ? <button className="link-btn" onClick={() => setSelected(new Set())}>Снять выбор</button>
+              : <button className="link-btn" onClick={() => setSelected(new Set(shown.map((l) => l.id)))}>Выбрать все</button>}
+          </div>
+        )}
+
+        <div className="feed-grid" style={selected.size > 0 ? { paddingBottom: 190 } : undefined}>
+          {loading && <div className="status-msg">Загрузка...</div>}
+          {!loading && feedListings.length === 0 && (
+            <div className="status-msg">{feedTab === "новые" ? "Сегодня новых объектов пока нет" : "Ничего не найдено"}</div>
+          )}
+          {!loading && shown.map((l) => {
+            const { usd, kgs } = sharedPriceBlock(l);
             const photo = photoUrl(l);
+            const isSel = selected.has(l.id);
             return (
-              <div key={l.id} className="feed-card" onClick={() => router.push(`/listing/${l.id}`)}>
+              <div key={l.id} className={`feed-card ${isSel ? "selected" : ""}`} onClick={() => openListing(l)}>
                 <div className="feed-card-photo">
                   {photo ? <img src={photo} alt="" /> : <div className="feed-card-noimg">Нет фото</div>}
+                  <button className="select-circle" aria-label="Выбрать"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleSelect(l.id); }}>
+                    {isSel ? <span className="select-circle-on">✓</span> : <span className={`select-circle-ring ${photo ? "on-photo" : ""}`} />}
+                  </button>
                 </div>
                 <div className="feed-card-body">
                   <div className="feed-price-usd">${usd.toLocaleString("ru-RU")}</div>
                   <div className="feed-price-kgs">{kgs.toLocaleString("ru-RU")} сом</div>
-                  <div className="feed-chars">{characteristicsLine(l)}</div>
-                  <div className="feed-category">{categoryLabel(l.type)}</div>
+                  <div className="feed-chars">{fullCharLine(l)}</div>
+                  <div className="feed-category">{sharedCategoryLabel(l.type)}</div>
                   <div className="feed-location">{locationLine(l)}</div>
                   {l.description && <div className="feed-desc">{l.description}</div>}
                   <div className="feed-agent">
@@ -341,6 +390,12 @@ export default function HomePage() {
               </div>
             );
           })}
+          {!loading && feedListings.length > visibleCount && (
+            <button className="btn-secondary btn-block" style={{ gridColumn: "1 / -1", color: "var(--text-primary)", background: "var(--bg-card)", borderColor: "var(--border-subtle)" }}
+              onClick={() => setVisibleCount((n) => n + 40)}>
+              Показать ещё ({feedListings.length - visibleCount})
+            </button>
+          )}
         </div>
         </div>
       </div>
@@ -354,7 +409,7 @@ export default function HomePage() {
               <span className="cats-modal-close" onClick={() => setCatsOpen(false)}>✕</span>
             </div>
             {CATS.map((c, i) => (
-              <div key={i} className="cats-modal-row" onClick={() => { setCatsOpen(false); router.push(`/search/${c.key}`); }}>
+              <div key={i} className="cats-modal-row" onClick={() => { setCatsOpen(false); setFilter({ cat: c.key, v: {} }); }}>
                 <div className="cats-modal-icon">
                   {c.img ? (
                     <img src={c.img} alt="" className="cats-modal-img" />
@@ -371,6 +426,23 @@ export default function HomePage() {
           </div>
         </div>
       )}
+
+      <FilterWizard open={filterOpen} onClose={() => setFilterOpen(false)} listings={allListings}
+        value={filter} onApply={(f) => { setFilter(f); setVisibleCount(40); }} />
+
+      {selected.size > 0 && (
+        <div className="bulk-bar">
+          <div className="bulk-bar-title"><span>Выбрано: {selected.size}</span><button onClick={() => setSelected(new Set())}>Отменить</button></div>
+          <button className="btn-primary btn-block" onClick={() => setCollectionOpen(true)}>Отправить в подборку ({selected.size})</button>
+          <button className="btn-primary btn-block" onClick={() => setShareOpen(true)}>Поделиться ({selected.size})</button>
+        </div>
+      )}
+
+      <CollectionPickerSheet open={collectionOpen} onClose={() => setCollectionOpen(false)}
+        listingIds={Array.from(selected)} agent={agent} onDone={() => setSelected(new Set())} />
+      <ShareSheet open={shareOpen} onClose={() => setShareOpen(false)} url={shareUrl} text={shareText}
+        title={selected.size > 1 ? `Поделиться (${selected.size})` : "Поделиться"}
+        note={agent ? `В ссылке будет ваш номер: ${agent.name || ""} ${agent.phone || ""}` : "Вы не вошли в личный кабинет — в ссылке будет номер из объекта. Войдите в «Профиль», чтобы клиенту показывался ваш номер."} />
 
       <div className="bottomnav">
         {NAV.map((n, i) =>
