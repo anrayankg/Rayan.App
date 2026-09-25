@@ -7,6 +7,7 @@ import LocationPicker from "../../../components/LocationPicker";
 import MapPicker from "../../../components/MapPicker";
 import PhoneInput, { isPhoneComplete } from "../../../components/PhoneInput";
 import { Picker, MultiPicker } from "../../../components/Picker";
+import { FLOOR_CHOICES, FLOORS_TOTAL_CHOICES, floorToNumber, withFloorLabel, floorValue } from "../../../lib/floors";
 import PhotoUploader from "../../../components/PhotoUploader";
 import VideoReviewBlock from "../../../components/VideoReviewBlock";
 
@@ -337,7 +338,7 @@ function PervichkaForm() {
         setDistrict(l.district || "");
         setRoomType(l.room_type || l.rooms || "");
         setArea(l.area_m2 != null ? String(l.area_m2) : "");
-        setFloor(l.floor != null ? String(l.floor) : "");
+        setFloor(floorValue(l));
         setFloorsTotal(l.floors_total != null ? String(l.floors_total) : "");
         setThroughGosregistr(l.gosregistr ?? null);
         setConstructionStatus(l.construction_status || "");
@@ -405,7 +406,7 @@ function PervichkaForm() {
         currency_new: currency,
         district, city,
         room_type: roomType, rooms: roomType,
-        area_m2: numOrNull(area), floor: numOrNull(floor), floors_total: numOrNull(floorsTotal),
+        area_m2: numOrNull(area), floor: floorToNumber(floor, floorsTotal), floors_total: numOrNull(floorsTotal),
         zhk, sk,
         documents: docs, heating,
         gosregistr: throughGosregistr,
@@ -418,7 +419,7 @@ function PervichkaForm() {
         obmen_na: dealTerms.includes("Обмен") ? [...obmenNa, obmenDrugoe].filter(Boolean).join(", ") : null,
         torg, description, photos, video_links: videos,
         contract_status: contractStatus,
-        extra_details: extra,
+        extra_details: withFloorLabel(extra, floor),
         agent_phone: agentPhone, agent_name: agentName,
       };
       if (!editId || !currentStatus) payload.status = "черновик";
@@ -463,7 +464,7 @@ function PervichkaForm() {
         room_type: roomType,
         rooms: roomType,
         area_m2: Number(area),
-        floor: Number(floor),
+        floor: floorToNumber(floor, floorsTotal),
         floors_total: Number(floorsTotal),
         zhk, sk,
         documents: docs,
@@ -482,7 +483,7 @@ function PervichkaForm() {
         photos,
         video_links: videos,
         contract_status: contractStatus,
-        extra_details: extra,
+        extra_details: withFloorLabel(extra, floor),
         agent_phone: agentPhone,
         agent_name: agentName,
       };
@@ -623,12 +624,12 @@ function PervichkaForm() {
 
       <div className="field-group">
         <div className="field-label">Этаж <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-        <input className={`field-input required-input ${attemptedSubmit && !floor ? "field-error" : ""}`} type="number" value={floor} onChange={(e) => setFloor(e.target.value)} />
+        <Picker options={FLOOR_CHOICES} value={floor} onChange={setFloor} placeholder="Выберите этаж" error={attemptedSubmit && !floor} />
       </div>
 
       <div className="field-group">
         <div className="field-label">Этажность <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-        <input className={`field-input required-input ${attemptedSubmit && !floorsTotal ? "field-error" : ""}`} type="number" value={floorsTotal} onChange={(e) => setFloorsTotal(e.target.value)} />
+        <Picker options={FLOORS_TOTAL_CHOICES} value={floorsTotal} onChange={setFloorsTotal} placeholder="Сколько этажей в доме" error={attemptedSubmit && !floorsTotal} />
       </div>
 
       <div className="field-group">
