@@ -22,7 +22,7 @@ export default function AdsPage() {
       <button
         onClick={() => router.back()}
         style={{ marginTop: 24, background: "none", border: "1px solid rgba(255,255,255,0.15)",
-          color: "#fff", borderRadius: 10, padding: "10px 20px", fontSize: 14, fontWeight: 700 }}
+          color: "#fff", borderRadius: "var(--r)", padding: "10px 20px", fontSize: 14, fontWeight: 700 }}
       >
         Назад
       </button>
