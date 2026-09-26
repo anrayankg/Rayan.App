@@ -7,6 +7,7 @@ import LocationPicker from "../../../components/LocationPicker";
 import MapPicker from "../../../components/MapPicker";
 import PhoneInput, { isPhoneComplete } from "../../../components/PhoneInput";
 import { Picker, MultiPicker } from "../../../components/Picker";
+import ConfirmDialog from "../../../components/ConfirmDialog";
 import { FLOOR_CHOICES, FLOORS_TOTAL_CHOICES, floorToNumber, withFloorLabel, floorValue } from "../../../lib/floors";
 import PhotoUploader from "../../../components/PhotoUploader";
 import VideoReviewBlock from "../../../components/VideoReviewBlock";
@@ -191,6 +192,7 @@ function PervichkaForm() {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
+  const [confirmSave, setConfirmSave] = useState(false);
   const [commsTouched, setCommsTouched] = useState(false);
 
   const [city, setCity] = useState("Бишкек");
@@ -925,19 +927,30 @@ function PervichkaForm() {
       {error && <div className="status-msg error">Ошибка: {error}</div>}
       {success && <div className="status-msg success">{editId ? "Изменения сохранены! Возвращаемся к объекту..." : "Объект сохранён! Возвращаемся на главную..."}</div>}
 
-      <button className="next-btn" disabled={saving} onClick={() => { if (!canSubmit) { setAttemptedSubmit(true); } else { handleSubmit(); } }}>
+      <button className="next-btn" disabled={saving} onClick={() => {
+        if (!canSubmit) {
+          setAttemptedSubmit(true);
+          setTimeout(() => { const el = document.querySelector(".field-error"); if (el) el.scrollIntoView({ behavior: "smooth", block: "center" }); }, 50);
+        } else if (editId) setConfirmSave(true);
+        else handleSubmit();
+      }}>
         {saving ? "СОХРАНЕНИЕ..." : (editId ? "СОХРАНИТЬ ИЗМЕНЕНИЯ" : "ОПУБЛИКОВАТЬ")}
       </button>
       {attemptedSubmit && !canSubmit && (
         <div className="status-msg error">Не заполнено: {missingFields.join(", ")}</div>
       )}
-      <button
+      <ConfirmDialog open={confirmSave} title="Сохранить изменения?"
+        text="Проверьте, что всё заполнено верно. Изменения сразу появятся в объекте."
+        onConfirm={() => { setConfirmSave(false); handleSubmit(); }} onCancel={() => setConfirmSave(false)} />
+      {/* Черновик — только для нового объекта или объекта, который ещё черновик.
+          Опубликованный объект без обязательных полей сохранить нельзя. */}
+      {(!editId || !currentStatus || currentStatus === "черновик") && <button
         disabled={saving || videoPendingError}
         onClick={handleSaveDraft}
         style={{ width: "100%", marginTop: 10, background: "none", border: "none", color: "#7FA396", fontSize: 13, fontWeight: 700, padding: "10px 0" }}
       >
         Сохранить черновик и продолжить позже
-      </button>
+      </button>}
       <div className="progress-note">Поля со звёздочкой * обязательны</div>
     </div>
   );
