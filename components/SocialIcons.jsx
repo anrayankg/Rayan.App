@@ -62,3 +62,38 @@ export function tgLink(phone) {
   const n = String(phone || "").replace(/\D/g, "");
   return `https://t.me/+${n}`;
 }
+
+// Оригинальный значок YouTube: красная скруглённая плашка с белым треугольником
+export function YouTubeLogo({ size = 28 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" style={{ display: "block", flexShrink: 0 }}>
+      <rect x="1" y="4.5" width="22" height="15" rx="4.5" fill="#FF0000" />
+      <path d="M10 8.6v6.8l5.9-3.4z" fill="#FFFFFF" />
+    </svg>
+  );
+}
+
+// Оригинальный значок Instagram: градиентный квадрат с камерой
+export function InstagramLogo({ size = 28 }) {
+  const id = "igg" + size;
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" style={{ display: "block", flexShrink: 0 }}>
+      <defs>
+        <radialGradient id={id} cx="30%" cy="107%" r="150%">
+          <stop offset="0" stopColor="#FDF497" /><stop offset="0.05" stopColor="#FDF497" />
+          <stop offset="0.45" stopColor="#FD5949" /><stop offset="0.6" stopColor="#D6249F" /><stop offset="0.9" stopColor="#285AEB" />
+        </radialGradient>
+      </defs>
+      <rect x="1" y="1" width="22" height="22" rx="6.5" fill={`url(#${id})`} />
+      <rect x="5.5" y="5.5" width="13" height="13" rx="4" fill="none" stroke="#fff" strokeWidth="1.8" />
+      <circle cx="12" cy="12" r="3.1" fill="none" stroke="#fff" strokeWidth="1.8" />
+      <circle cx="16.3" cy="7.7" r="1" fill="#fff" />
+    </svg>
+  );
+}
+
+export function VideoPlatformLogo({ platform, size = 28 }) {
+  if (platform === "youtube") return <YouTubeLogo size={size} />;
+  if (platform === "instagram") return <InstagramLogo size={size} />;
+  return <TelegramLogo size={size} />;
+}

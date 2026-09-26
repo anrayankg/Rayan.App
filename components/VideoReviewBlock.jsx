@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { VideoPlatformLogo } from "./SocialIcons";
 import { validateVideoLink, PLATFORM_LABELS, PLATFORM_ICON, PLATFORM_PLACEHOLDER } from "../lib/videoLinks";
 
 const ALL_PLATFORMS = ["youtube", "telegram", "instagram"];
@@ -55,12 +56,13 @@ export default function VideoReviewBlock({ videos, onChange, onPendingErrorChang
   return (
     <div className="field-group">
       <div className="field-label">Видеообзор объекта</div>
+      <div className="video-hint">Нажмите на площадку и вставьте ссылку на видео</div>
 
       {videos.length > 0 && (
         <div style={{ marginBottom: 10, display: "flex", flexDirection: "column", gap: 6 }}>
           {videos.map((v) => (
             <div key={v.platform} className="video-added-row">
-              <span>{PLATFORM_ICON[v.platform]} {PLATFORM_LABELS[v.platform]} — добавлено</span>
+              <span style={{ display: "flex", alignItems: "center", gap: 10 }}><VideoPlatformLogo platform={v.platform} size={26} /> {PLATFORM_LABELS[v.platform]} — добавлено</span>
               <button type="button" onClick={() => removeVideo(v.platform)} className="video-remove-btn">Удалить</button>
             </div>
           ))}
@@ -86,7 +88,8 @@ export default function VideoReviewBlock({ videos, onChange, onPendingErrorChang
         <div className="video-platform-row">
           {remainingPlatforms.map((p) => (
             <button key={p} type="button" onClick={() => pickPlatform(p)} className="video-platform-btn">
-              {PLATFORM_ICON[p]} {PLATFORM_LABELS[p]}
+              <VideoPlatformLogo platform={p} size={34} />
+              <span>{PLATFORM_LABELS[p]}</span>
             </button>
           ))}
         </div>

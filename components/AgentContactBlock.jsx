@@ -1,6 +1,7 @@
 "use client";
 const R_ICON = "/r-icon.png";
 import { WhatsAppLogo, TelegramLogo, waLink, tgLink } from "./SocialIcons";
+import { useAgentsDir, agentByPhone, agentDisplayName, agentPhoto } from "../lib/agentsDir";
 
 // Блок "Агент по объекту" — ОДИН И ТОТ ЖЕ на странице клиента, агента и владельца:
 // круглая аватарка, имя агента крупно белым, ниже серым "RAYAN — центр недвижимости",
@@ -8,12 +9,15 @@ import { WhatsAppLogo, TelegramLogo, waLink, tgLink } from "./SocialIcons";
 export default function AgentContactBlock({ name, phone, waText }) {
   const tel = String(phone || "").replace(/[^\d+]/g, "");
   const hasPhone = tel.replace(/\D/g, "").length > 0;
+  const dir = useAgentsDir();
+  const shownName = agentDisplayName(dir, phone, name);
+  const photo = agentPhoto(agentByPhone(dir, phone));
   return (
     <div style={sx.wrap}>
       <div style={sx.agentRow}>
-        <div style={sx.avatar}><img src={R_ICON} alt="" style={sx.avatarImg} /></div>
+        <div style={sx.avatar}>{photo ? <img src={photo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <img src={R_ICON} alt="" style={sx.avatarImg} />}</div>
         <div style={{ minWidth: 0 }}>
-          <div style={sx.name}>{name || "Агент RAYAN"}</div>
+          <div style={sx.name}>{shownName}</div>
           <div style={sx.sub}>RAYAN — центр недвижимости</div>
         </div>
       </div>
