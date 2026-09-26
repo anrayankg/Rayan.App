@@ -9,6 +9,9 @@ import AddToCollectionButton from "../../components/AddToCollectionButton";
 import CollectionPickerSheet from "../../components/CollectionPickerSheet";
 import ShareSheet from "../../components/ShareSheet";
 import { clientListingLink } from "../../lib/agent";
+import FilterWizard from "../../components/FilterWizard";
+import ConfirmDialog from "../../components/ConfirmDialog";
+import { EMPTY, FILTER_CATEGORIES, matchListing, sortListings, activeCount } from "../../lib/filterConfig";
 
 // Личный кабинет агента. Входа с паролем пока нет (сознательно, по решению Айгуль) —
 // агент вводит свой рабочий номер, если он найден в таблице agents, устройство
@@ -118,6 +121,9 @@ export default function ProfilePage() {
   const [categoryFilter, setCategoryFilter] = useState(null);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [sortBy, setSortBy] = useState("new");
+  const [pfilter, setPfilter] = useState(EMPTY);
+  const [pfilterOpen, setPfilterOpen] = useState(false);
+  const [askDeactivate, setAskDeactivate] = useState(false);
   const [showSortPicker, setShowSortPicker] = useState(false);
   const [selected, setSelected] = useState(new Set());
   const [copiedId, setCopiedId] = useState(null);
@@ -172,15 +178,13 @@ export default function ProfilePage() {
       return !ACTIVE_STATUSES.includes(l.status) && !DRAFT_STATUSES.includes(l.status);
     });
     if (categoryFilter) list = list.filter((l) => l.type === categoryFilter);
+    list = list.filter((l) => matchListing(l, pfilter));
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       list = list.filter((l) => [l.district, l.zhk, l.description, l.display_id].filter(Boolean).join(" ").toLowerCase().includes(q));
     }
-    if (sortBy === "new") list = [...list].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
-    else if (sortBy === "cheap") list = [...list].sort((a, b) => priceUsd(a) - priceUsd(b));
-    else if (sortBy === "expensive") list = [...list].sort((a, b) => priceUsd(b) - priceUsd(a));
-    return list;
-  }, [myListings, statusTab, categoryFilter, search, sortBy]);
+    return sortListings(list, (pfilter.v || {}).sort || sortBy);
+  }, [myListings, statusTab, categoryFilter, search, sortBy, pfilter]);
 
   function toggleSelect(id) {
     setSelected((prev) => {
@@ -203,7 +207,6 @@ export default function ProfilePage() {
   }
 
   async function bulkDeactivate() {
-    if (!confirm(`Снять с продажи ${selected.size} объект(ов)?`)) return;
     setBulkBusy(true);
     await supabase.from("listings").update({ status: "снят с продажи" }).in("id", Array.from(selected));
     setMyListings((prev) => prev.map((l) => (selected.has(l.id) ? { ...l, status: "снят с продажи" } : l)));
@@ -323,17 +326,20 @@ export default function ProfilePage() {
       <div style={sx.searchRow}>
         <span style={{ opacity: 0.5 }}>🔍</span>
         <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Поиск по моим объектам" style={sx.searchInput} />
-        <button onClick={() => setShowCategoryPicker(true)} style={sx.searchFilterBtn} aria-label="Фильтр">
+        <button onClick={() => setPfilterOpen(true)} style={sx.searchFilterBtn} aria-label="Фильтр">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5BD98A" strokeWidth="2">
             <path d="M4 5h16M7 12h10M11 19h2" />
           </svg>
         </button>
       </div>
       <div style={sx.filterRow}>
-        <button onClick={() => setShowCategoryPicker(true)} style={sx.filterBtn}>Категории{categoryFilter ? " ✓" : ""}</button>
-        <button onClick={() => setShowSortPicker(true)} style={sx.filterBtn}>Сортировать</button>
-        {(categoryFilter || sortBy !== "new" || search) && (
-          <button onClick={() => { setCategoryFilter(null); setSortBy("new"); setSearch(""); }} style={sx.resetBtn}>Сбросить фильтр</button>
+        <button onClick={() => setPfilterOpen(true)} className="fl-open-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5BD98A" strokeWidth="2.2"><path d="M4 5h16M7 12h10M11 19h2" /></svg>
+          Фильтр{activeCount(pfilter) > 0 && <span className="fl-open-count">{activeCount(pfilter)}</span>}
+        </button>
+        {pfilter.cat && <span className="fl-open-cat">{(FILTER_CATEGORIES.find((c) => c.key === pfilter.cat) || {}).label}</span>}
+        {(pfilter.cat || search) && (
+          <button onClick={() => { setPfilter(EMPTY); setCategoryFilter(null); setSortBy("new"); setSearch(""); }} style={sx.resetBtn}>Сбросить</button>
         )}
       </div>
 
@@ -397,7 +403,7 @@ export default function ProfilePage() {
           <button onClick={() => setShowBulkCollection(true)} className="btn-primary btn-block">Отправить в подборку ({selected.size})</button>
           <button onClick={() => setShowShare(true)} className="btn-primary btn-block">Поделиться ({selected.size})</button>
           <button onClick={() => router.push("/ads")} className="btn-secondary btn-block">Запустить рекламу ({selected.size})</button>
-          <button onClick={bulkDeactivate} disabled={bulkBusy} style={sx.bulkDeactivateBtn}>Деактивировать</button>
+          <button onClick={() => setAskDeactivate(true)} disabled={bulkBusy} style={sx.bulkDeactivateBtn}>Деактивировать</button>
         </div>
       )}
 
@@ -448,6 +454,15 @@ export default function ProfilePage() {
           </div>
         </div>
       )}
+      <FilterWizard open={pfilterOpen} onClose={() => setPfilterOpen(false)}
+        listings={myListings.filter((l) => statusTab === "активно" ? ACTIVE_STATUSES.includes(l.status)
+          : statusTab === "черновики" ? DRAFT_STATUSES.includes(l.status)
+          : !ACTIVE_STATUSES.includes(l.status) && !DRAFT_STATUSES.includes(l.status))}
+        value={pfilter} onApply={setPfilter} />
+      <ConfirmDialog open={askDeactivate} danger title="Снять с продажи?"
+        text={`Выбрано объектов: ${selected.size}. Они перейдут во вкладку «Снятые».`}
+        confirmText="Снять" cancelText="Отклонить"
+        onConfirm={() => { setAskDeactivate(false); bulkDeactivate(); }} onCancel={() => setAskDeactivate(false)} />
       <BottomNav active="Профиль" />
     </div>
   );
