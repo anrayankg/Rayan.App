@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 import { publicExtraEntries, extraLabel, extraDisplayValue } from "../../../lib/extraFields";
+import { mainDetailRows } from "../../../lib/listingFormat";
 import { PLATFORM_LABELS, PLATFORM_ICON } from "../../../lib/videoLinks";
 import { fullCharLine } from "../../../lib/listingFormat";
 import BottomNav from "../../../components/BottomNav";
@@ -203,10 +204,10 @@ export default function AgentListingPage() {
           </div>
         )}
 
-        {extraRows.length > 0 && (
+        {(extraRows.length > 0 || mainDetailRows(l).length > 0) && (
           <div style={sx.section}>
             <div style={sx.sectionTitle}>Детали объекта</div>
-            {l.heating && <Row label="Отопление" value={l.heating} />}
+            {mainDetailRows(l).map(([k, v]) => <Row key={k} label={k} value={v} />)}
             {extraRows.map(([k, v]) => <Row key={k} label={extraLabel(k)} value={extraDisplayValue(v)} />)}
           </div>
         )}
