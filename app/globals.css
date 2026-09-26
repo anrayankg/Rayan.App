@@ -585,3 +585,97 @@ input, button, select, textarea { font-family: inherit; }
 .fl-contract button.on { background: #1FA35C; border-color: #1FA35C; }
 .fl-select-sheet { position: fixed; inset: 0; z-index: 110; background: rgba(0,0,0,0.55); display: flex; align-items: flex-end; justify-content: center; }
 .fl-select-sheet > div { width: 100%; max-width: 480px; max-height: 60vh; overflow-y: auto; background: #1E1F24; border-radius: 16px 16px 0 0; padding: 8px 16px 24px; }
+
+/* Низ карточки: аватар + имя агента, дата белым, крупный значок "скопировать ID" */
+.feed-agent { display: flex; align-items: center; gap: 8px; margin-top: 10px; min-width: 0; }
+.feed-agent-ava { width: 26px; height: 26px; border-radius: 50%; background: #1C4638; flex-shrink: 0; overflow: hidden;
+  display: inline-flex; align-items: center; justify-content: center; }
+.feed-agent-ava img { width: 100%; height: 100%; object-fit: cover; }
+.feed-agent-ava img.feed-agent-r { width: auto; height: 16px; object-fit: contain; }
+.feed-agent-name { color: #FFFFFF; font-size: 13px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.feed-meta { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 4px; }
+.feed-date { color: #FFFFFF; font-size: 12.5px; font-weight: 600; }
+.feed-id-copy { display: flex; align-items: center; gap: 6px; background: none; border: none; color: #C9C9CE;
+  font-size: 12px; font-weight: 700; padding: 8px 0 8px 8px; min-height: 40px; cursor: pointer; }
+
+/* Окно подтверждения */
+.cd-overlay { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; padding: 20px; }
+.cd-box { width: 100%; max-width: 380px; background: #1E1F24; border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 22px 18px 18px; color: #fff; }
+.cd-title { font-size: 19px; font-weight: 800; margin-bottom: 8px; }
+.cd-text { font-size: 14.5px; color: #B8B8BE; line-height: 1.45; }
+.cd-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
+.cd-cancel, .cd-ok { min-height: 52px; border-radius: var(--r); font-size: 16px; font-weight: 800; border: none; }
+.cd-cancel { background: rgba(255,255,255,0.08); color: #fff; border: 1px solid rgba(255,255,255,0.14); }
+.cd-ok { background: #1FA35C; color: #fff; }
+.cd-ok.danger { background: #D9534F; }
+.fl-open-btn { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; background: rgba(31,163,92,0.12);
+  border: 1px solid rgba(31,163,92,0.45); border-radius: var(--r); color: #5BD98A; font-size: 15px; font-weight: 800; }
+.fl-open-count { background: #1FA35C; color: #fff; border-radius: 10px; padding: 1px 8px; font-size: 12.5px; }
+.fl-open-cat { color: #C9C9CE; font-size: 13px; font-weight: 700; }
+
+/* Видеообзор — новый вид: крупные плитки с оригинальными значками */
+.video-hint { font-size: 13px; color: #8B8B90; margin: -2px 0 10px; }
+.video-platform-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.video-platform-btn { display: flex !important; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  min-height: 92px; min-width: 0 !important; background: rgba(255,255,255,0.06) !important; border: 1px solid rgba(255,255,255,0.14) !important;
+  border-radius: var(--r) !important; color: #fff !important; font-size: 14px !important; font-weight: 700 !important; }
+.video-platform-btn:active { background: rgba(31,163,92,0.18) !important; border-color: #1FA35C !important; }
+.video-add-more-btn { color: #5BD98A !important; }
+.video-added-row { min-height: 48px; }
+
+/* =====================================================================
+   Формы добавления/редактирования — НОВЫЙ ВИД (как фильтр и весь сайт):
+   тёмные поля с тонкой рамкой, белые заголовки, выбранное — зелёное, без золота.
+   ===================================================================== */
+.page-title { color: #FFFFFF !important; font-size: 22px !important; font-weight: 800 !important; }
+.back-btn, .back-link { color: #FFFFFF !important; }
+.field-label { color: #FFFFFF !important; font-size: 17px !important; letter-spacing: 0 !important; font-weight: 800 !important; }
+.mini-field-label { color: #E6E6EA !important; font-size: 15px !important; font-weight: 700 !important; }
+.required-note { font-size: 12.5px !important; font-weight: 700 !important; color: #FF6B5E !important; }
+.star { color: #FF6B5E !important; }
+
+.field-input, .field-select, .field-textarea, .required-input {
+  background: #1A1B1F !important; color: #FFFFFF !important; font-weight: 600 !important;
+  border: 1px solid rgba(255,255,255,0.16) !important; border-radius: var(--r) !important; min-height: 54px; }
+.field-input:focus, .field-textarea:focus { border-color: #1FA35C !important; }
+.field-input::placeholder, .field-textarea::placeholder, .required-input::placeholder { color: #7C7C82 !important; }
+.field-error, .picker-box.field-error, .field-input.field-error { border: 1.5px solid #FF6B5E !important; background: rgba(255,107,94,0.08) !important; }
+
+.picker-box, .mini-picker-box { background: #1A1B1F !important; color: #FFFFFF !important;
+  border: 1px solid rgba(255,255,255,0.16) !important; border-radius: var(--r) !important; min-height: 54px; }
+.picker-box.picker-filled, .mini-picker-box.filled { color: #FFFFFF !important; border-color: #1FA35C !important; }
+.picker-placeholder { color: #7C7C82 !important; }
+.picker-arrow, .mini-picker-arrow { color: #8B8B90 !important; }
+.picker-box.picker-filled .picker-arrow, .mini-picker-box.filled .mini-picker-arrow { color: #1FA35C !important; }
+.picker-list, .mini-picker-list { background: #1E1F24 !important; border: 1px solid rgba(255,255,255,0.12) !important; }
+.picker-item, .mini-picker-item { color: #FFFFFF !important; border-bottom-color: rgba(255,255,255,0.07) !important; }
+.picker-item:hover, .mini-picker-item:hover { background: rgba(255,255,255,0.05) !important; }
+.picker-item.selected, .mini-picker-item.selected { background: rgba(31,163,92,0.18) !important; color: #5BD98A !important; }
+
+.chip, .required-chip, .currency-btn, .filter-chip { background: rgba(255,255,255,0.07) !important; color: #FFFFFF !important;
+  border: 1px solid rgba(255,255,255,0.16) !important; font-weight: 700 !important; }
+
+.section-divider { border-top-color: rgba(255,255,255,0.1) !important; }
+.section-divider-title { color: #FFFFFF !important; font-size: 20px !important; font-weight: 800 !important; }
+.section-divider-title.big { font-size: 24px !important; }
+.section-divider.private .section-divider-title { color: #FF8A7A !important; }
+.accordion { border-color: rgba(255,255,255,0.12) !important; }
+.accordion-head span { color: #FFFFFF !important; font-size: 15px !important; }
+
+.step-dot.active, .step-dot.done { background: #1FA35C !important; color: #fff !important; }
+.type-row span { color: #FFFFFF !important; }
+
+.next-btn { background: #1FA35C !important; animation: none !important; color: #FFFFFF !important; font-size: 16px !important;
+  min-height: 56px; }
+.next-btn:disabled { background: rgba(31,163,92,0.35) !important; }
+.ai-btn, .doc-upload-btn, .photo-drop { border-color: rgba(31,163,92,0.5) !important; color: #5BD98A !important; background: rgba(31,163,92,0.06) !important; }
+.doc-thumb { border-color: rgba(255,255,255,0.15) !important; }
+.progress-note { color: #8B8B90 !important; }
+.phone-country-btn, .phone-unified-input { background: #1A1B1F !important; color: #FFFFFF !important; border-color: rgba(255,255,255,0.16) !important; }
+.phone-unified-input::placeholder { color: #7C7C82 !important; }
+.phone-dropdown { background: #1E1F24 !important; color: #fff !important; border-color: rgba(255,255,255,0.12) !important; }
+.phone-search { background: #25262B !important; color: #fff !important; }
+.feed-id-copy span { white-space: nowrap; }
+.feed-id-copy { font-size: 11px; gap: 4px; }
+.feed-date { white-space: nowrap; font-size: 12px; }
+.phone-country-row { color: #FFFFFF !important; border-bottom-color: rgba(255,255,255,0.07) !important; }
