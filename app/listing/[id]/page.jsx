@@ -7,9 +7,10 @@ import VideoReviewBlock from "../../../components/VideoReviewBlock";
 import BottomNav from "../../../components/BottomNav";
 import AgentContactBlock from "../../../components/AgentContactBlock";
 import ShareSheet from "../../../components/ShareSheet";
+import ConfirmDialog from "../../../components/ConfirmDialog";
 import { SocialButton, waLink, tgLink } from "../../../components/SocialIcons";
 import { PLATFORM_LABELS, PLATFORM_ICON } from "../../../lib/videoLinks";
-import { fullCharLine, priceBlock, categoryLabel } from "../../../lib/listingFormat";
+import { fullCharLine, priceBlock, categoryLabel, floorsText, seriesLabel, shortDate } from "../../../lib/listingFormat";
 import { clientListingLink, colleagueListingLink, getCurrentAgent } from "../../../lib/agent";
 
 // Страница СВОЕГО объекта (владелец / договорник) — в новом виде, как страницы клиента
@@ -126,6 +127,7 @@ const EXTRA_LABELS = {
   summaDkp: "Сумма в договоре купли-продажи", summaDdu: "Сумма в ДДУ", summaFakt: "Фактическая сумма сделки",
   ipoteka: "Ипотека через банк", rassrochkaZastroy: "Рассрочка от застройщика", rassrochkaUsloviya: "Условия рассрочки",
   cenaM2: "Цена за м²", komUslugi: "Коммунальные платежи перед сделкой",
+  ploshad_uchastka: "Площадь участка", naznachenie_zemli: "Назначение земли",
 };
 
 function extraLabel(key) {
@@ -153,6 +155,7 @@ export default function ListingDetailPage() {
   const [activePhoto, setActivePhoto] = useState(0);
   const [me, setMe] = useState(null);
   const [share, setShare] = useState(null); // { url, title, note }
+  const [askDelete, setAskDelete] = useState(false);
   const [copied, setCopied] = useState(null);
   const touchX = useRef(null);
 
@@ -193,7 +196,6 @@ export default function ListingDetailPage() {
   }
 
   async function remove() {
-    if (!confirm("Удалить этот объект насовсем? Это нельзя отменить.")) return;
     setDeleting(true);
     try {
       const { error: e } = await supabase.from("listings").delete().eq("id", id);
@@ -264,7 +266,12 @@ export default function ListingDetailPage() {
         <div style={sx.location}>{[l.zhk, l.district].filter(Boolean).join(", ") || l.city || "Бишкек"}</div>
         {l.display_id && (
           <button style={sx.idBtn} onClick={() => copy(String(l.display_id), "id")}>
-            ID {l.display_id} {copied === "id" ? "✓ скопирован" : "⧉"}
+            <span>ID {l.display_id}</span>
+            {copied === "id" ? <span style={{ color: "#5BD98A", fontSize: 14 }}>✓ скопирован</span> : (
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="9" y="9" width="12" height="12" rx="2" /><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" />
+              </svg>
+            )}
           </button>
         )}
 
@@ -276,7 +283,7 @@ export default function ListingDetailPage() {
               ✎ Редактировать
             </button>
           )}
-          <button className="btn-danger" style={{ flex: 1 }} disabled={approving || deleting} onClick={remove}>
+          <button className="btn-danger" style={{ flex: 1 }} disabled={approving || deleting} onClick={() => setAskDelete(true)}>
             {deleting ? "Удаляю…" : "Удалить"}
           </button>
         </div>
@@ -378,8 +385,8 @@ export default function ListingDetailPage() {
             displayValue={l.price ? `${Number(l.price).toLocaleString("ru-RU")} ${l.currency_new || l.currency || ""}` : null}
             onSaved={(newPrice) => setListing((x) => ({ ...x, price: newPrice }))} />
           <Row label="Площадь" value={l.area_m2 ? `${l.area_m2} м²` : null} />
-          <Row label="Этаж / этажность" value={l.floor && l.floors_total ? `${l.floor}/${l.floors_total}` : null} />
-          <Row label="Серия" value={l.series} />
+          <Row label="Этаж / этажность" value={floorsText(l)} />
+          <Row label="Серия" value={seriesLabel(l.series)} />
           <Row label="Город" value={l.city} />
           <Row label="Район" value={l.district} />
           <Row label="ЖК" value={l.zhk} />
@@ -430,10 +437,11 @@ export default function ListingDetailPage() {
           </div>
         )}
 
-        {Object.keys(extra).length > 0 && (
+        {Object.keys(extra).some((k) => EXTRA_LABELS[k]) && (
           <div style={sx.section}>
             <div style={sx.sectionTitle}>Дополнительно</div>
-            {Object.entries(extra).map(([k, v]) => (
+            {Object.entries(extra).filter(([k, v]) => EXTRA_LABELS[k] && v !== null && v !== undefined
+              && String(v).trim() !== "" && String(v).trim() !== "—" && !(Array.isArray(v) && v.length === 0)).map(([k, v]) => (
               <Row key={k} label={extraLabel(k)} value={extraDisplayValue(v)} />
             ))}
           </div>
@@ -442,11 +450,15 @@ export default function ListingDetailPage() {
         <AgentContactBlock name={l.agent_name} phone={l.agent_phone} />
 
         <div style={sx.metaRow}>
-          {l.created_at && <span>Создано: {new Date(l.created_at).toLocaleDateString("ru-RU")}</span>}
+          {l.created_at && <span style={{ color: "#fff" }}>Создано: {shortDate(l.created_at)}</span>}
           {l.display_id && <span> &nbsp;|&nbsp; ID {l.display_id}</span>}
         </div>
       </div>
 
+      <ConfirmDialog open={askDelete} danger title="Удалить объект?"
+        text="Объект будет удалён насовсем. Это нельзя отменить."
+        confirmText="Удалить" cancelText="Отклонить"
+        onConfirm={() => { setAskDelete(false); remove(); }} onCancel={() => setAskDelete(false)} />
       <ShareSheet open={!!share} onClose={() => setShare(null)} url={share?.url} title={share?.title} />
       <BottomNav active="Профиль" />
     </div>
@@ -474,7 +486,8 @@ const sx = {
   charLine: { fontSize: 14.5, fontWeight: 700, marginTop: 12 },
   category: { fontSize: 12.5, color: "#8B8B90", marginTop: 3 },
   location: { fontSize: 12.5, color: "#8B8B90" },
-  idBtn: { marginTop: 8, background: "none", border: "none", color: "#B8B8BE", fontSize: 13, fontWeight: 700, padding: "6px 0" },
+  idBtn: { marginTop: 8, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "var(--r)",
+    color: "#E6E6EA", fontSize: 15, fontWeight: 800, padding: "10px 14px", minHeight: 48, display: "inline-flex", alignItems: "center", gap: 10 },
   actionsRow: { display: "flex", gap: 8, marginTop: 16 },
   note: { color: "#7FA396", fontSize: 12, marginTop: 10, lineHeight: 1.5 },
   card: { marginTop: 12, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "var(--r)", padding: 14 },
