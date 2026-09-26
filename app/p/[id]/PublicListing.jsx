@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 import { publicExtraEntries, extraLabel, extraDisplayValue } from "../../../lib/extraFields";
+import { mainDetailRows } from "../../../lib/listingFormat";
 import { PLATFORM_LABELS, PLATFORM_ICON } from "../../../lib/videoLinks";
 import AgentContactBlock from "../../../components/AgentContactBlock";
 import { WhatsAppLogo, TelegramLogo } from "../../../components/SocialIcons";
@@ -55,8 +56,8 @@ export default function PublicListingPage() {
   // Если агент делится объектом из своего личного кабинета — ссылка несёт ЕГО телефон/имя
   // (?agent_phone=...&agent_name=...), вместо телефона, указанного в самом объекте.
   // Клиент при этом видит только клиентскую страницу — никаких внутренних данных, только замену контакта.
-  const overridePhone = searchParams.get("agent_phone");
-  const overrideName = searchParams.get("agent_name");
+  const overridePhone = searchParams.get("agent_phone") || searchParams.get("ap");
+  const overrideName = searchParams.get("agent_name") || searchParams.get("an");
   // Новые ссылки: ?ag=<id агента> — берём имя и телефон агента, который отправил ссылку.
   const agParam = searchParams.get("ag");
   const [sender, setSender] = useState(null);
@@ -232,10 +233,10 @@ export default function PublicListingPage() {
         )}
 
         {/* Все остальные публичные детали из формы */}
-        {extraRows.length > 0 && (
+        {(extraRows.length > 0 || mainDetailRows(l).length > 0) && (
           <div style={sx.section}>
             <div style={sx.sectionTitle}>Детали объекта</div>
-            {l.heating && <Row label="Отопление" value={l.heating} />}
+            {mainDetailRows(l).map(([k, v]) => <Row key={k} label={k} value={v} />)}
             {extraRows.map(([k, v]) => <Row key={k} label={extraLabel(k)} value={extraDisplayValue(v)} />)}
           </div>
         )}
