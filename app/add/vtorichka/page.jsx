@@ -470,7 +470,7 @@ function VtorichkaForm() {
   if (loadingEdit) {
     return (
       <div className="app-shell" style={{ paddingBottom: 40, display: "flex", alignItems: "center", justifyContent: "center", minHeight: "60vh" }}>
-        <div style={{ color: "#7FA396" }}>Загружаю объект…</div>
+        <div style={{ color: "var(--muted)" }}>Загружаю объект…</div>
       </div>
     );
   }
@@ -479,7 +479,7 @@ function VtorichkaForm() {
     <div className="app-shell" style={{ paddingBottom: 40 }}>
       <div className="page-header">
         <button className="back-btn" onClick={() => router.back()}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F6F1E4" strokeWidth="2"><path d="M15 18l-6-6 6-6" /></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" strokeWidth="2" style={{ stroke: "var(--text)" }}><path d="M15 18l-6-6 6-6" /></svg>
         </button>
         <div className="page-title">{editId ? "Редактирование — Вторичка" : "Вторичка"}</div>
       </div>
@@ -513,7 +513,7 @@ function VtorichkaForm() {
             onChange={setDistrict}
           />
         ) : (
-          <div style={{ color: "#7FA396", fontSize: 12 }}>
+          <div style={{ color: "var(--muted)", fontSize: 12 }}>
             Деление на районы пока есть только для Бишкека
           </div>
         )}
@@ -697,7 +697,10 @@ function VtorichkaForm() {
         <button className="ai-btn" type="button" disabled>✨ Сформировать описание с ИИ (следующий этап)</button>
       </div>
 
-      <PhotoUploader photos={photos} onChange={setPhotos} />
+      <div className="field-group">
+        <div className="field-label">Фото объекта</div>
+        <PhotoUploader photos={photos} onChange={setPhotos} />
+      </div>
 
       <VideoReviewBlock videos={videos} onChange={setVideos} onPendingErrorChange={setVideoPendingError} />
 
@@ -746,9 +749,9 @@ function VtorichkaForm() {
         )}
       </div>
 
-      <div className="section-divider" style={{ borderTopColor: "rgba(100,180,220,0.3)" }}>
-        <div className="section-divider-title big" style={{ color: "#7EC8E3" }}>Финансовая информация</div>
-        <span className="lock-badge" style={{ color: "#7EC8E3", background: "rgba(100,180,220,0.12)", borderColor: "rgba(100,180,220,0.3)" }}>👥 ВИДЯТ ВСЕ АГЕНТЫ, РОП, АДМИН</span>
+      <div className="section-divider" style={{ borderTopColor: "var(--line)" }}>
+        <div className="section-divider-title big" style={{ color: "var(--text2)" }}>Финансовая информация</div>
+        <span className="lock-badge" style={{ color: "var(--text2)", background: "var(--fill)", borderColor: "var(--line)" }}>👥 ВИДЯТ ВСЕ АГЕНТЫ, РОП, АДМИН</span>
       </div>
       <div className="field-group">
         <div className="field-label">Цена в руки <span className="star">*</span><span className="required-note">(обязательно)</span></div>
@@ -810,7 +813,7 @@ function VtorichkaForm() {
 
             <div className="section-divider">
         <div className="section-divider-title">Контакт агента</div>
-        <span className="lock-badge" style={{ color: "#baf5d0", background: "rgba(20,120,80,0.15)", borderColor: "rgba(100,220,150,0.3)" }}>👁 ВИДЕН ВСЕМ</span>
+        <span className="lock-badge" style={{ color: "var(--accent-text)", background: "var(--fill)", borderColor: "var(--line)" }}>👁 ВИДЕН ВСЕМ</span>
       </div>
       <div className="field-group">
         <div className="field-label">Имя агента <span className="star">*</span><span className="required-note">(обязательно)</span></div>
@@ -843,7 +846,7 @@ function VtorichkaForm() {
       {(!editId || !currentStatus || currentStatus === "черновик") && <button
         disabled={saving || videoPendingError}
         onClick={handleSaveDraft}
-        style={{ width: "100%", marginTop: 10, background: "none", border: "none", color: "#7FA396", fontSize: 13, fontWeight: 700, padding: "10px 0" }}
+        style={{ width: "100%", marginTop: 10, background: "none", border: "none", color: "var(--muted)", fontSize: 13, fontWeight: 700, padding: "10px 0" }}
       >
         Сохранить черновик и продолжить позже
       </button>}
