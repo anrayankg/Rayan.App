@@ -3,11 +3,13 @@ import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase";
 import { CAT_KVARTIRY, CAT_NOVOSTROYKI, CAT_DOMA, CAT_UCHASTOK, CAT_KOMMERCIYA, CAT_ARENDA } from "../../lib/categoryIcons";
-import { fullCharLine, priceBlock, categoryLabel } from "../../lib/listingFormat";
+import { fullCharLine, priceBlock, categoryLabel, isPso } from "../../lib/listingFormat";
 import BottomNav from "../../components/BottomNav";
 import AddToCollectionButton from "../../components/AddToCollectionButton";
 import CollectionPickerSheet from "../../components/CollectionPickerSheet";
 import ShareSheet from "../../components/ShareSheet";
+import { getThemeChoice, applyTheme } from "../../lib/theme";
+import { buildShareUrl } from "../../lib/share";
 import { clientListingLink } from "../../lib/agent";
 import FilterWizard from "../../components/FilterWizard";
 import ConfirmDialog from "../../components/ConfirmDialog";
@@ -44,7 +46,7 @@ function photoUrl(path) {
 }
 function IconWhatsappSmall() {
   return (
-    <svg width="18" height="18" viewBox="0 0 32 32" fill="#3ED07A">
+    <svg width="18" height="18" viewBox="0 0 32 32" style={{ fill: "var(--accent-text)" }}>
       <path d="M16 3C9 3 3 9 3 16c0 2.4.7 4.7 1.9 6.6L3 29l6.6-1.9c1.8 1 3.9 1.6 6.4 1.6 7 0 13-6 13-13S23 3 16 3zm7.5 18.4c-.3.9-1.7 1.7-2.4 1.8-.6.1-1.4.1-2.2-.1-.5-.2-1.2-.4-2-.8-3.5-1.5-5.8-5-6-5.3-.2-.3-1.4-1.9-1.4-3.6 0-1.7.9-2.5 1.2-2.9.3-.3.7-.4.9-.4h.6c.2 0 .5 0 .7.6.3.7.9 2.3 1 2.5.1.2.2.4 0 .6-.1.2-.2.4-.4.6-.2.2-.4.5-.6.6-.2.2-.4.4-.2.8.2.4 1 1.6 2.1 2.6 1.4 1.3 2.6 1.7 3 1.9.4.2.6.1.8-.1.2-.3.9-1 1.1-1.4.2-.3.5-.3.8-.2.3.1 2 1 2.4 1.1.4.2.6.3.7.4.1.3.1.9-.2 1.7z"/>
     </svg>
   );
@@ -73,21 +75,21 @@ function IconRepliesBubble() {
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
       <circle cx="12" cy="12" r="11" fill="rgba(62,208,122,0.16)" />
       <path d="M7 9.5a4.5 4.5 0 0 1 4.5-4.5h1A4.5 4.5 0 0 1 17 9.5v1c0 .9-.3 1.7-.8 2.4l.3 2.1-2-.9a4.5 4.5 0 0 1-1 .1h-1A4.5 4.5 0 0 1 7 10.5v-1z"
-        stroke="#3ED07A" strokeWidth="1.4" fill="none" />
-      <circle cx="12" cy="9.5" r="1.3" fill="#3ED07A" />
+        strokeWidth="1.4" fill="none" style={{ stroke: "var(--accent-text)" }} />
+      <circle cx="12" cy="9.5" r="1.3" style={{ fill: "var(--accent-text)" }} />
     </svg>
   );
 }
 function IconCopySmall() {
   return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#B8B8BE" strokeWidth="2">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" strokeWidth="2" style={{ stroke: "var(--text2)" }}>
       <rect x="9" y="9" width="12" height="12" rx="2" /><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" />
     </svg>
   );
 }
 function IconCheckSmall() {
   return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5BD98A" strokeWidth="2.5">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" strokeWidth="2.5" style={{ stroke: "var(--accent-text)" }}>
       <path d="M4 12l5 5L20 6" />
     </svg>
   );
@@ -124,6 +126,17 @@ export default function ProfilePage() {
   const [pfilter, setPfilter] = useState(EMPTY);
   const [pfilterOpen, setPfilterOpen] = useState(false);
   const [askDeactivate, setAskDeactivate] = useState(false);
+  const [theme, setTheme] = useState("system");
+  useEffect(() => { setTheme(getThemeChoice()); }, []);
+  const [profileShareUrl, setProfileShareUrl] = useState("");
+  const [profileShareBusy, setProfileShareBusy] = useState(false);
+  async function openProfileShare() {
+    setProfileShareBusy(true);
+    const url = await buildShareUrl(myListings.filter((l) => selected.has(l.id)), agent);
+    setProfileShareBusy(false);
+    setProfileShareUrl(url);
+    setShowShare(true);
+  }
   const [showSortPicker, setShowSortPicker] = useState(false);
   const [selected, setSelected] = useState(new Set());
   const [copiedId, setCopiedId] = useState(null);
@@ -203,7 +216,7 @@ export default function ProfilePage() {
   function adStatusInfo(l) {
     if (l.ad_status === "активна") return { label: "Реклама активна", bg: "#1FA35C", icon: "✅" };
     if (l.ad_status === "просрочена") return { label: "Просрочена реклама", bg: "#D64545", icon: "⚠️" };
-    return { label: "Требует рекламы", bg: "#D4A437", icon: "⚠️" };
+    return { label: "Требует рекламы", bg: "var(--surface2)", icon: "⚠️" };
   }
 
   async function bulkDeactivate() {
@@ -241,7 +254,8 @@ export default function ProfilePage() {
     const { data, error } = await supabase.from("agents").select("*");
     setBusy(false);
     if (error) { setLoginError("Ошибка: " + error.message); return; }
-    const found = (data || []).find((a) => digitsOnly(a.phone) === digits);
+    // Сравниваем последние 9 цифр: можно вводить и 553625010, и +996 553 625 010, и 0553 625 010
+    const found = (data || []).find((a) => digitsOnly(a.phone).slice(-9) === digits.slice(-9));
     if (!found) { setLoginError("Номер не найден. Обратитесь к Айгуль, чтобы завести личный кабинет."); return; }
     localStorage.setItem("rayan_agent", JSON.stringify(found));
     setAgent(found);
@@ -292,6 +306,16 @@ export default function ProfilePage() {
         </button>
       </div>
 
+      {/* Тема оформления */}
+      <div className="theme-switch">
+        <div className="theme-switch-label">Оформление</div>
+        <div className="theme-switch-row">
+          {[["dark", "Тёмная"], ["light", "Светлая"], ["system", "Как в телефоне"]].map(([k, label]) => (
+            <button key={k} className={theme === k ? "on" : ""} onClick={() => { setTheme(k); applyTheme(k); }}>{label}</button>
+          ))}
+        </div>
+      </div>
+
       {/* Быстрые разделы — Мои подборки / Реклама / Клиенты */}
       <div style={sx.quickRow}>
         <a href="/collections" style={sx.quickTile}>
@@ -327,14 +351,14 @@ export default function ProfilePage() {
         <span style={{ opacity: 0.5 }}>🔍</span>
         <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Поиск по моим объектам" style={sx.searchInput} />
         <button onClick={() => setPfilterOpen(true)} style={sx.searchFilterBtn} aria-label="Фильтр">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5BD98A" strokeWidth="2">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" strokeWidth="2" style={{ stroke: "var(--accent-text)" }}>
             <path d="M4 5h16M7 12h10M11 19h2" />
           </svg>
         </button>
       </div>
       <div style={sx.filterRow}>
         <button onClick={() => setPfilterOpen(true)} className="fl-open-btn">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5BD98A" strokeWidth="2.2"><path d="M4 5h16M7 12h10M11 19h2" /></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" strokeWidth="2.2" style={{ stroke: "var(--accent-text)" }}><path d="M4 5h16M7 12h10M11 19h2" /></svg>
           Фильтр{activeCount(pfilter) > 0 && <span className="fl-open-count">{activeCount(pfilter)}</span>}
         </button>
         {pfilter.cat && <span className="fl-open-cat">{(FILTER_CATEGORIES.find((c) => c.key === pfilter.cat) || {}).label}</span>}
@@ -367,11 +391,11 @@ export default function ProfilePage() {
                     </button>
                     <div style={{ ...sx.adBar, background: ad.bg }}>{ad.icon} {ad.label}</div>
                   </div>
-                  <a href={`/listing/${l.id}`} style={{ textDecoration: "none", color: "#fff" }}>
+                  <a href={`/listing/${l.id}`} style={{ textDecoration: "none", color: "var(--text)" }}>
                     <div style={sx.bigCardPrice}>${priceBlock(l).usd.toLocaleString("ru-RU")}</div>
                     <div style={sx.bigCardPriceKgs}>{priceBlock(l).kgs.toLocaleString("ru-RU")} сом</div>
                     <div style={sx.bigCardMeta}>{fullCharLine(l)}</div>
-                    <div style={sx.bigCardCategory}>{categoryLabel(l.type)}</div>
+                    <div style={sx.bigCardCategory}>{categoryLabel(l.type)}{isPso(l) && <b className="pso-tag"> (СДАН ПСО)</b>}</div>
                     <div style={sx.bigCardLoc}>{[l.zhk, l.district].filter(Boolean).join(", ")}</div>
                     {l.description && <div style={sx.bigCardDesc}>{l.description}</div>}
                   </a>
@@ -401,7 +425,7 @@ export default function ProfilePage() {
         <div className="bulk-bar">
           <div className="bulk-bar-title"><span>Выбрано: {selected.size}</span><button onClick={() => setSelected(new Set())}>Отменить</button></div>
           <button onClick={() => setShowBulkCollection(true)} className="btn-primary btn-block">Отправить в подборку ({selected.size})</button>
-          <button onClick={() => setShowShare(true)} className="btn-primary btn-block">Поделиться ({selected.size})</button>
+          <button onClick={openProfileShare} disabled={profileShareBusy} className="btn-primary btn-block">{profileShareBusy ? "Готовлю ссылку…" : `Поделиться (${selected.size})`}</button>
           <button onClick={() => router.push("/ads")} className="btn-secondary btn-block">Запустить рекламу ({selected.size})</button>
           <button onClick={() => setAskDeactivate(true)} disabled={bulkBusy} style={sx.bulkDeactivateBtn}>Деактивировать</button>
         </div>
@@ -409,14 +433,9 @@ export default function ProfilePage() {
 
       <CollectionPickerSheet open={showBulkCollection} onClose={() => setShowBulkCollection(false)}
         listingIds={Array.from(selected)} agent={agent} onDone={() => setSelected(new Set())} />
-      {(() => {
-        const sel = myListings.filter((l) => selected.has(l.id));
-        const url = sel[0] ? clientListingLink(sel[0].id, agent) : "";
-        const text = sel.length <= 1 ? url : "Варианты от RAYAN — центр недвижимости:\n\n" + sel.map((l, i) =>
-          `${i + 1}) $${priceBlock(l).usd.toLocaleString("ru-RU")} · ${fullCharLine(l)}\n${clientListingLink(l.id, agent)}`).join("\n\n");
-        return <ShareSheet open={showShare} onClose={() => setShowShare(false)} url={url} text={text}
-          note={`В ссылке будет ваш номер: ${agent.name || ""} ${agent.phone || ""}`} />;
-      })()}
+      <ShareSheet open={showShare} onClose={() => setShowShare(false)} url={profileShareUrl} text={profileShareUrl}
+        title={selected.size > 1 ? `Поделиться (${selected.size})` : "Поделиться"}
+        note={`В ссылке будет ваш номер: ${agent.name || ""} ${agent.phone || ""}`} />
 
       {/* Модалка категорий */}
       {showCategoryPicker && (
@@ -425,7 +444,7 @@ export default function ProfilePage() {
             <div style={sx.modalHandle} />
             <div style={sx.modalTitle}>Категории</div>
             <button onClick={() => { setCategoryFilter(null); setShowCategoryPicker(false); }} style={sx.categoryRow}>
-              <span>Все категории</span><span style={{ color: "#7FA396" }}>{myListings.length}</span>
+              <span>Все категории</span><span style={{ color: "var(--muted)" }}>{myListings.length}</span>
             </button>
             {FILTER_CATS.map((c) => (
               <button key={c.type} onClick={() => { setCategoryFilter(c.type); setShowCategoryPicker(false); }} style={sx.categoryRow}>
@@ -433,7 +452,7 @@ export default function ProfilePage() {
                   <img src={c.img} alt="" style={{ width: 28, height: 28, borderRadius: 6, objectFit: "cover" }} />
                   {c.label}
                 </span>
-                <span style={{ color: "#7FA396" }}>{categoryCounts[c.type] || 0}</span>
+                <span style={{ color: "var(--muted)" }}>{categoryCounts[c.type] || 0}</span>
               </button>
             ))}
           </div>
@@ -469,106 +488,106 @@ export default function ProfilePage() {
 }
 
 const sx = {
-  page: { maxWidth: 480, margin: "0 auto", minHeight: "100vh", background: "#0C0C0D",
-    fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif", color: "#fff", padding: "16px 20px 90px" },
-  center: { display: "flex", alignItems: "center", justifyContent: "center", minHeight: "80vh", color: "#8B8B90" },
-  backBtn: { width: 36, height: 36, borderRadius: "50%", background: "rgba(255,255,255,0.08)", color: "#fff",
+  page: { maxWidth: 480, margin: "0 auto", minHeight: "100vh", background: "var(--bg)",
+    fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif", color: "var(--text)", padding: "16px 20px 90px" },
+  center: { display: "flex", alignItems: "center", justifyContent: "center", minHeight: "80vh", color: "var(--muted)" },
+  backBtn: { width: 36, height: 36, borderRadius: "50%", background: "var(--fill)", color: "var(--text)",
     border: "none", fontSize: 22, lineHeight: "36px", marginBottom: 14 },
 
   loginBox: { marginTop: 50, textAlign: "center" },
   loginIcon: { fontSize: 40, marginBottom: 10 },
   loginTitle: { fontSize: 21, fontWeight: 800, textAlign: "center" },
-  loginSub: { fontSize: 13.5, color: "#8B8B90", textAlign: "center", marginTop: 6, marginBottom: 22 },
-  input: { width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)",
-    borderRadius: "var(--r)", padding: "15px 14px", color: "#fff", fontSize: 16, textAlign: "center" },
-  error: { color: "#E8877A", fontSize: 12.5, textAlign: "center", marginTop: 10 },
+  loginSub: { fontSize: 13.5, color: "var(--muted)", textAlign: "center", marginTop: 6, marginBottom: 22 },
+  input: { width: "100%", background: "var(--fill)", border: "1px solid var(--line)",
+    borderRadius: "var(--r)", padding: "15px 14px", color: "var(--text)", fontSize: 16, textAlign: "center" },
+  error: { color: "var(--danger)", fontSize: 12.5, textAlign: "center", marginTop: 10 },
   loginBtn: { width: "100%", background: "#1FA35C", border: "none", color: "#fff", fontWeight: 700,
     fontSize: 15.5, padding: "15px 0", borderRadius: "var(--r)", marginTop: 16 },
 
   profileHeader: { textAlign: "center", marginBottom: 20 },
-  avatarBig: { width: 72, height: 72, borderRadius: "50%", background: "rgba(31,163,92,0.18)", color: "#5BD98A",
+  avatarBig: { width: 72, height: 72, borderRadius: "50%", background: "rgba(31,163,92,0.18)", color: "var(--accent-text)",
     display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 28, margin: "0 auto 10px" },
   name: { fontSize: 19, fontWeight: 800 },
-  phone: { fontSize: 12.5, color: "#8B8B90", marginTop: 2 },
-  editProfileBtn: { marginTop: 12, background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.14)",
-    color: "#fff", fontSize: 12.5, fontWeight: 600, padding: "8px 16px", borderRadius: "var(--r)" },
+  phone: { fontSize: 12.5, color: "var(--muted)", marginTop: 2 },
+  editProfileBtn: { marginTop: 12, background: "var(--fill)", border: "1px solid var(--line)",
+    color: "var(--text)", fontSize: 12.5, fontWeight: 600, padding: "8px 16px", borderRadius: "var(--r)" },
 
   quickRow: { display: "flex", gap: 10, marginBottom: 20 },
-  quickTile: { flex: 1, textDecoration: "none", background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.08)",
-    borderRadius: "var(--r)", padding: "14px 6px", textAlign: "center", color: "#fff" },
+  quickTile: { flex: 1, textDecoration: "none", background: "var(--fill)", border: "1px solid var(--line-soft)",
+    borderRadius: "var(--r)", padding: "14px 6px", textAlign: "center", color: "var(--text)" },
   quickIcon: { fontSize: 22, marginBottom: 6 },
   quickLabel: { fontSize: 11, fontWeight: 700 },
 
   statusTabsRow: { display: "flex", gap: 8, overflowX: "auto", marginBottom: 14, paddingBottom: 2 },
-  statusTab: { flexShrink: 0, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)",
-    color: "#8B8B90", fontSize: 12.5, fontWeight: 700, padding: "9px 15px", borderRadius: "var(--r)" },
-  statusTabActive: { background: "rgba(31,163,92,0.18)", border: "1px solid rgba(31,163,92,0.5)", color: "#5BD98A" },
+  statusTab: { flexShrink: 0, background: "var(--fill)", border: "1px solid var(--line-soft)",
+    color: "var(--muted)", fontSize: 12.5, fontWeight: 700, padding: "9px 15px", borderRadius: "var(--r)" },
+  statusTabActive: { background: "rgba(31,163,92,0.18)", border: "1px solid rgba(31,163,92,0.5)", color: "var(--accent-text)" },
 
-  searchRow: { display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.06)",
-    border: "1px solid rgba(255,255,255,0.1)", borderRadius: "var(--r)", padding: "11px 14px", marginBottom: 10 },
-  searchInput: { flex: 1, background: "none", border: "none", color: "#fff", fontSize: 14, outline: "none" },
+  searchRow: { display: "flex", alignItems: "center", gap: 8, background: "var(--fill)",
+    border: "1px solid var(--line-soft)", borderRadius: "var(--r)", padding: "11px 14px", marginBottom: 10 },
+  searchInput: { flex: 1, background: "none", border: "none", color: "var(--text)", fontSize: 14, outline: "none" },
   searchFilterBtn: { background: "none", border: "none", display: "flex", alignItems: "center", padding: 0 },
   filterRow: { display: "flex", gap: 8, marginBottom: 18, flexWrap: "wrap" },
-  filterBtn: { background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#fff",
+  filterBtn: { background: "var(--fill)", border: "1px solid var(--line)", color: "var(--text)",
     fontSize: 12, fontWeight: 600, padding: "8px 14px", borderRadius: "var(--r)" },
-  resetBtn: { background: "none", border: "none", color: "#5BD98A", fontSize: 12, fontWeight: 700, padding: "8px 4px" },
+  resetBtn: { background: "none", border: "none", color: "var(--accent-text)", fontSize: 12, fontWeight: 700, padding: "8px 4px" },
 
-  emptyMsg: { color: "#8B8B90", fontSize: 13, lineHeight: 1.6, marginBottom: 20 },
+  emptyMsg: { color: "var(--muted)", fontSize: 13, lineHeight: 1.6, marginBottom: 20 },
   selectHeaderRow: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
   selectHeaderText: { fontSize: 13, fontWeight: 700 },
-  selectAllBtn: { background: "none", border: "none", color: "#5BD98A", fontSize: 13, fontWeight: 700 },
+  selectAllBtn: { background: "none", border: "none", color: "var(--accent-text)", fontSize: 13, fontWeight: 700 },
   grid2: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 10 },
-  bigCard: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "var(--r)", padding: "0 0 10px", overflow: "hidden" },
-  bigCardPhotoWrap: { position: "relative", width: "100%", aspectRatio: "1/1", background: "#1A1A1C" },
+  bigCard: { background: "var(--fill)", border: "1px solid var(--line-soft)", borderRadius: "var(--r)", padding: "0 0 10px", overflow: "hidden" },
+  bigCardPhotoWrap: { position: "relative", width: "100%", aspectRatio: "1/1", background: "var(--surface)" },
   checkCircle: { position: "absolute", top: 0, right: 0, width: 48, height: 48, padding: 8,
     background: "none", border: "none", display: "flex", alignItems: "flex-start", justifyContent: "flex-end" },
   checkCircleEmpty: { width: 24, height: 24, borderRadius: "50%", border: "2px solid #fff", background: "transparent" },
   checkCircleFilled: { width: 24, height: 24, borderRadius: "50%", background: "#1FA35C", color: "#fff",
     fontSize: 13, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" },
-  adBar: { position: "absolute", left: 0, right: 0, bottom: 0, padding: "6px 8px", color: "#fff",
+  adBar: { position: "absolute", left: 0, right: 0, bottom: 0, padding: "6px 8px", color: "var(--text)",
     fontSize: 10.5, fontWeight: 800, textAlign: "center" },
   statsBox: { display: "flex", alignItems: "center", gap: 12, margin: "6px 10px 0", fontSize: 11 },
-  statsItem: { display: "flex", alignItems: "center", gap: 4, color: "#B8B8BE", fontWeight: 600 },
-  cardPhotoWrap: { width: "100%", aspectRatio: "1/1", background: "#1A1A1C" },
+  statsItem: { display: "flex", alignItems: "center", gap: 4, color: "var(--text2)", fontWeight: 600 },
+  cardPhotoWrap: { width: "100%", aspectRatio: "1/1", background: "var(--surface)" },
   bigCardPrice: { fontSize: 15, fontWeight: 800, margin: "9px 10px 0" },
-  bigCardPriceKgs: { fontSize: 11, color: "#8B8B90", margin: "1px 10px 0" },
-  bigCardMeta: { fontSize: 11.5, color: "#EDEDEF", margin: "5px 10px 0" },
-  bigCardCategory: { fontSize: 11, fontWeight: 600, color: "#fff", margin: "2px 10px 0" },
-  bigCardLoc: { fontSize: 10.5, color: "#8B8B90", margin: "1px 10px 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
-  bigCardDesc: { fontSize: 10.5, color: "#B8B8BE", margin: "4px 10px 0", lineHeight: 1.4,
+  bigCardPriceKgs: { fontSize: 11, color: "var(--muted)", margin: "1px 10px 0" },
+  bigCardMeta: { fontSize: 11.5, color: "var(--text)", margin: "5px 10px 0" },
+  bigCardCategory: { fontSize: 11, fontWeight: 600, color: "var(--text)", margin: "2px 10px 0" },
+  bigCardLoc: { fontSize: 10.5, color: "var(--muted)", margin: "1px 10px 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+  bigCardDesc: { fontSize: 10.5, color: "var(--text2)", margin: "4px 10px 0", lineHeight: 1.4,
     display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 3, overflow: "hidden" },
   idCopyBtn: { display: "flex", alignItems: "center", gap: 4, background: "none", border: "none",
-    color: "#B8B8BE", fontSize: 11, fontWeight: 600, padding: 0, marginLeft: "auto" },
+    color: "var(--text2)", fontSize: 11, fontWeight: 600, padding: 0, marginLeft: "auto" },
 
   cardPhoto: { width: "100%", height: "100%", objectFit: "cover", display: "block" },
   cardPhotoEmpty: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center",
-    color: "#8B8B90", fontSize: 9.5, background: "#FFFFFF" },
+    color: "var(--muted)", fontSize: 9.5, background: "#FFFFFF" },
 
-  sectionTitle: { fontSize: 12.5, fontWeight: 700, color: "#7FA396", textTransform: "uppercase",
-    letterSpacing: 0.5, marginTop: 30, marginBottom: 12, paddingTop: 4, borderTop: "1px solid rgba(255,255,255,0.07)" },
+  sectionTitle: { fontSize: 12.5, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase",
+    letterSpacing: 0.5, marginTop: 30, marginBottom: 12, paddingTop: 4, borderTop: "1px solid var(--line-soft)" },
   collectionRow: { display: "flex", justifyContent: "space-between", alignItems: "center",
-    background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "var(--r)", padding: "13px 14px", marginBottom: 10 },
-  collectionRowLink: { display: "flex", flexDirection: "column", gap: 3, textDecoration: "none", color: "#fff" },
+    background: "var(--fill)", border: "1px solid var(--line-soft)", borderRadius: "var(--r)", padding: "13px 14px", marginBottom: 10 },
+  collectionRowLink: { display: "flex", flexDirection: "column", gap: 3, textDecoration: "none", color: "var(--text)" },
   collectionRowName: { fontSize: 14, fontWeight: 700 },
-  collectionRowCount: { color: "#7FA396", fontSize: 11.5 },
-  shareIconBtn: { width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.08)",
+  collectionRowCount: { color: "var(--muted)", fontSize: 11.5 },
+  shareIconBtn: { width: 32, height: 32, borderRadius: "50%", background: "var(--fill)",
     border: "none", display: "flex", alignItems: "center", justifyContent: "center" },
 
-  logoutBtnBottom: { width: "100%", marginTop: 30, background: "none", border: "1px solid rgba(255,255,255,0.15)",
-    color: "#8B8B90", fontSize: 13, padding: "12px 0", borderRadius: "var(--r)" },
+  logoutBtnBottom: { width: "100%", marginTop: 30, background: "none", border: "1px solid var(--line)",
+    color: "var(--muted)", fontSize: 13, padding: "12px 0", borderRadius: "var(--r)" },
 
   bulkBar: { position: "fixed", left: 0, right: 0, bottom: 0, maxWidth: 480, margin: "0 auto",
-    background: "#18181A", borderTop: "1px solid rgba(255,255,255,0.1)", padding: "12px 20px 20px",
+    background: "var(--surface)", borderTop: "1px solid var(--line-soft)", padding: "12px 20px 20px",
     display: "flex", flexDirection: "column", gap: 8, zIndex: 60 },
   bulkBtn: { width: "100%", background: "#1FA35C", border: "none", color: "#fff", fontWeight: 700,
     fontSize: 14, padding: "13px 0", borderRadius: "var(--r)" },
-  bulkDeactivateBtn: { width: "100%", background: "none", border: "none", color: "#E8877A", fontWeight: 700, fontSize: 13, padding: "4px 0" },
+  bulkDeactivateBtn: { width: "100%", background: "none", border: "none", color: "var(--danger)", fontWeight: 700, fontSize: 13, padding: "4px 0" },
 
   modalOverlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 80 },
-  modalSheet: { width: "100%", maxWidth: 480, background: "#18181A", borderRadius: "18px 18px 0 0", padding: "10px 20px 28px", color: "#fff",
+  modalSheet: { width: "100%", maxWidth: 480, background: "var(--surface)", borderRadius: "18px 18px 0 0", padding: "10px 20px 28px", color: "var(--text)",
     fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif", maxHeight: "70vh", overflowY: "auto" },
-  modalHandle: { width: 40, height: 4, background: "rgba(255,255,255,0.22)", borderRadius: 2, margin: "4px auto 16px" },
+  modalHandle: { width: 40, height: 4, background: "var(--line)", borderRadius: 2, margin: "4px auto 16px" },
   modalTitle: { fontSize: 18, fontWeight: 800, marginBottom: 12 },
   categoryRow: { display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%",
-    background: "rgba(255,255,255,0.05)", border: "none", color: "#fff", padding: "13px 14px", borderRadius: "var(--r)", marginBottom: 8, fontSize: 14, textAlign: "left" },
+    background: "var(--fill)", border: "none", color: "var(--text)", padding: "13px 14px", borderRadius: "var(--r)", marginBottom: 8, fontSize: 14, textAlign: "left" },
 };
