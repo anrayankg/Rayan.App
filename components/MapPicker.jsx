@@ -154,10 +154,10 @@ export default function MapPicker({ label, required, lat, lng, flyToQuery, flyTo
         ref={mapRef}
         style={{
           width: "100%", height: 220, borderRadius: "var(--r)", overflow: "hidden",
-          border: "1px solid rgba(212,164,55,0.3)", background: "#0A4A38",
+          border: "1px solid var(--line)", background: "var(--surface)",
         }}
       />
-      <div style={{ color: "#7FA396", fontSize: 10.5, marginTop: 6 }}>
+      <div style={{ color: "var(--muted)", fontSize: 10.5, marginTop: 6 }}>
         {lat && lng
           ? `Точка выбрана: ${lat.toFixed(5)}, ${lng.toFixed(5)}`
           : flyStatus === "notfound"

@@ -32,7 +32,7 @@ export default function BottomNav({ active }) {
         const Icon = NAV_ICONS[n.label];
         const isActive = active === n.label;
         const canFill = NAV_FILLABLE[n.label];
-        const color = isActive ? "var(--green-accent)" : "#7FA396";
+        const color = isActive ? "var(--green-accent)" : "var(--muted)";
         return (
           <div key={i} className={`nav-item ${isActive ? "active" : ""}`} onClick={() => router.push(n.path)} style={{ cursor: "pointer" }}>
             <Icon size={21} color={color} fill={isActive && canFill ? color : "none"} strokeWidth={isActive && canFill ? 1.6 : 1.8} />

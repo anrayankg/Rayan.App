@@ -1,6 +1,23 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 
+// Как в Lalafo: после выбора сразу предлагаем следующий шаг —
+// прокручиваем к следующему полю и, если это пустой список выбора, открываем его.
+export function goToNextField(fromEl) {
+  if (typeof document === "undefined" || !fromEl) return;
+  setTimeout(() => {
+    const all = Array.from(document.querySelectorAll(".picker-box, .field-input, .field-textarea"));
+    const mine = fromEl.querySelector(".picker-box");
+    const i = all.indexOf(mine);
+    const next = i >= 0 ? all[i + 1] : null;
+    if (!next) return;
+    next.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (next.classList.contains("picker-box") && !next.classList.contains("picker-filled")) {
+      setTimeout(() => next.click(), 250);
+    }
+  }, 60);
+}
+
 // Один вариант из списка. Закрыт — показывает "Выберите значение ›",
 // заполнен — значение + галочка. Нажатие открывает список вариантов.
 export function Picker({ label, required, options, value, onChange, placeholder, error }) {
@@ -30,7 +47,7 @@ export function Picker({ label, required, options, value, onChange, placeholder,
       {open && (
         <div className="picker-list">
           {options.map((o) => (
-            <div key={o} className={`picker-item ${value === o ? "selected" : ""}`} onClick={() => { onChange(o); setOpen(false); }}>
+            <div key={o} className={`picker-item ${value === o ? "selected" : ""}`} onClick={() => { const was = value; onChange(o); setOpen(false); if (!was) goToNextField(wrapRef.current); }}>
               <span>{o}</span>{value === o && <span>✓</span>}
             </div>
           ))}
@@ -81,7 +98,7 @@ export function MultiPicker({ label, required, options, value, onChange, placeho
               <span>{o}</span>{selected.includes(o) && <span>✓</span>}
             </div>
           ))}
-          <div className="picker-done-btn" onClick={() => setOpen(false)}>Готово</div>
+          <div className="picker-done-btn" onClick={() => { setOpen(false); if (selected.length) goToNextField(wrapRef.current); }}>Далее</div>
         </div>
       )}
     </div>

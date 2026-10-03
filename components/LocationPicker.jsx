@@ -51,20 +51,20 @@ export default function LocationPicker({ label, options, value, onChange, requir
           style={{
             position: "absolute", top: "100%", left: 0, right: 0, zIndex: 9999,
             marginTop: 4, maxHeight: 260, overflowY: "auto",
-            background: "#0A4A38", border: "1px solid rgba(212,164,55,0.4)",
+            background: "var(--surface)", border: "1px solid var(--line)",
             borderRadius: "var(--r)", boxShadow: "0 12px 30px rgba(0,0,0,0.5)",
           }}
         >
           {filtered.length === 0 && (
-            <div style={{ padding: "12px 14px", color: "#9FC2B2", fontSize: 12 }}>Ничего не найдено</div>
+            <div style={{ padding: "12px 14px", color: "var(--muted)", fontSize: 12 }}>Ничего не найдено</div>
           )}
           {filtered.map((o) => (
             <div
               key={o}
               onClick={() => pick(o)}
               style={{
-                padding: "10px 14px", fontSize: 13, color: "#F6F1E4", cursor: "pointer",
-                borderBottom: "1px solid rgba(255,255,255,0.06)",
+                padding: "10px 14px", fontSize: 13, color: "var(--text)", cursor: "pointer",
+                borderBottom: "1px solid var(--line-soft)",
               }}
               onMouseDown={(e) => e.preventDefault()}
             >
@@ -73,7 +73,7 @@ export default function LocationPicker({ label, options, value, onChange, requir
           ))}
         </div>
       )}
-      <div style={{ color: "#7FA396", fontSize: 10, marginTop: 5 }}>
+      <div style={{ color: "var(--muted)", fontSize: 10, marginTop: 5 }}>
         Показано: {filtered.length} из {options.length}
       </div>
     </div>

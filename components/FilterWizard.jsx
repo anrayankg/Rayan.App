@@ -19,7 +19,7 @@ export default function FilterWizard({ open, onClose, listings, value, onApply }
     if (!open) return;
     const start = value || EMPTY;
     setDraft(start);
-    if (!start.cat) { setScreen("cats"); setSequential(true); } else setScreen("summary");
+    setScreen("summary");
   }, [open]); // eslint-disable-line
 
   const steps = draft.cat ? stepsFor(draft.cat) : [];
@@ -37,7 +37,7 @@ export default function FilterWizard({ open, onClose, listings, value, onApply }
     setVal(id, cur.includes(opt) ? cur.filter((x) => x !== opt) : [...cur, opt]);
   }
   function apply() { onApply(draft); onClose(); }
-  function clearAll() { setDraft(EMPTY); setScreen("cats"); setSequential(true); }
+  function clearAll() { setDraft(EMPTY); setScreen("summary"); setSequential(true); }
 
   function next() {
     if (screen === "cats") { setIdx(0); setScreen("step"); return; }
@@ -65,17 +65,21 @@ export default function FilterWizard({ open, onClose, listings, value, onApply }
 
       <div className="fl-body">
         {screen === "summary" && (
-          <Summary draft={draft} steps={steps}
+          <Summary draft={draft} steps={steps} setId={(val) => setDraft((d) => ({ ...d, id: val }))}
             openCats={() => { setSequential(true); setScreen("cats"); }}
             openStep={(i) => { setSequential(false); setIdx(i); setScreen("step"); }} />
         )}
         {screen === "cats" && (
           <Cats listings={listings} value={draft.cat}
-            onPick={(key) => setDraft((d) => (d.cat === key ? d : { cat: key, v: {} }))} />
+            onPick={(key) => {
+              setDraft((d) => (d.cat === key ? d : { ...d, cat: key, v: {} }));
+              // Как в Lalafo: нажали категорию — сразу следующий шаг
+              setTimeout(() => { setIdx(0); setScreen("step"); }, 180);
+            }} />
         )}
         {screen === "step" && step && (
           <StepBody step={step} v={v} draft={draft} listings={listings}
-            setVal={setVal} toggleIn={toggleIn} stepNo={sequential ? `Шаг ${idx + 1} из ${steps.length}` : null} />
+            setVal={setVal} toggleIn={toggleIn} autoNext={() => setTimeout(next, 220)} stepNo={sequential ? `Шаг ${idx + 1} из ${steps.length}` : null} />
         )}
       </div>
 
@@ -102,19 +106,22 @@ export default function FilterWizard({ open, onClose, listings, value, onApply }
   );
 }
 
-function Summary({ draft, steps, openCats, openStep }) {
+function Summary({ draft, steps, openCats, openStep, setId }) {
   const cat = FILTER_CATEGORIES.find((c) => c.key === draft.cat);
   const v = draft.v || {};
   return (
     <>
-      <div className="fl-label" style={{ marginTop: 0 }}>Категория</div>
+      <div className="fl-label" style={{ marginTop: 0 }}>ID объекта</div>
+      <input className="fl-input" inputMode="numeric" placeholder="id: 000362" value={draft.id || ""}
+        onChange={(e) => setId(e.target.value)} />
+      <div className="fl-label">Категория</div>
       <button className={`fl-field ${cat ? "filled" : ""}`} onClick={openCats}>
         {cat ? <span className="val">{cat.label}</span> : <span className="ph">Выбрать</span>}
         <span className="arrow">›</span>
       </button>
       {steps.map((s, i) => (
         <div key={s.id}>
-          <div className="fl-label">{s.title}{s.required && <span style={{ color: "#E8877A" }}> *</span>}</div>
+          <div className="fl-label">{s.title}{s.required && <span style={{ color: "var(--danger)" }}> *</span>}</div>
           <button className={`fl-field ${hasValue(s, v[s.id]) ? "filled" : ""}`} onClick={() => openStep(i)}>
             {hasValue(s, v[s.id]) ? <span className="val">{valueLabel(s, v[s.id])}</span> : <span className="ph">{s.kind === "sort" ? "Сначала новые" : "Выбрать"}</span>}
             <span className="arrow">›</span>
@@ -149,7 +156,7 @@ function Cats({ listings, value, onPick }) {
   );
 }
 
-function StepBody({ step, v, draft, listings, setVal, toggleIn, stepNo }) {
+function StepBody({ step, v, draft, listings, setVal, toggleIn, stepNo, autoNext }) {
   const [q, setQ] = useState("");
   useEffect(() => { setQ(""); }, [step.id]);
   const val = v[step.id];
@@ -269,7 +276,7 @@ function StepBody({ step, v, draft, listings, setVal, toggleIn, stepNo }) {
         {head}
         <div className="fl-contract">
           {[["с договором", "С договором"], ["без договора", "Без договора"], ["все", "Все"]].map(([k, label]) => (
-            <button key={k} className={val === k ? "on" : ""} onClick={() => setVal(step.id, val === k ? undefined : k)}>{label}</button>
+            <button key={k} className={val === k ? "on" : ""} onClick={() => { setVal(step.id, k); autoNext && autoNext(); }}>{label}</button>
           ))}
         </div>
       </>
@@ -281,7 +288,7 @@ function StepBody({ step, v, draft, listings, setVal, toggleIn, stepNo }) {
       <>
         {head}
         {[["new", "Сначала новые"], ["cheap", "Сначала дешевле"], ["expensive", "Сначала дороже"]].map(([k, label]) => (
-          <button key={k} className="fl-opt" onClick={() => setVal("sort", val === k ? undefined : k)}>
+          <button key={k} className="fl-opt" onClick={() => { setVal("sort", k); autoNext && autoNext(); }}>
             <span>{label}</span><span className={`radio ${val === k ? "on" : ""}`} />
           </button>
         ))}
