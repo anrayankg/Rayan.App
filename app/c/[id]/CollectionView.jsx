@@ -93,7 +93,8 @@ export default function CollectionView() {
     setListings((prev) => prev.filter((l) => l.id !== listingId));
   }
 
-  const agQuery = agParam ? `?ag=${encodeURIComponent(agParam)}` : (collection && collection.agent_id ? `?ag=${encodeURIComponent(collection.agent_id)}` : "");
+  // Номер агента, который прислал подборку, переходит и в каждый объект
+  const agQuery = aParam.length >= 9 ? `?a=${aParam.slice(-9)}` : agParam ? `?ag=${encodeURIComponent(agParam)}` : (collection && collection.agent_id ? `?ag=${encodeURIComponent(collection.agent_id)}` : "");
 
   if (error) return <div style={sx.page}><div style={sx.center}>{error}</div></div>;
   if (!collection) return <div style={sx.page}><div style={sx.center}>Загрузка…</div></div>;
@@ -123,7 +124,7 @@ export default function CollectionView() {
             const photo = (l.photos || [])[0] ? photoUrl(l.photos[0]) : null;
             return (
               <div key={l.id} style={{ minWidth: 0 }}>
-                <a href={`/p/${l.id}${agQuery}`} className="feed-card" style={{ display: "block", textDecoration: "none" }}>
+                <a href={`/p/${l.display_id || l.id}${agQuery}`} className="feed-card" style={{ display: "block", textDecoration: "none" }}>
                   <div className="feed-card-photo">
                     {photo ? <img src={photo} alt="" /> : <div className="feed-card-noimg">Нет фото</div>}
                   </div>
