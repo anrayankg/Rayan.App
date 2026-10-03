@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
-import { fullCharLine, priceBlock, categoryLabel } from "../../../lib/listingFormat";
+import { fullCharLine, priceBlock, categoryLabel, isPso } from "../../../lib/listingFormat";
 const R_ICON = "/r-icon.png";
 import { collectionLink, getCurrentAgent } from "../../../lib/agent";
 import BottomNav from "../../../components/BottomNav";
@@ -36,6 +36,7 @@ export default function CollectionView() {
   const searchParams = useSearchParams();
   const isManageMode = searchParams.get("manage") === "1";
   const agParam = searchParams.get("ag");
+  const aParam = (searchParams.get("a") || "").replace(/\D/g, "");
   const [collection, setCollection] = useState(null);
   const [listings, setListings] = useState([]);
   const [similar, setSimilar] = useState([]);
@@ -54,7 +55,10 @@ export default function CollectionView() {
 
       // Кому звонить клиенту: агент из ссылки (?ag=), иначе — хозяин подборки.
       const agentId = agParam || col.agent_id;
-      if (agentId) {
+      if (aParam.length >= 9) {
+        const { data: byPhone } = await supabase.from("agents").select("id, name, phone").ilike("phone", `%${aParam.slice(-9)}`).limit(1);
+        if (byPhone && byPhone[0]) setAgentInfo(byPhone[0]); else setAgentInfo({ phone: "+996" + aParam.slice(-9) });
+      } else if (agentId) {
         const { data: ag } = await supabase.from("agents").select("id, name, phone").eq("id", agentId).maybeSingle();
         if (ag) setAgentInfo(ag);
       }
@@ -127,7 +131,7 @@ export default function CollectionView() {
                     <div className="feed-price-usd">${usd.toLocaleString("ru-RU")}</div>
                     <div className="feed-price-kgs">{kgs.toLocaleString("ru-RU")} сом</div>
                     <div className="feed-chars">{fullCharLine(l)}</div>
-                    <div className="feed-category">{categoryLabel(l.type)}</div>
+                    <div className="feed-category">{categoryLabel(l.type)}{isPso(l) && <b className="pso-tag"> (СДАН ПСО)</b>}</div>
                     <div className="feed-location">{locationLine(l)}</div>
                     {l.description && <div className="feed-desc">{l.description}</div>}
                     <div className="feed-agent">
@@ -186,27 +190,27 @@ export default function CollectionView() {
 // Подборку смотрят в тёмном виде (как страницу объекта у клиента) — переменные цвета
 // переопределены здесь, чтобы карточки выглядели так же, как на главной в тёмной теме.
 const DARK_VARS = {
-  "--bg-card": "#1A1A1C", "--bg-card-alt": "#232326", "--bg-card-hover": "#28282B",
-  "--text-primary": "#FFFFFF", "--text-secondary": "#8B8B90", "--border-subtle": "rgba(255,255,255,0.08)",
+  "--bg-card": "var(--surface)", "--bg-card-alt": "var(--surface2)", "--bg-card-hover": "var(--surface2)",
+  "--text-primary": "var(--text)", "--text-secondary": "var(--muted)", "--border-subtle": "var(--line-soft)",
 };
 
 const sx = {
-  page: { ...DARK_VARS, maxWidth: 480, margin: "0 auto", minHeight: "100vh", background: "#0C0C0D",
-    fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif", color: "#fff", padding: "18px 16px 110px", overflowX: "hidden" },
-  center: { display: "flex", alignItems: "center", justifyContent: "center", minHeight: "80vh", color: "#8B8B90" },
+  page: { ...DARK_VARS, maxWidth: 480, margin: "0 auto", minHeight: "100vh", background: "var(--bg)",
+    fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif", color: "var(--text)", padding: "18px 16px 110px", overflowX: "hidden" },
+  center: { display: "flex", alignItems: "center", justifyContent: "center", minHeight: "80vh", color: "var(--muted)" },
   header: { display: "flex", alignItems: "center", gap: 12, marginBottom: 16 },
-  backBtn: { width: 40, height: 40, borderRadius: "50%", background: "rgba(255,255,255,0.08)", color: "#fff",
+  backBtn: { width: 40, height: 40, borderRadius: "50%", background: "var(--fill)", color: "var(--text)",
     border: "none", fontSize: 22, lineHeight: "40px", flexShrink: 0 },
   title: { fontSize: 20, fontWeight: 800 },
-  count: { fontSize: 13, color: "#8B8B90", marginTop: 2 },
-  empty: { color: "#8B8B90", fontSize: 14, lineHeight: 1.6, marginTop: 20 },
+  count: { fontSize: 13, color: "var(--muted)", marginTop: 2 },
+  empty: { color: "var(--muted)", fontSize: 14, lineHeight: 1.6, marginTop: 20 },
   cardPhoto: { width: "100%", height: "100%", objectFit: "cover", display: "block" },
-  hint: { marginTop: 20, fontSize: 12, color: "#7FA396", lineHeight: 1.6 },
-  similarSection: { marginTop: 26, paddingTop: 16, borderTop: "1px solid rgba(255,255,255,0.08)" },
-  similarTitle: { fontSize: 13, fontWeight: 700, color: "#7FA396", marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.4 },
+  hint: { marginTop: 20, fontSize: 12, color: "var(--muted)", lineHeight: 1.6 },
+  similarSection: { marginTop: 26, paddingTop: 16, borderTop: "1px solid var(--line-soft)" },
+  similarTitle: { fontSize: 13, fontWeight: 700, color: "var(--muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.4 },
   similarRow: { display: "flex", gap: 10, overflowX: "auto" },
-  similarCard: { flex: "0 0 140px", textDecoration: "none", color: "#fff", minWidth: 0 },
+  similarCard: { flex: "0 0 140px", textDecoration: "none", color: "var(--text)", minWidth: 0 },
   similarPhotoWrap: { width: 140, height: 140, borderRadius: "var(--r)", overflow: "hidden", background: "#FFFFFF" },
   similarPrice: { fontSize: 14, fontWeight: 800, marginTop: 6 },
-  similarChar: { fontSize: 11, color: "#8B8B90", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+  similarChar: { fontSize: 11, color: "var(--muted)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
 };
