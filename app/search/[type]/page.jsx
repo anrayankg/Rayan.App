@@ -21,7 +21,7 @@ export default function SearchByType() {
     <div className="app-shell" style={{ paddingBottom: 40 }}>
       <div className="page-header">
         <button className="back-btn" onClick={() => router.back()}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F6F1E4" strokeWidth="2">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" strokeWidth="2" style={{ stroke: "var(--text)" }}>
             <path d="M15 18l-6-6 6-6" />
           </svg>
         </button>
@@ -30,10 +30,10 @@ export default function SearchByType() {
 
       <div style={{ margin: "60px 20px", textAlign: "center" }}>
         <div style={{ fontSize: 34, marginBottom: 14 }}>🔎</div>
-        <div style={{ color: "#F3D477", fontFamily: "'Cormorant Garamond', serif", fontSize: 18, marginBottom: 10 }}>
+        <div style={{ color: "var(--text)", fontFamily: "'Cormorant Garamond', serif", fontSize: 18, marginBottom: 10 }}>
           Функция находится в разработке
         </div>
-        <div style={{ color: "#9FC2B2", fontSize: 13, lineHeight: 1.5 }}>
+        <div style={{ color: "var(--muted)", fontSize: 13, lineHeight: 1.5 }}>
           Поиск готовых объектов по разделу «{label}» будет доступен в следующем обновлении.
         </div>
       </div>
