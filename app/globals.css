@@ -780,3 +780,18 @@ body { background: var(--bg) !important; color: var(--text); }
 .share-copy-icon { background: var(--surface2) !important; color: var(--text) !important; }
 .select-circle-ring { border-color: #FFFFFF !important; background: rgba(0,0,0,0.25) !important; }
 .pso-tag { font-weight: 900; text-transform: uppercase; color: inherit; letter-spacing: 0.02em; }
+.photo-btn-top { position: absolute !important; top: 12px; right: 12px; z-index: 3; }
+.photo-btn-bottom { position: absolute !important; bottom: 12px; right: 12px; z-index: 3; }
+.copy-desc-btn { margin-top: 12px; width: 100%; min-height: 50px; background: var(--fill); border: 1px solid var(--line);
+  color: var(--text); border-radius: var(--r); font-size: 15px; font-weight: 800; }
+/* Связь с собственником внизу карточки (только агенту/руководителю) */
+.owner-contact { margin-top: 24px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+.owner-contact-title { font-size: 15px; font-weight: 800; color: var(--text); margin-bottom: 6px; }
+.owner-contact-phone { font-size: 22px; font-weight: 900; color: var(--text); margin-bottom: 12px; }
+.owner-call { display: flex; align-items: center; justify-content: center; min-height: 54px; background: var(--accent); color: #fff !important;
+  border-radius: var(--r); font-size: 17px; font-weight: 800; text-decoration: none; }
+.owner-contact-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+.owner-soc { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 54px; background: var(--fill);
+  border: 1px solid var(--line); border-radius: var(--r); color: var(--text); font-size: 16px; font-weight: 800; text-decoration: none; }
+.owner-agent-line { margin-top: 14px; font-size: 13.5px; color: var(--muted); }
+.owner-agent-line b { color: var(--text); }

@@ -166,7 +166,7 @@ export default function HomePage() {
   }
 
   function toggleCat(key) {
-    setFilter((f) => (f.cat === key ? EMPTY : { cat: key, v: {} }));
+    setFilter((f) => (f.cat === key ? { ...EMPTY, id: f.id || "" } : { cat: key, v: {}, id: f.id || "" }));
     setVisibleCount(40);
   }
 
@@ -334,7 +334,7 @@ export default function HomePage() {
         {activeFilterCount > 0 && (
           <div className="active-filters">
             <button className="active-filter-pill" onClick={() => setFilterOpen(true)}>
-              {(FILTER_CATEGORIES.find((c) => c.key === filter.cat) || {}).label}{activeFilterCount > 1 ? ` · ещё условий: ${activeFilterCount - 1}` : ""}
+              {[filter.id ? `ID ${filter.id}` : null, (FILTER_CATEGORIES.find((c) => c.key === filter.cat) || {}).label].filter(Boolean).join(" · ")}{filter.cat && activeFilterCount > (filter.id ? 2 : 1) ? ` · ещё условий: ${activeFilterCount - (filter.id ? 2 : 1)}` : ""}
             </button>
             <button className="link-btn" onClick={() => setFilter(EMPTY)}>Сбросить</button>
           </div>
