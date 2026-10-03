@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
-import PhotoUploader from "../../../components/PhotoUploader";
+import { ShareLogo } from "../../../components/SocialIcons";
 import VideoReviewBlock from "../../../components/VideoReviewBlock";
 import BottomNav from "../../../components/BottomNav";
 import AgentContactBlock from "../../../components/AgentContactBlock";
@@ -10,7 +10,7 @@ import ShareSheet from "../../../components/ShareSheet";
 import ConfirmDialog from "../../../components/ConfirmDialog";
 import { SocialButton, waLink, tgLink } from "../../../components/SocialIcons";
 import { PLATFORM_LABELS, PLATFORM_ICON } from "../../../lib/videoLinks";
-import { fullCharLine, priceBlock, categoryLabel, floorsText, seriesLabel, shortDate } from "../../../lib/listingFormat";
+import { fullCharLine, priceBlock, categoryLabel, floorsText, seriesLabel, shortDate, isPso } from "../../../lib/listingFormat";
 import { clientListingLink, colleagueListingLink, getCurrentAgent } from "../../../lib/agent";
 
 // Страница СВОЕГО объекта (владелец / договорник) — в новом виде, как страницы клиента
@@ -88,7 +88,7 @@ function PhoneRow({ label, value }) {
     <div style={{ ...sx.row, alignItems: "center" }}>
       <div>
         <div style={sx.rowLabel}>{label}</div>
-        <a href={`tel:${clean}`} style={{ color: "#fff", fontWeight: 700, fontSize: 15, textDecoration: "none" }}>{value}</a>
+        <a href={`tel:${clean}`} style={{ color: "var(--text)", fontWeight: 700, fontSize: 15, textDecoration: "none" }}>{value}</a>
       </div>
       <div style={{ display: "flex", gap: 10 }}>
         <SocialButton kind="whatsapp" size={44} href={waLink(value)} label="WhatsApp" />
@@ -221,8 +221,7 @@ export default function ListingDetailPage() {
   const { usd, kgs } = priceBlock(l);
   const photos = l.photos || [];
   const canEditForm = l.type === "вторичка" || l.type === "первичка";
-  const clientUrl = clientListingLink(l.id, me);
-  const colleagueUrl = colleagueListingLink(l.id);
+  const clientUrl = clientListingLink(l, me);
   let extra = {};
   try { extra = l.extra_details ? (typeof l.extra_details === "string" ? JSON.parse(l.extra_details) : l.extra_details) : {}; } catch {}
 
@@ -246,6 +245,13 @@ export default function ListingDetailPage() {
           ? <img src={photoUrl(photos[Math.min(activePhoto, photos.length - 1)])} alt="" style={sx.photo} draggable={false} />
           : <div style={sx.photoPlaceholder}>Нет фото</div>}
         <button style={sx.backBtn} onClick={() => router.back()}>‹</button>
+        <div style={{ position: "absolute", top: 12, right: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+          {l.status === "активен" && (
+            <button className="round-glass-btn" aria-label="Поделиться" onClick={() => setShare({ url: clientUrl, title: "Поделиться" })}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 15V3M7 8l5-5 5 5" /><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7" /></svg>
+            </button>
+          )}
+        </div>
         <div style={sx.statusBadge}>{STATUS_LABELS[l.status] || l.status}</div>
         {photos.length > 1 && <div style={sx.photoCounter}>{Math.min(activePhoto, photos.length - 1) + 1} / {photos.length}</div>}
       </div>
@@ -262,12 +268,12 @@ export default function ListingDetailPage() {
         <div style={sx.priceUsd}>${usd.toLocaleString("ru-RU")}</div>
         <div style={sx.priceKgs}>{kgs.toLocaleString("ru-RU")} сом</div>
         <div style={sx.charLine}>{fullCharLine(l)}</div>
-        <div style={sx.category}>{categoryLabel(l.type)}</div>
+        <div style={sx.category}>{categoryLabel(l.type)}{isPso(l) && <b className="pso-tag"> (СДАН ПСО)</b>}</div>
         <div style={sx.location}>{[l.zhk, l.district].filter(Boolean).join(", ") || l.city || "Бишкек"}</div>
         {l.display_id && (
           <button style={sx.idBtn} onClick={() => copy(String(l.display_id), "id")}>
             <span>ID {l.display_id}</span>
-            {copied === "id" ? <span style={{ color: "#5BD98A", fontSize: 14 }}>✓ скопирован</span> : (
+            {copied === "id" ? <span style={{ color: "var(--accent-text)", fontSize: 14 }}>✓ скопирован</span> : (
               <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <rect x="9" y="9" width="12" height="12" rx="2" /><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" />
               </svg>
@@ -296,35 +302,6 @@ export default function ListingDetailPage() {
           <div style={sx.note}>Для типа «{l.type}» полная форма редактирования пока не готова — цену и фото можно менять прямо здесь.</div>
         )}
 
-        {/* Поделиться */}
-        <div style={sx.card}>
-          <div style={sx.cardTitle}>Клиенту</div>
-          <div style={sx.cardSub}>
-            {l.status === "активен"
-              ? (me ? `Ссылка с вашим номером (${me.phone || ""}) — без комиссии и контактов собственника` : "Ссылка без комиссии и контактов собственника")
-              : "Клиентская ссылка заработает, когда объект станет «Активен»"}
-          </div>
-          {l.status === "активен" && (
-            <div style={sx.shareRow}>
-              <SocialButton kind="whatsapp" size={52} href={`https://wa.me/?text=${encodeURIComponent(clientUrl)}`} label="Клиенту в WhatsApp" />
-              <SocialButton kind="telegram" size={52} href={`https://t.me/share/url?url=${encodeURIComponent(clientUrl)}`} label="Клиенту в Telegram" />
-              <SocialButton kind="share" size={52} onClick={() => setShare({ url: clientUrl, title: "Поделиться с клиентом" })} label="Другие" />
-              <button style={sx.copyBtn} onClick={() => copy(clientUrl, "client")}>{copied === "client" ? "✓" : "Копировать"}</button>
-            </div>
-          )}
-        </div>
-
-        <div style={sx.card}>
-          <div style={sx.cardTitle}>Коллеге-агенту</div>
-          <div style={sx.cardSub}>С комиссией и «в руки», но без контактов собственника</div>
-          <div style={sx.shareRow}>
-            <SocialButton kind="whatsapp" size={52} href={`https://wa.me/?text=${encodeURIComponent(colleagueUrl)}`} label="Коллеге в WhatsApp" />
-            <SocialButton kind="telegram" size={52} href={`https://t.me/share/url?url=${encodeURIComponent(colleagueUrl)}`} label="Коллеге в Telegram" />
-            <SocialButton kind="share" size={52} onClick={() => setShare({ url: colleagueUrl, title: "Поделиться с коллегой" })} label="Другие" />
-            <button style={sx.copyBtn} onClick={() => copy(colleagueUrl, "colleague")}>{copied === "colleague" ? "✓" : "Копировать"}</button>
-          </div>
-        </div>
-
         <div style={{ ...sx.card, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
           <div>
             <div style={sx.cardTitle}>Реклама</div>
@@ -334,18 +311,6 @@ export default function ListingDetailPage() {
         </div>
 
         {/* Фото и видео */}
-        <div style={sx.section}>
-          <div style={sx.sectionTitle}>Фото ({photos.length})</div>
-          <PhotoUploader
-            photos={photos}
-            onChange={async (newPhotos) => {
-              setListing((x) => ({ ...x, photos: newPhotos }));
-              setActivePhoto(0);
-              const { error: e } = await supabase.from("listings").update({ photos: newPhotos }).eq("id", id);
-              if (e) alert("Не удалось сохранить фото: " + e.message);
-            }}
-          />
-        </div>
 
         <div style={sx.section}>
           <div style={sx.sectionTitle}>Видеообзор</div>
@@ -412,13 +377,13 @@ export default function ListingDetailPage() {
 
         {/* Закрытая информация — видна только владельцу */}
         <div style={{ ...sx.section, ...sx.privateSection }}>
-          <div style={{ ...sx.sectionTitle, color: "#E8877A" }}>🔒 Договор</div>
+          <div style={{ ...sx.sectionTitle, color: "var(--muted)" }}>🔒 Договор</div>
           <Row label="Статус договора" value={l.contract_status || "не указан"} />
         </div>
 
         {contact && (
           <div style={{ ...sx.section, ...sx.privateSection }}>
-            <div style={{ ...sx.sectionTitle, color: "#E8877A" }}>🔒 Собственник</div>
+            <div style={{ ...sx.sectionTitle, color: "var(--muted)" }}>🔒 Собственник</div>
             <Row label="Источник" value={contact.source_type} />
             <Row label="ФИО" value={contact.owner_name} />
             <PhoneRow label="Телефон собственника" value={contact.owner_phone} />
@@ -429,7 +394,7 @@ export default function ListingDetailPage() {
 
         {financial && (
           <div style={{ ...sx.section, ...sx.privateSection }}>
-            <div style={{ ...sx.sectionTitle, color: "#E8877A" }}>🔒 Финансы</div>
+            <div style={{ ...sx.sectionTitle, color: "var(--muted)" }}>🔒 Финансы</div>
             <Row label="Цена в руки" value={financial.v_ruki ? `${financial.v_ruki} ${financial.v_ruki_currency || ""}` : null} />
             <Row label="Комиссия" value={financial.commission_percent} />
             <Row label="Условия комиссии" value={financial.commission_terms} />
@@ -450,7 +415,7 @@ export default function ListingDetailPage() {
         <AgentContactBlock name={l.agent_name} phone={l.agent_phone} />
 
         <div style={sx.metaRow}>
-          {l.created_at && <span style={{ color: "#fff" }}>Создано: {shortDate(l.created_at)}</span>}
+          {l.created_at && <span style={{ color: "var(--text)" }}>Создано: {shortDate(l.created_at)}</span>}
           {l.display_id && <span> &nbsp;|&nbsp; ID {l.display_id}</span>}
         </div>
       </div>
@@ -466,49 +431,49 @@ export default function ListingDetailPage() {
 }
 
 const sx = {
-  page: { maxWidth: 480, margin: "0 auto", minHeight: "100vh", background: "#0C0C0D",
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", color: "#fff", paddingBottom: 110 },
-  centerMsg: { display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", color: "#8B8B90", padding: 20, textAlign: "center" },
+  page: { maxWidth: 480, margin: "0 auto", minHeight: "100vh", background: "var(--bg)",
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", color: "var(--text)", paddingBottom: 110 },
+  centerMsg: { display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", color: "var(--muted)", padding: 20, textAlign: "center" },
   photoWrap: { position: "relative", width: "100%", aspectRatio: "1/1", background: "#FFFFFF" },
   photo: { width: "100%", height: "100%", objectFit: "cover", display: "block" },
-  photoPlaceholder: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#8B8B90", background: "#FFFFFF" },
+  photoPlaceholder: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted)", background: "#FFFFFF" },
   backBtn: { position: "absolute", top: 14, left: 14, width: 40, height: 40, borderRadius: "50%",
-    background: "rgba(0,0,0,0.5)", color: "#fff", border: "none", fontSize: 24, lineHeight: "40px" },
-  statusBadge: { position: "absolute", bottom: 14, left: 14, background: "rgba(31,163,92,0.9)", color: "#fff",
+    background: "rgba(0,0,0,0.5)", color: "var(--text)", border: "none", fontSize: 24, lineHeight: "40px" },
+  statusBadge: { position: "absolute", bottom: 14, left: 14, background: "rgba(31,163,92,0.9)", color: "var(--text)",
     fontSize: 12, fontWeight: 700, padding: "6px 11px", borderRadius: "var(--r)" },
-  photoCounter: { position: "absolute", bottom: 14, right: 14, background: "rgba(0,0,0,0.55)", color: "#fff",
+  photoCounter: { position: "absolute", bottom: 14, right: 14, background: "rgba(0,0,0,0.55)", color: "var(--text)",
     fontSize: 12, padding: "4px 10px", borderRadius: "var(--r)" },
   thumbRow: { display: "flex", gap: 6, padding: "8px 16px", overflowX: "auto" },
   thumb: { width: 56, height: 56, borderRadius: "var(--r)", objectFit: "cover", flexShrink: 0 },
   body: { padding: "18px 20px 0" },
   priceUsd: { fontSize: 26, fontWeight: 800 },
-  priceKgs: { fontSize: 13, color: "#8B8B90", marginTop: 2 },
+  priceKgs: { fontSize: 13, color: "var(--muted)", marginTop: 2 },
   charLine: { fontSize: 14.5, fontWeight: 700, marginTop: 12 },
-  category: { fontSize: 12.5, color: "#8B8B90", marginTop: 3 },
-  location: { fontSize: 12.5, color: "#8B8B90" },
-  idBtn: { marginTop: 8, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "var(--r)",
-    color: "#E6E6EA", fontSize: 15, fontWeight: 800, padding: "10px 14px", minHeight: 48, display: "inline-flex", alignItems: "center", gap: 10 },
+  category: { fontSize: 12.5, color: "var(--muted)", marginTop: 3 },
+  location: { fontSize: 12.5, color: "var(--muted)" },
+  idBtn: { marginTop: 8, background: "var(--fill)", border: "1px solid var(--line)", borderRadius: "var(--r)",
+    color: "var(--text)", fontSize: 15, fontWeight: 800, padding: "10px 14px", minHeight: 48, display: "inline-flex", alignItems: "center", gap: 10 },
   actionsRow: { display: "flex", gap: 8, marginTop: 16 },
-  note: { color: "#7FA396", fontSize: 12, marginTop: 10, lineHeight: 1.5 },
-  card: { marginTop: 12, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "var(--r)", padding: 14 },
+  note: { color: "var(--muted)", fontSize: 12, marginTop: 10, lineHeight: 1.5 },
+  card: { marginTop: 12, background: "var(--fill)", border: "1px solid var(--line-soft)", borderRadius: "var(--r)", padding: 14 },
   cardTitle: { fontSize: 15, fontWeight: 800 },
-  cardSub: { fontSize: 12.5, color: "#8B8B90", marginTop: 3, lineHeight: 1.45 },
+  cardSub: { fontSize: 12.5, color: "var(--muted)", marginTop: 3, lineHeight: 1.45 },
   shareRow: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 12 },
-  copyBtn: { minHeight: 52, padding: "0 14px", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.14)",
-    color: "#fff", borderRadius: "var(--r)", fontSize: 14, fontWeight: 700 },
-  section: { marginTop: 22, paddingTop: 16, borderTop: "1px solid rgba(255,255,255,0.08)" },
-  privateSection: { background: "rgba(232,135,122,0.05)", border: "1px solid rgba(232,135,122,0.25)", borderRadius: "var(--r)", padding: 14 },
-  sectionTitle: { fontSize: 13, fontWeight: 700, color: "#7FA396", marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.4 },
-  description: { fontSize: 14, lineHeight: 1.6, color: "#EDEDEF", whiteSpace: "pre-wrap" },
-  row: { display: "flex", justifyContent: "space-between", gap: 12, padding: "9px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" },
-  rowLabel: { fontSize: 13, color: "#8B8B90", flexShrink: 0 },
-  rowValue: { fontSize: 13.5, color: "#EDEDEF", textAlign: "right", wordBreak: "break-word" },
-  editIcon: { background: "rgba(255,255,255,0.08)", border: "none", borderRadius: "var(--r)", width: 36, height: 36, fontSize: 15 },
-  inlineInput: { width: 120, background: "#fff", color: "#075741", border: "none", borderRadius: "var(--r)", padding: "8px 10px", fontSize: 15, fontWeight: 700 },
-  inlineBtn: { width: 38, height: 38, background: "rgba(255,255,255,0.1)", border: "none", color: "#fff", borderRadius: "var(--r)", fontSize: 16 },
-  videoBtn: { display: "flex", alignItems: "center", gap: 6, background: "rgba(212,164,55,0.14)",
-    border: "1px solid rgba(212,164,55,0.4)", color: "#F3D477", textDecoration: "none",
+  copyBtn: { minHeight: 52, padding: "0 14px", background: "var(--fill)", border: "1px solid var(--line)",
+    color: "var(--text)", borderRadius: "var(--r)", fontSize: 14, fontWeight: 700 },
+  section: { marginTop: 22, paddingTop: 16, borderTop: "1px solid var(--line-soft)" },
+  privateSection: { background: "var(--fill)", border: "1px solid var(--line)", borderRadius: "var(--r)", padding: 14 },
+  sectionTitle: { fontSize: 13, fontWeight: 700, color: "var(--muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.4 },
+  description: { fontSize: 14, lineHeight: 1.6, color: "var(--text)", whiteSpace: "pre-wrap" },
+  row: { display: "flex", justifyContent: "space-between", gap: 12, padding: "9px 0", borderBottom: "1px solid var(--line-soft)" },
+  rowLabel: { fontSize: 13, color: "var(--muted)", flexShrink: 0 },
+  rowValue: { fontSize: 13.5, color: "var(--text)", textAlign: "right", wordBreak: "break-word" },
+  editIcon: { background: "var(--fill)", border: "none", borderRadius: "var(--r)", width: 36, height: 36, fontSize: 15 },
+  inlineInput: { width: 120, background: "#fff", color: "var(--accent-text)", border: "none", borderRadius: "var(--r)", padding: "8px 10px", fontSize: 15, fontWeight: 700 },
+  inlineBtn: { width: 38, height: 38, background: "var(--fill)", border: "none", color: "var(--text)", borderRadius: "var(--r)", fontSize: 16 },
+  videoBtn: { display: "flex", alignItems: "center", gap: 6, background: "var(--fill)",
+    border: "1px solid var(--line)", color: "var(--text)", textDecoration: "none",
     padding: "10px 14px", borderRadius: "var(--r)", fontSize: 13, fontWeight: 700 },
-  mapLink: { display: "inline-block", marginTop: 10, color: "#5BD98A", fontSize: 14, fontWeight: 700, textDecoration: "none" },
-  metaRow: { fontSize: 11.5, color: "#7FA396", marginTop: 14, paddingBottom: 10 },
+  mapLink: { display: "inline-block", marginTop: 10, color: "var(--accent-text)", fontSize: 14, fontWeight: 700, textDecoration: "none" },
+  metaRow: { fontSize: 11.5, color: "var(--muted)", marginTop: 14, paddingBottom: 10 },
 };
