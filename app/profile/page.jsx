@@ -361,8 +361,8 @@ export default function ProfilePage() {
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" strokeWidth="2.2" style={{ stroke: "var(--accent-text)" }}><path d="M4 5h16M7 12h10M11 19h2" /></svg>
           Фильтр{activeCount(pfilter) > 0 && <span className="fl-open-count">{activeCount(pfilter)}</span>}
         </button>
-        {pfilter.cat && <span className="fl-open-cat">{(FILTER_CATEGORIES.find((c) => c.key === pfilter.cat) || {}).label}</span>}
-        {(pfilter.cat || search) && (
+        {(pfilter.cat || pfilter.id) && <span className="fl-open-cat">{[pfilter.id ? `ID ${pfilter.id}` : null, (FILTER_CATEGORIES.find((c) => c.key === pfilter.cat) || {}).label].filter(Boolean).join(" · ")}</span>}
+        {(pfilter.cat || pfilter.id || search) && (
           <button onClick={() => { setPfilter(EMPTY); setCategoryFilter(null); setSortBy("new"); setSearch(""); }} style={sx.resetBtn}>Сбросить</button>
         )}
       </div>
