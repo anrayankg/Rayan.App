@@ -67,16 +67,16 @@ export default function CollectionsPage() {
 }
 
 const sx = {
-  page: { maxWidth: 480, margin: "0 auto", minHeight: "100vh", background: "#0C0C0D",
-    fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif", color: "#fff", padding: "16px 20px 110px" },
-  center: { display: "flex", alignItems: "center", justifyContent: "center", minHeight: "80vh", color: "#8B8B90", textAlign: "center" },
-  backBtn: { width: 40, height: 40, borderRadius: "50%", background: "rgba(255,255,255,0.08)", color: "#fff",
+  page: { maxWidth: 480, margin: "0 auto", minHeight: "100vh", background: "var(--bg)",
+    fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif", color: "var(--text)", padding: "16px 20px 110px" },
+  center: { display: "flex", alignItems: "center", justifyContent: "center", minHeight: "80vh", color: "var(--muted)", textAlign: "center" },
+  backBtn: { width: 40, height: 40, borderRadius: "50%", background: "var(--fill)", color: "var(--text)",
     border: "none", fontSize: 22, lineHeight: "40px", marginBottom: 14 },
   title: { fontSize: 22, fontWeight: 800 },
-  emptyMsg: { color: "#8B8B90", fontSize: 14, lineHeight: 1.6, marginTop: 16 },
-  card: { background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "var(--r)", padding: "14px 14px 12px" },
+  emptyMsg: { color: "var(--muted)", fontSize: 14, lineHeight: 1.6, marginTop: 16 },
+  card: { background: "var(--fill)", border: "1px solid var(--line-soft)", borderRadius: "var(--r)", padding: "14px 14px 12px" },
   cardHead: { display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 },
   name: { fontSize: 17, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
-  count: { color: "#8B8B90", fontSize: 13, flexShrink: 0 },
+  count: { color: "var(--muted)", fontSize: 13, flexShrink: 0 },
   shareRow: { display: "flex", justifyContent: "space-around", alignItems: "center", marginTop: 12 },
 };
