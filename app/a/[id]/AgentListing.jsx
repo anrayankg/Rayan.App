@@ -9,6 +9,9 @@ import { fullCharLine } from "../../../lib/listingFormat";
 import BottomNav from "../../../components/BottomNav";
 import AddToCollectionButton from "../../../components/AddToCollectionButton";
 import AgentContactBlock from "../../../components/AgentContactBlock";
+import DescriptionBlock from "../../../components/DescriptionBlock";
+import { ShareOnPhoto, HeartOnPhoto } from "../../../components/PhotoActions";
+
 import ShareSheet from "../../../components/ShareSheet";
 import { WhatsAppLogo } from "../../../components/SocialIcons";
 import { clientListingLink, getCurrentAgent } from "../../../lib/agent";
@@ -135,12 +138,8 @@ export default function AgentListingPage() {
         )}
         <button style={sx.backBtn} onClick={() => router.back()}>‹</button>
         <div style={sx.statusBadge}>{STATUS_LABELS[l.status] || l.status}</div>
-        <button className="round-glass-btn" style={{ position: "absolute", top: 12, right: 12, zIndex: 3 }} onClick={handleShare} aria-label="Поделиться">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="2">
-            <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
-            <line x1="8.6" y1="10.6" x2="15.4" y2="6.4" /><line x1="8.6" y1="13.4" x2="15.4" y2="17.6" />
-          </svg>
-        </button>
+        <ShareOnPhoto onClick={handleShare} />
+        <HeartOnPhoto listingId={l.id} />
         {photos.length > 1 && <div style={sx.photoCounter}>{activePhoto + 1} / {photos.length}</div>}
       </div>
       {photos.length > 1 && (
@@ -190,12 +189,7 @@ export default function AgentListingPage() {
           {waNumber && <a href={`https://wa.me/${waNumber}?text=${waMsgToColleague}`} target="_blank" rel="noopener noreferrer" style={sx.waBtn}><WhatsAppLogo size={24} /> WhatsApp</a>}
         </div>
 
-        {l.description && (
-          <div style={sx.section}>
-            <div style={sx.sectionTitle}>Описание</div>
-            <div style={sx.description}>{l.description}</div>
-          </div>
-        )}
+        <DescriptionBlock listing={l} sectionStyle={sx.section} titleStyle={sx.sectionTitle} textStyle={sx.description} withCopy={true} />
 
         {l.documents && l.documents.length > 0 && (
           <div style={sx.section}>
@@ -265,7 +259,7 @@ const sx = {
     fontSize: 11.5, fontWeight: 700, padding: "5px 11px", borderRadius: "var(--r)" },
   shareBtn: { position: "absolute", top: 14, right: 14, width: 36, height: 36, borderRadius: "50%",
     background: "rgba(0,0,0,0.45)", border: "none", display: "flex", alignItems: "center", justifyContent: "center" },
-  photoCounter: { position: "absolute", bottom: 12, right: 12, background: "rgba(0,0,0,0.55)", color: "var(--text)",
+  photoCounter: { position: "absolute", bottom: 12, left: "50%", transform: "translateX(-50%)", background: "rgba(0,0,0,0.55)", color: "#FFFFFF",
     fontSize: 12, padding: "3px 10px", borderRadius: "var(--r)" },
   thumbRow: { display: "flex", gap: 6, padding: "8px 16px", overflowX: "auto" },
   thumb: { width: 52, height: 52, borderRadius: "var(--r)", objectFit: "cover", flexShrink: 0 },
