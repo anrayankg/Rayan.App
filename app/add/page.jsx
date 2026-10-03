@@ -19,7 +19,7 @@ export default function AddObjectStart() {
     <div className="app-shell" style={{ paddingBottom: 40 }}>
       <div className="page-header">
         <button className="back-btn" onClick={() => router.back()}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F6F1E4" strokeWidth="2">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" strokeWidth="2" style={{ stroke: "var(--text)" }}>
             <path d="M15 18l-6-6 6-6" />
           </svg>
         </button>
@@ -44,14 +44,14 @@ export default function AddObjectStart() {
         {TYPES.map((t) => (
           <div key={t.key} className="type-row" onClick={() => router.push(`/add/${t.key}`)}>
             <span>{t.label}</span>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F3D477" strokeWidth="2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" strokeWidth="2" style={{ stroke: "var(--text)" }}>
               <path d="M9 18l6-6-6-6" />
             </svg>
           </div>
         ))}
       </div>
 
-      <div style={{ margin: "20px 20px 0", textAlign: "center", color: "#7FA396", fontSize: 12 }}>
+      <div style={{ margin: "20px 20px 0", textAlign: "center", color: "var(--muted)", fontSize: 12 }}>
         Готовы формы «Вторичка» и «Первичка» — остальные достраиваются по очереди.
       </div>
     </div>
