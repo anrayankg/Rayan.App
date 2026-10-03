@@ -2,8 +2,9 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
+import { getCurrentAgent, clientListingLink } from "../../../lib/agent";
 import { publicExtraEntries, extraLabel, extraDisplayValue } from "../../../lib/extraFields";
-import { mainDetailRows } from "../../../lib/listingFormat";
+import { mainDetailRows, shortDate, isPso } from "../../../lib/listingFormat";
 import { PLATFORM_LABELS, PLATFORM_ICON } from "../../../lib/videoLinks";
 import AgentContactBlock from "../../../components/AgentContactBlock";
 import { WhatsAppLogo, TelegramLogo } from "../../../components/SocialIcons";
@@ -60,17 +61,25 @@ export default function PublicListingPage() {
   const overrideName = searchParams.get("agent_name") || searchParams.get("an");
   // Новые ссылки: ?ag=<id агента> — берём имя и телефон агента, который отправил ссылку.
   const agParam = searchParams.get("ag");
+  // Новые короткие ссылки: ?a=<9 последних цифр телефона агента>
+  const aParam = (searchParams.get("a") || "").replace(/\D/g, "");
   const [sender, setSender] = useState(null);
   useEffect(() => {
-    if (!agParam) return;
-    supabase.from("agents").select("id, name, phone").eq("id", agParam).maybeSingle()
-      .then(({ data }) => { if (data) setSender(data); });
-  }, [agParam]);
+    if (agParam) {
+      supabase.from("agents").select("id, name, phone").eq("id", agParam).maybeSingle()
+        .then(({ data }) => { if (data) setSender(data); });
+    } else if (aParam.length >= 9) {
+      supabase.from("agents").select("id, name, phone").ilike("phone", `%${aParam.slice(-9)}`).limit(1)
+        .then(({ data }) => { if (data && data[0]) setSender(data[0]); else setSender({ phone: "+996" + aParam.slice(-9) }); });
+    }
+  }, [agParam, aParam]);
   const [listing, setListing] = useState(null);
   const [error, setError] = useState(null);
   const [activePhoto, setActivePhoto] = useState(0);
   const [favorited, setFavorited] = useState(false);
   const [contactsOpen, setContactsOpen] = useState(false);
+  const [viewerIsAgent, setViewerIsAgent] = useState(false);
+  useEffect(() => { const me = getCurrentAgent(); setViewerIsAgent(!!(me && me.phone)); }, []);
   const touchX = useRef(null);
 
   useEffect(() => {
@@ -85,7 +94,10 @@ export default function PublicListingPage() {
   }
 
   function handleShare() {
-    const url = window.location.href;
+    // Если смотрит наш агент (вошёл в приложение на этом телефоне) — ссылка уйдёт с ЕГО номером.
+    // Если клиент — пересылает как есть, с номером агента, который ему прислал.
+    const me = getCurrentAgent();
+    const url = me && me.phone && listing ? clientListingLink(listing, me) : window.location.href;
     if (navigator.share) {
       navigator.share({ title: "RAYAN — объект недвижимости", url }).catch(() => {});
     } else {
@@ -100,7 +112,7 @@ export default function PublicListingPage() {
         .from("listings")
         // Только публичные колонки — сознательно НЕ трогаем listing_contacts / listing_financial.
         .select("id, display_id, type, status, price, currency, currency_new, district, city, zhk, sk, series, room_type, rooms, area_m2, floor, floors_total, construction_status, delivery_year, delivery_quarter, documents, heating, description, photos, video_links, extra_details, agent_name, agent_phone, created_at")
-        .eq("id", id).eq("status", "активен").single();
+        .eq(/^\d{1,9}$/.test(String(id)) ? "display_id" : "id", String(id)).eq("status", "активен").single();
       if (e) { setError("Объект не найден или снят с публикации"); return; }
       setListing(data);
     }
@@ -155,8 +167,8 @@ export default function PublicListingPage() {
           <div style={sx.photoPlaceholder}>Нет фото</div>
         )}
         <button style={sx.backBtn} onClick={() => router.back()}>‹</button>
-        <button style={sx.shareBtn} onClick={handleShare} aria-label="Поделиться">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2">
+        <button className="round-glass-btn" style={{ position: "absolute", top: 12, right: 12, zIndex: 3 }} onClick={handleShare} aria-label="Поделиться">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="2">
             <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
             <line x1="8.6" y1="10.6" x2="15.4" y2="6.4" /><line x1="8.6" y1="13.4" x2="15.4" y2="17.6" />
           </svg>
@@ -190,7 +202,7 @@ export default function PublicListingPage() {
           {l.floor && l.floors_total ? ` · ${l.floor}/${l.floors_total} эт.` : ""}
           {l.area_m2 ? ` · ${l.area_m2} м²` : ""}
         </div>
-        <div style={sx.category}>{categoryLabel(l.type)}</div>
+        <div style={sx.category}>{categoryLabel(l.type)}{isPso(l) && <b className="pso-tag"> (СДАН ПСО)</b>}</div>
         <div style={sx.location}>{[l.zhk, l.district].filter(Boolean).join(", ") || l.city || "Бишкек"}</div>
 
         {/* Видеообзор — прямая кнопка(и), если агент добавил */}
@@ -245,9 +257,14 @@ export default function PublicListingPage() {
         <AgentContactBlock name={effectiveAgentName} phone={effectiveAgentPhone}
           waText={`Здравствуйте! Интересует объект${l.display_id ? " ID " + l.display_id : ""}: ${typeof window !== "undefined" ? window.location.href : ""}`} />
         <button onClick={() => setContactsOpen(true)} style={sx.showAllBtn}>Соцсети и контакты RAYAN</button>
+        {viewerIsAgent && (
+          <button onClick={() => router.push(`/listing/${l.id}`)} className="fl-next" style={{ marginTop: 10 }}>
+            Открыть в приложении (для агента)
+          </button>
+        )}
 
         <div style={sx.metaRow}>
-          {l.created_at && <span>Создано: {new Date(l.created_at).toLocaleDateString("ru-RU")}</span>}
+          {l.created_at && <span>Создано: {shortDate(l.created_at)}</span>}
           {l.display_id && <span> &nbsp;|&nbsp; ID {l.display_id}</span>}
         </div>
       </div>
@@ -262,11 +279,11 @@ export default function PublicListingPage() {
             <div style={sx.modalCard}>
               <div style={sx.modalRow}>
                 <IconPhone /><span style={{ flex: 1, marginLeft: 10 }}>{effectiveAgentPhone || "—"}</span>
-                <a href={`tel:${(effectiveAgentPhone || "").replace(/[^\d+]/g, "")}`} style={{ color: "#5BD98A", fontWeight: 700, fontSize: 13 }}>Позвонить</a>
+                <a href={`tel:${(effectiveAgentPhone || "").replace(/[^\d+]/g, "")}`} style={{ color: "var(--accent-text)", fontWeight: 700, fontSize: 13 }}>Позвонить</a>
               </div>
               {waNumber && (
                 <a href={`https://wa.me/${waNumber}`} target="_blank" rel="noopener noreferrer" style={sx.modalRow}>
-                  <WhatsAppLogo size={30} /><span style={{ flex: 1, marginLeft: 10 }}>Написать в WhatsApp</span><span style={{ color: "#8B8B90" }}>›</span>
+                  <WhatsAppLogo size={30} /><span style={{ flex: 1, marginLeft: 10 }}>Написать в WhatsApp</span><span style={{ color: "var(--muted)" }}>›</span>
                 </a>
               )}
             </div>
@@ -275,17 +292,17 @@ export default function PublicListingPage() {
             <div style={sx.modalCard}>
               {RAYAN_INSTAGRAM && (
                 <a href={RAYAN_INSTAGRAM} target="_blank" rel="noopener noreferrer" style={sx.modalRow}>
-                  <IconInstagramSmall /><span style={{ flex: 1, marginLeft: 10 }}>Instagram RAYAN</span><span style={{ color: "#8B8B90" }}>›</span>
+                  <IconInstagramSmall /><span style={{ flex: 1, marginLeft: 10 }}>Instagram RAYAN</span><span style={{ color: "var(--muted)" }}>›</span>
                 </a>
               )}
               {RAYAN_TELEGRAM && (
                 <a href={RAYAN_TELEGRAM} target="_blank" rel="noopener noreferrer" style={sx.modalRow}>
-                  <TelegramLogo size={30} /><span style={{ flex: 1, marginLeft: 10 }}>Telegram-группа RAYAN</span><span style={{ color: "#8B8B90" }}>›</span>
+                  <TelegramLogo size={30} /><span style={{ flex: 1, marginLeft: 10 }}>Telegram-группа RAYAN</span><span style={{ color: "var(--muted)" }}>›</span>
                 </a>
               )}
               {RAYAN_WHATSAPP_CHANNEL && (
                 <a href={RAYAN_WHATSAPP_CHANNEL} target="_blank" rel="noopener noreferrer" style={{ ...sx.modalRow, borderBottom: "none" }}>
-                  <WhatsAppLogo size={30} /><span style={{ flex: 1, marginLeft: 10 }}>WhatsApp-канал RAYAN</span><span style={{ color: "#8B8B90" }}>›</span>
+                  <WhatsAppLogo size={30} /><span style={{ flex: 1, marginLeft: 10 }}>WhatsApp-канал RAYAN</span><span style={{ color: "var(--muted)" }}>›</span>
                 </a>
               )}
             </div>
@@ -299,13 +316,13 @@ export default function PublicListingPage() {
 }
 
 function IconPhone() {
-  return <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#8B8B90" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" /></svg>;
+  return <svg width="17" height="17" viewBox="0 0 24 24" fill="none" strokeWidth="2" style={{ stroke: "var(--muted)" }}><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" /></svg>;
 }
 function IconTelegram() {
   return <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#4BA3E3" strokeWidth="2"><path d="M22 2 11 13" /><path d="M22 2 15 22l-4-9-9-4 20-7z" /></svg>;
 }
 function IconWhatsapp() {
-  return <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#3ED07A" strokeWidth="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" /></svg>;
+  return <svg width="17" height="17" viewBox="0 0 24 24" fill="none" strokeWidth="2" style={{ stroke: "var(--accent-text)" }}><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" /></svg>;
 }
 function IconInstagramSmall() {
   return <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#E1306C" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5" /><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" /><line x1="17.5" y1="6.5" x2="17.5" y2="6.5" /></svg>;
@@ -325,71 +342,71 @@ function Row({ label, value }) {
 }
 
 const sx = {
-  page: { maxWidth: 480, margin: "0 auto", minHeight: "100vh", background: "#0C0C0D",
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", color: "#fff", paddingBottom: 40 },
-  centerMsg: { display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", color: "#8B8B90" },
-  photoWrap: { position: "relative", width: "100%", aspectRatio: "1/1", background: "#1A1A1C" },
+  page: { maxWidth: 480, margin: "0 auto", minHeight: "100vh", background: "var(--bg)",
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", color: "var(--text)", paddingBottom: 40 },
+  centerMsg: { display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", color: "var(--muted)" },
+  photoWrap: { position: "relative", width: "100%", aspectRatio: "1/1", background: "var(--surface)" },
   photo: { width: "100%", height: "100%", objectFit: "cover", display: "block" },
-  photoPlaceholder: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#8B8B90", background: "#FFFFFF" },
+  photoPlaceholder: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted)", background: "#FFFFFF" },
   backBtn: { position: "absolute", top: 14, left: 14, width: 36, height: 36, borderRadius: "50%",
-    background: "rgba(0,0,0,0.45)", color: "#fff", border: "none", fontSize: 22, lineHeight: "36px" },
+    background: "rgba(0,0,0,0.45)", color: "var(--text)", border: "none", fontSize: 22, lineHeight: "36px" },
   shareBtn: { position: "absolute", top: 14, right: 14, width: 36, height: 36, borderRadius: "50%",
     background: "rgba(0,0,0,0.45)", border: "none", display: "flex", alignItems: "center", justifyContent: "center" },
   heartBtn: { position: "absolute", bottom: 14, left: 14, width: 36, height: 36, borderRadius: "50%",
     background: "rgba(0,0,0,0.45)", border: "none", display: "flex", alignItems: "center", justifyContent: "center" },
-  photoCounter: { position: "absolute", bottom: 12, right: 12, background: "rgba(0,0,0,0.55)", color: "#fff",
+  photoCounter: { position: "absolute", bottom: 12, right: 12, background: "rgba(0,0,0,0.55)", color: "var(--text)",
     fontSize: 12, padding: "3px 10px", borderRadius: "var(--r)" },
   thumbRow: { display: "flex", gap: 6, padding: "8px 16px", overflowX: "auto" },
   thumb: { width: 52, height: 52, borderRadius: "var(--r)", objectFit: "cover", flexShrink: 0 },
   body: { padding: "18px 20px 0" },
   priceUsd: { fontSize: 26, fontWeight: 800 },
-  priceKgs: { fontSize: 13, color: "#8B8B90", marginTop: 2 },
+  priceKgs: { fontSize: 13, color: "var(--muted)", marginTop: 2 },
   charLine: { fontSize: 14.5, fontWeight: 700, marginTop: 12 },
-  category: { fontSize: 12.5, color: "#8B8B90", marginTop: 3 },
-  location: { fontSize: 12.5, color: "#8B8B90" },
+  category: { fontSize: 12.5, color: "var(--muted)", marginTop: 3 },
+  location: { fontSize: 12.5, color: "var(--muted)" },
   videoRow: { display: "flex", flexWrap: "wrap", gap: 8, marginTop: 14 },
-  videoBtn: { display: "flex", alignItems: "center", gap: 6, background: "rgba(212,164,55,0.14)",
-    border: "1px solid rgba(212,164,55,0.4)", color: "#F3D477", textDecoration: "none",
+  videoBtn: { display: "flex", alignItems: "center", gap: 6, background: "var(--fill)",
+    border: "1px solid var(--line)", color: "var(--text)", textDecoration: "none",
     padding: "9px 14px", borderRadius: "var(--r)", fontSize: 13, fontWeight: 700 },
   ctaRow: { display: "flex", gap: 8, marginTop: 16 },
   callBtn: { flex: 1, background: "#1FA35C", color: "#fff", textAlign: "center", padding: "14px 0",
     borderRadius: "var(--r)", fontWeight: 700, fontSize: 14.5, textDecoration: "none" },
-  waBtn: { flex: 1, background: "none", border: "1px solid rgba(255,255,255,0.2)", color: "#fff",
+  waBtn: { flex: 1, background: "none", border: "1px solid var(--line)", color: "var(--text)",
     display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
     padding: "10px 0", borderRadius: "var(--r)", fontWeight: 700, fontSize: 14.5, textDecoration: "none" },
   quickReplies: { display: "flex", gap: 8, marginTop: 10, overflowX: "auto" },
-  chip: { whiteSpace: "nowrap", background: "rgba(31,163,92,0.14)", color: "#5BD98A", fontSize: 13.5,
+  chip: { whiteSpace: "nowrap", background: "rgba(31,163,92,0.14)", color: "var(--accent-text)", fontSize: 13.5,
     padding: "11px 14px", borderRadius: "var(--r)", textDecoration: "none" },
-  section: { marginTop: 22, paddingTop: 16, borderTop: "1px solid rgba(255,255,255,0.08)" },
-  sectionTitle: { fontSize: 13, fontWeight: 700, color: "#7FA396", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.4 },
-  description: { fontSize: 14, lineHeight: 1.6, color: "#EDEDEF", whiteSpace: "pre-wrap" },
-  row: { display: "flex", justifyContent: "space-between", gap: 12, padding: "7px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" },
-  rowLabel: { fontSize: 13, color: "#8B8B90" },
-  rowValue: { fontSize: 13, color: "#EDEDEF", textAlign: "right" },
+  section: { marginTop: 22, paddingTop: 16, borderTop: "1px solid var(--line-soft)" },
+  sectionTitle: { fontSize: 13, fontWeight: 700, color: "var(--muted)", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.4 },
+  description: { fontSize: 14, lineHeight: 1.6, color: "var(--text)", whiteSpace: "pre-wrap" },
+  row: { display: "flex", justifyContent: "space-between", gap: 12, padding: "7px 0", borderBottom: "1px solid var(--line-soft)" },
+  rowLabel: { fontSize: 13, color: "var(--muted)" },
+  rowValue: { fontSize: 13, color: "var(--text)", textAlign: "right" },
   agentCard: { display: "flex", alignItems: "center", gap: 10, marginTop: 24, padding: "14px 0" },
-  agentAvatar: { width: 40, height: 40, borderRadius: "50%", background: "rgba(31,163,92,0.16)", color: "#5BD98A",
+  agentAvatar: { width: 40, height: 40, borderRadius: "50%", background: "rgba(31,163,92,0.16)", color: "var(--accent-text)",
     display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 15 },
   agentName: { fontSize: 14, fontWeight: 700 },
-  agentSub: { fontSize: 12, color: "#8B8B90" },
+  agentSub: { fontSize: 12, color: "var(--muted)" },
 
-  contactBlock: { marginTop: 6, background: "rgba(255,255,255,0.04)", borderRadius: "var(--r)", overflow: "hidden" },
-  contactTopRow: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 14px", borderBottom: "1px solid rgba(255,255,255,0.06)" },
+  contactBlock: { marginTop: 6, background: "var(--fill)", borderRadius: "var(--r)", overflow: "hidden" },
+  contactTopRow: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 14px", borderBottom: "1px solid var(--line-soft)" },
   contactPhoneLine: { display: "flex", alignItems: "center", gap: 10 },
   contactPhoneText: { fontSize: 14, fontWeight: 700 },
   iconLink: { display: "flex" },
-  contactCallLink: { color: "#5BD98A", fontWeight: 700, fontSize: 13.5, textDecoration: "none" },
-  contactLinkRow: { display: "flex", alignItems: "center", padding: "13px 14px", borderBottom: "1px solid rgba(255,255,255,0.06)", textDecoration: "none", color: "#fff" },
-  showAllBtn: { width: "100%", background: "none", border: "none", color: "#5BD98A", fontWeight: 700, fontSize: 13.5, padding: "13px 0" },
-  metaRow: { fontSize: 11.5, color: "#7FA396", marginTop: 14, paddingBottom: 10 },
+  contactCallLink: { color: "var(--accent-text)", fontWeight: 700, fontSize: 13.5, textDecoration: "none" },
+  contactLinkRow: { display: "flex", alignItems: "center", padding: "13px 14px", borderBottom: "1px solid var(--line-soft)", textDecoration: "none", color: "var(--text)" },
+  showAllBtn: { width: "100%", background: "none", border: "none", color: "var(--accent-text)", fontWeight: 700, fontSize: 13.5, padding: "13px 0" },
+  metaRow: { fontSize: 11.5, color: "var(--muted)", marginTop: 14, paddingBottom: 10 },
 
   modalOverlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "flex-end", zIndex: 50 },
-  modalSheet: { width: "100%", maxWidth: 480, margin: "0 auto", background: "#18181A", borderRadius: "16px 16px 0 0", padding: "10px 20px 28px" },
-  modalHandle: { width: 40, height: 4, background: "rgba(255,255,255,0.2)", borderRadius: 2, margin: "0 auto 16px" },
+  modalSheet: { width: "100%", maxWidth: 480, margin: "0 auto", background: "var(--surface)", borderRadius: "16px 16px 0 0", padding: "10px 20px 28px" },
+  modalHandle: { width: 40, height: 4, background: "var(--line)", borderRadius: 2, margin: "0 auto 16px" },
   modalTitle: { fontSize: 17, fontWeight: 800, marginBottom: 4 },
-  modalSubtitle: { fontSize: 11.5, fontWeight: 700, color: "#7FA396", textTransform: "uppercase", letterSpacing: 0.4, margin: "16px 0 8px" },
+  modalSubtitle: { fontSize: 11.5, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: 0.4, margin: "16px 0 8px" },
   modalSocialRow: { display: "flex", gap: 20, marginBottom: 18 },
-  modalSocialItem: { display: "flex", flexDirection: "column", alignItems: "center", gap: 6, color: "#fff", fontSize: 11.5, textDecoration: "none" },
-  modalCard: { background: "rgba(255,255,255,0.04)", borderRadius: "var(--r)", overflow: "hidden" },
-  modalRow: { display: "flex", alignItems: "center", padding: "13px 14px", borderBottom: "1px solid rgba(255,255,255,0.06)", textDecoration: "none", color: "#fff", fontSize: 13.5 },
-  modalCloseBtn: { width: "100%", marginTop: 16, background: "rgba(255,255,255,0.06)", border: "none", color: "#fff", borderRadius: "var(--r)", padding: "12px 0", fontWeight: 700, fontSize: 14 },
+  modalSocialItem: { display: "flex", flexDirection: "column", alignItems: "center", gap: 6, color: "var(--text)", fontSize: 11.5, textDecoration: "none" },
+  modalCard: { background: "var(--fill)", borderRadius: "var(--r)", overflow: "hidden" },
+  modalRow: { display: "flex", alignItems: "center", padding: "13px 14px", borderBottom: "1px solid var(--line-soft)", textDecoration: "none", color: "var(--text)", fontSize: 13.5 },
+  modalCloseBtn: { width: "100%", marginTop: 16, background: "var(--fill)", border: "none", color: "var(--text)", borderRadius: "var(--r)", padding: "12px 0", fontWeight: 700, fontSize: 14 },
 };
