@@ -3,7 +3,7 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 import { publicExtraEntries, extraLabel, extraDisplayValue } from "../../../lib/extraFields";
-import { mainDetailRows } from "../../../lib/listingFormat";
+import { mainDetailRows, isPso } from "../../../lib/listingFormat";
 import { PLATFORM_LABELS, PLATFORM_ICON } from "../../../lib/videoLinks";
 import { fullCharLine } from "../../../lib/listingFormat";
 import BottomNav from "../../../components/BottomNav";
@@ -135,8 +135,8 @@ export default function AgentListingPage() {
         )}
         <button style={sx.backBtn} onClick={() => router.back()}>‹</button>
         <div style={sx.statusBadge}>{STATUS_LABELS[l.status] || l.status}</div>
-        <button style={sx.shareBtn} onClick={handleShare} aria-label="Поделиться">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2">
+        <button className="round-glass-btn" style={{ position: "absolute", top: 12, right: 12, zIndex: 3 }} onClick={handleShare} aria-label="Поделиться">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="2">
             <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
             <line x1="8.6" y1="10.6" x2="15.4" y2="6.4" /><line x1="8.6" y1="13.4" x2="15.4" y2="17.6" />
           </svg>
@@ -157,7 +157,7 @@ export default function AgentListingPage() {
         <div style={sx.priceKgs}>{kgs.toLocaleString("ru-RU")} сом</div>
 
         <div style={sx.charLine}>{fullCharLine(l)}</div>
-        <div style={sx.category}>{categoryLabel(l.type)}</div>
+        <div style={sx.category}>{categoryLabel(l.type)}{isPso(l) && <b className="pso-tag"> (СДАН ПСО)</b>}</div>
         <div style={sx.location}>{[l.zhk, l.district].filter(Boolean).join(", ") || l.city || "Бишкек"}</div>
 
         {hasMap && (
@@ -225,7 +225,7 @@ export default function AgentListingPage() {
           {l.display_id && <span> &nbsp;|&nbsp; ID {l.display_id}</span>}
         </div>
       </div>
-      <ShareSheet open={shareOpen} onClose={() => setShareOpen(false)} url={clientListingLink(l.id, me)}
+      <ShareSheet open={shareOpen} onClose={() => setShareOpen(false)} url={clientListingLink(l, me)}
         note={me ? `Клиентская ссылка с вашим номером: ${me.name || ""} ${me.phone || ""}` : "Вы не вошли в личный кабинет — в ссылке будет номер из объекта."} />
       <BottomNav active="Профиль" />
     </div>
@@ -233,13 +233,13 @@ export default function AgentListingPage() {
 }
 
 function IconPhone() {
-  return <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#8B8B90" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" /></svg>;
+  return <svg width="17" height="17" viewBox="0 0 24 24" fill="none" strokeWidth="2" style={{ stroke: "var(--muted)" }}><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" /></svg>;
 }
 function IconTelegram() {
   return <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#4BA3E3" strokeWidth="2"><path d="M22 2 11 13" /><path d="M22 2 15 22l-4-9-9-4 20-7z" /></svg>;
 }
 function IconWhatsapp() {
-  return <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#3ED07A" strokeWidth="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" /></svg>;
+  return <svg width="17" height="17" viewBox="0 0 24 24" fill="none" strokeWidth="2" style={{ stroke: "var(--accent-text)" }}><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" /></svg>;
 }
 
 function Row({ label, value }) {
@@ -253,60 +253,60 @@ function Row({ label, value }) {
 }
 
 const sx = {
-  page: { maxWidth: 480, margin: "0 auto", minHeight: "100vh", background: "#0C0C0D",
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", color: "#fff", paddingBottom: 90 },
-  centerMsg: { display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", color: "#8B8B90" },
-  photoWrap: { position: "relative", width: "100%", aspectRatio: "1/1", background: "#1A1A1C" },
+  page: { maxWidth: 480, margin: "0 auto", minHeight: "100vh", background: "var(--bg)",
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", color: "var(--text)", paddingBottom: 90 },
+  centerMsg: { display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", color: "var(--muted)" },
+  photoWrap: { position: "relative", width: "100%", aspectRatio: "1/1", background: "var(--surface)" },
   photo: { width: "100%", height: "100%", objectFit: "cover", display: "block" },
-  photoPlaceholder: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#8B8B90", background: "#FFFFFF" },
+  photoPlaceholder: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted)", background: "#FFFFFF" },
   backBtn: { position: "absolute", top: 14, left: 14, width: 36, height: 36, borderRadius: "50%",
-    background: "rgba(0,0,0,0.45)", color: "#fff", border: "none", fontSize: 22, lineHeight: "36px" },
-  statusBadge: { position: "absolute", bottom: 14, left: 14, background: "rgba(31,163,92,0.85)", color: "#fff",
+    background: "rgba(0,0,0,0.45)", color: "var(--text)", border: "none", fontSize: 22, lineHeight: "36px" },
+  statusBadge: { position: "absolute", bottom: 14, left: 14, background: "rgba(31,163,92,0.85)", color: "var(--text)",
     fontSize: 11.5, fontWeight: 700, padding: "5px 11px", borderRadius: "var(--r)" },
   shareBtn: { position: "absolute", top: 14, right: 14, width: 36, height: 36, borderRadius: "50%",
     background: "rgba(0,0,0,0.45)", border: "none", display: "flex", alignItems: "center", justifyContent: "center" },
-  photoCounter: { position: "absolute", bottom: 12, right: 12, background: "rgba(0,0,0,0.55)", color: "#fff",
+  photoCounter: { position: "absolute", bottom: 12, right: 12, background: "rgba(0,0,0,0.55)", color: "var(--text)",
     fontSize: 12, padding: "3px 10px", borderRadius: "var(--r)" },
   thumbRow: { display: "flex", gap: 6, padding: "8px 16px", overflowX: "auto" },
   thumb: { width: 52, height: 52, borderRadius: "var(--r)", objectFit: "cover", flexShrink: 0 },
   body: { padding: "18px 20px 0" },
-  addPhotoBtn: { background: "none", border: "1px solid rgba(255,255,255,0.2)", color: "#8B8B90",
+  addPhotoBtn: { background: "none", border: "1px solid var(--line)", color: "var(--muted)",
     fontSize: 12, fontWeight: 700, padding: "6px 12px", borderRadius: "var(--r)", marginBottom: 14 },
   priceUsd: { fontSize: 26, fontWeight: 800 },
-  priceKgs: { fontSize: 13, color: "#8B8B90", marginTop: 2 },
+  priceKgs: { fontSize: 13, color: "var(--muted)", marginTop: 2 },
   charLine: { fontSize: 14.5, fontWeight: 700, marginTop: 12 },
-  category: { fontSize: 12.5, color: "#8B8B90", marginTop: 3 },
-  location: { fontSize: 12.5, color: "#8B8B90" },
-  mapLink: { display: "inline-block", marginTop: 10, color: "#5BD98A", fontSize: 13, fontWeight: 700, textDecoration: "none" },
-  adBadge: { marginTop: 10, fontSize: 12.5, color: "#EDEDEF" },
-  workPanel: { marginTop: 14, background: "rgba(212,164,55,0.08)", border: "1px solid rgba(212,164,55,0.25)",
+  category: { fontSize: 12.5, color: "var(--muted)", marginTop: 3 },
+  location: { fontSize: 12.5, color: "var(--muted)" },
+  mapLink: { display: "inline-block", marginTop: 10, color: "var(--accent-text)", fontSize: 13, fontWeight: 700, textDecoration: "none" },
+  adBadge: { marginTop: 10, fontSize: 12.5, color: "var(--text)" },
+  workPanel: { marginTop: 14, background: "var(--fill)", border: "1px solid var(--line)",
     borderRadius: "var(--r)", padding: "12px 14px" },
-  workPanelTitle: { fontSize: 11, fontWeight: 700, color: "#D4A437", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.4 },
+  workPanelTitle: { fontSize: 11, fontWeight: 700, color: "var(--text)", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.4 },
   videoRow: { display: "flex", flexWrap: "wrap", gap: 8, marginTop: 14 },
-  videoBtn: { display: "flex", alignItems: "center", gap: 6, background: "rgba(212,164,55,0.14)",
-    border: "1px solid rgba(212,164,55,0.4)", color: "#F3D477", textDecoration: "none",
+  videoBtn: { display: "flex", alignItems: "center", gap: 6, background: "var(--fill)",
+    border: "1px solid var(--line)", color: "var(--text)", textDecoration: "none",
     padding: "9px 14px", borderRadius: "var(--r)", fontSize: 13, fontWeight: 700 },
   ctaRow: { display: "flex", gap: 8, marginTop: 16 },
   callBtn: { flex: 1, background: "#1FA35C", color: "#fff", textAlign: "center", padding: "12px 0",
     borderRadius: "var(--r)", fontWeight: 700, fontSize: 14.5, textDecoration: "none" },
-  waBtn: { flex: 1, background: "none", border: "1px solid rgba(255,255,255,0.2)", color: "#fff",
+  waBtn: { flex: 1, background: "none", border: "1px solid var(--line)", color: "var(--text)",
     display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "10px 0", borderRadius: "var(--r)", fontWeight: 700, fontSize: 14.5, textDecoration: "none" },
-  section: { marginTop: 22, paddingTop: 16, borderTop: "1px solid rgba(255,255,255,0.08)" },
-  sectionTitle: { fontSize: 13, fontWeight: 700, color: "#7FA396", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.4 },
-  description: { fontSize: 14, lineHeight: 1.6, color: "#EDEDEF", whiteSpace: "pre-wrap" },
-  row: { display: "flex", justifyContent: "space-between", gap: 12, padding: "7px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" },
-  rowLabel: { fontSize: 13, color: "#8B8B90" },
-  rowValue: { fontSize: 13, color: "#EDEDEF", textAlign: "right" },
+  section: { marginTop: 22, paddingTop: 16, borderTop: "1px solid var(--line-soft)" },
+  sectionTitle: { fontSize: 13, fontWeight: 700, color: "var(--muted)", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.4 },
+  description: { fontSize: 14, lineHeight: 1.6, color: "var(--text)", whiteSpace: "pre-wrap" },
+  row: { display: "flex", justifyContent: "space-between", gap: 12, padding: "7px 0", borderBottom: "1px solid var(--line-soft)" },
+  rowLabel: { fontSize: 13, color: "var(--muted)" },
+  rowValue: { fontSize: 13, color: "var(--text)", textAlign: "right" },
   agentCard: { display: "flex", alignItems: "center", gap: 10, marginTop: 24, padding: "14px 0" },
-  agentAvatar: { width: 40, height: 40, borderRadius: "50%", background: "rgba(31,163,92,0.16)", color: "#5BD98A",
+  agentAvatar: { width: 40, height: 40, borderRadius: "50%", background: "rgba(31,163,92,0.16)", color: "var(--accent-text)",
     display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 15 },
   agentName: { fontSize: 14, fontWeight: 700 },
-  agentSub: { fontSize: 12, color: "#8B8B90" },
-  contactBlock: { marginTop: 6, background: "rgba(255,255,255,0.04)", borderRadius: "var(--r)", overflow: "hidden" },
+  agentSub: { fontSize: 12, color: "var(--muted)" },
+  contactBlock: { marginTop: 6, background: "var(--fill)", borderRadius: "var(--r)", overflow: "hidden" },
   contactTopRow: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 14px" },
   contactPhoneLine: { display: "flex", alignItems: "center", gap: 10 },
   contactPhoneText: { fontSize: 14, fontWeight: 700 },
   iconLink: { display: "flex" },
-  contactCallLink: { color: "#5BD98A", fontWeight: 700, fontSize: 13.5, textDecoration: "none" },
-  metaRow: { fontSize: 11.5, color: "#7FA396", marginTop: 14, paddingBottom: 10 },
+  contactCallLink: { color: "var(--accent-text)", fontWeight: 700, fontSize: 13.5, textDecoration: "none" },
+  metaRow: { fontSize: 11.5, color: "var(--muted)", marginTop: 14, paddingBottom: 10 },
 };
