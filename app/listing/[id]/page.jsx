@@ -8,7 +8,11 @@ import BottomNav from "../../../components/BottomNav";
 import AgentContactBlock from "../../../components/AgentContactBlock";
 import ShareSheet from "../../../components/ShareSheet";
 import ConfirmDialog from "../../../components/ConfirmDialog";
-import { SocialButton, waLink, tgLink } from "../../../components/SocialIcons";
+import { useAgentsDir, agentDisplayName } from "../../../lib/agentsDir";
+import DescriptionBlock from "../../../components/DescriptionBlock";
+import { ShareOnPhoto, PencilOnPhoto } from "../../../components/PhotoActions";
+import { PhotoEditor } from "../../../components/PhotoUploader";
+import { SocialButton, waLink, tgLink, WhatsAppLogo, TelegramLogo } from "../../../components/SocialIcons";
 import { PLATFORM_LABELS, PLATFORM_ICON } from "../../../lib/videoLinks";
 import { fullCharLine, priceBlock, categoryLabel, floorsText, seriesLabel, shortDate, isPso } from "../../../lib/listingFormat";
 import { clientListingLink, colleagueListingLink, getCurrentAgent } from "../../../lib/agent";
@@ -156,6 +160,8 @@ export default function ListingDetailPage() {
   const [me, setMe] = useState(null);
   const [share, setShare] = useState(null); // { url, title, note }
   const [askDelete, setAskDelete] = useState(false);
+  const [photoEdit, setPhotoEdit] = useState(false);
+  const agentsDir = useAgentsDir();
   const [copied, setCopied] = useState(null);
   const touchX = useRef(null);
 
@@ -221,6 +227,7 @@ export default function ListingDetailPage() {
   const { usd, kgs } = priceBlock(l);
   const photos = l.photos || [];
   const canEditForm = l.type === "вторичка" || l.type === "первичка";
+  const editHref = canEditForm ? `/add/${l.type === "вторичка" ? "vtorichka" : "pervichka"}?edit=${id}` : null;
   const clientUrl = clientListingLink(l, me);
   let extra = {};
   try { extra = l.extra_details ? (typeof l.extra_details === "string" ? JSON.parse(l.extra_details) : l.extra_details) : {}; } catch {}
@@ -245,13 +252,8 @@ export default function ListingDetailPage() {
           ? <img src={photoUrl(photos[Math.min(activePhoto, photos.length - 1)])} alt="" style={sx.photo} draggable={false} />
           : <div style={sx.photoPlaceholder}>Нет фото</div>}
         <button style={sx.backBtn} onClick={() => router.back()}>‹</button>
-        <div style={{ position: "absolute", top: 12, right: 12, display: "flex", flexDirection: "column", gap: 10 }}>
-          {l.status === "активен" && (
-            <button className="round-glass-btn" aria-label="Поделиться" onClick={() => setShare({ url: clientUrl, title: "Поделиться" })}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 15V3M7 8l5-5 5 5" /><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7" /></svg>
-            </button>
-          )}
-        </div>
+        {l.status === "активен" && <ShareOnPhoto onClick={() => setShare({ url: clientUrl, title: "Поделиться" })} />}
+        <PencilOnPhoto onClick={() => (editHref ? router.push(editHref) : setPhotoEdit(true))} />
         <div style={sx.statusBadge}>{STATUS_LABELS[l.status] || l.status}</div>
         {photos.length > 1 && <div style={sx.photoCounter}>{Math.min(activePhoto, photos.length - 1) + 1} / {photos.length}</div>}
       </div>
@@ -333,12 +335,7 @@ export default function ListingDetailPage() {
           />
         </div>
 
-        {l.description && (
-          <div style={sx.section}>
-            <div style={sx.sectionTitle}>Описание</div>
-            <div style={sx.description}>{l.description}</div>
-          </div>
-        )}
+        <DescriptionBlock listing={l} sectionStyle={sx.section} titleStyle={sx.sectionTitle} textStyle={sx.description} withCopy={true} />
 
         <div style={sx.section}>
           <div style={sx.sectionTitle}>Основное</div>
@@ -412,7 +409,25 @@ export default function ListingDetailPage() {
           </div>
         )}
 
-        <AgentContactBlock name={l.agent_name} phone={l.agent_phone} />
+        {/* Внизу — связь с СОБСТВЕННИКОМ (себе звонить не нужно). Это видят только вы и руководитель. */}
+        {contact && (contact.owner_phone || contact.owner_whatsapp) && (
+          <div className="owner-contact">
+            <div className="owner-contact-title">🔒 Связаться с собственником{contact.owner_name ? ` — ${contact.owner_name}` : ""}</div>
+            <div className="owner-contact-phone">{contact.owner_phone || contact.owner_whatsapp}</div>
+            <a className="owner-call" href={`tel:${String(contact.owner_phone || contact.owner_whatsapp).replace(/[^\d+]/g, "")}`}>Позвонить собственнику</a>
+            <div className="owner-contact-row">
+              <a className="owner-soc" href={waLink(contact.owner_whatsapp || contact.owner_phone, `Здравствуйте! По вашему объекту${l.display_id ? " ID " + l.display_id : ""}`)} target="_blank" rel="noreferrer">
+                <WhatsAppLogo size={30} /> WhatsApp
+              </a>
+              <a className="owner-soc" href={tgLink(contact.owner_phone || contact.owner_whatsapp)} target="_blank" rel="noreferrer">
+                <TelegramLogo size={30} /> Telegram
+              </a>
+            </div>
+          </div>
+        )}
+        <div className="owner-agent-line">
+          Агент объекта: <b>{agentDisplayName(agentsDir, l.agent_phone, l.agent_name)}</b> {l.agent_phone ? `· ${l.agent_phone}` : ""}
+        </div>
 
         <div style={sx.metaRow}>
           {l.created_at && <span style={{ color: "var(--text)" }}>Создано: {shortDate(l.created_at)}</span>}
@@ -420,6 +435,14 @@ export default function ListingDetailPage() {
         </div>
       </div>
 
+      <PhotoEditor open={photoEdit} photos={photos} onClose={() => setPhotoEdit(false)}
+        onSave={async (newPhotos) => {
+          setPhotoEdit(false);
+          setListing((x) => ({ ...x, photos: newPhotos }));
+          setActivePhoto(0);
+          const { error: e } = await supabase.from("listings").update({ photos: newPhotos }).eq("id", id);
+          if (e) alert("Не удалось сохранить фото: " + e.message);
+        }} />
       <ConfirmDialog open={askDelete} danger title="Удалить объект?"
         text="Объект будет удалён насовсем. Это нельзя отменить."
         confirmText="Удалить" cancelText="Отклонить"
@@ -441,7 +464,7 @@ const sx = {
     background: "rgba(0,0,0,0.5)", color: "var(--text)", border: "none", fontSize: 24, lineHeight: "40px" },
   statusBadge: { position: "absolute", bottom: 14, left: 14, background: "rgba(31,163,92,0.9)", color: "var(--text)",
     fontSize: 12, fontWeight: 700, padding: "6px 11px", borderRadius: "var(--r)" },
-  photoCounter: { position: "absolute", bottom: 14, right: 14, background: "rgba(0,0,0,0.55)", color: "var(--text)",
+  photoCounter: { position: "absolute", bottom: 14, left: "50%", transform: "translateX(-50%)", background: "rgba(0,0,0,0.55)", color: "#FFFFFF",
     fontSize: 12, padding: "4px 10px", borderRadius: "var(--r)" },
   thumbRow: { display: "flex", gap: 6, padding: "8px 16px", overflowX: "auto" },
   thumb: { width: 56, height: 56, borderRadius: "var(--r)", objectFit: "cover", flexShrink: 0 },
