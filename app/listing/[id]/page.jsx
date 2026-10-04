@@ -8,13 +8,14 @@ import BottomNav from "../../../components/BottomNav";
 import AgentContactBlock from "../../../components/AgentContactBlock";
 import ShareSheet from "../../../components/ShareSheet";
 import ConfirmDialog from "../../../components/ConfirmDialog";
+import { HOUSE_LABELS } from "../../../lib/extraFields";
 import { useAgentsDir, agentDisplayName } from "../../../lib/agentsDir";
 import DescriptionBlock from "../../../components/DescriptionBlock";
 import { ShareOnPhoto, PencilOnPhoto } from "../../../components/PhotoActions";
 import { PhotoEditor } from "../../../components/PhotoUploader";
 import { SocialButton, waLink, tgLink, WhatsAppLogo, TelegramLogo } from "../../../components/SocialIcons";
 import { PLATFORM_LABELS, PLATFORM_ICON } from "../../../lib/videoLinks";
-import { fullCharLine, priceBlock, categoryLabel, floorsText, seriesLabel, shortDate, isPso } from "../../../lib/listingFormat";
+import { fullCharLine, priceBlock, categoryLabel, floorsText, seriesLabel, shortDate, isPso, listingCategory } from "../../../lib/listingFormat";
 import { clientListingLink, colleagueListingLink, getCurrentAgent } from "../../../lib/agent";
 
 // Страница СВОЕГО объекта (владелец / договорник) — в новом виде, как страницы клиента
@@ -132,6 +133,7 @@ const EXTRA_LABELS = {
   ipoteka: "Ипотека через банк", rassrochkaZastroy: "Рассрочка от застройщика", rassrochkaUsloviya: "Условия рассрочки",
   cenaM2: "Цена за м²", komUslugi: "Коммунальные платежи перед сделкой",
   ploshad_uchastka: "Площадь участка", naznachenie_zemli: "Назначение земли",
+  ...HOUSE_LABELS,
 };
 
 function extraLabel(key) {
@@ -226,8 +228,9 @@ export default function ListingDetailPage() {
   const l = listing;
   const { usd, kgs } = priceBlock(l);
   const photos = l.photos || [];
-  const canEditForm = l.type === "вторичка" || l.type === "первичка";
-  const editHref = canEditForm ? `/add/${l.type === "вторичка" ? "vtorichka" : "pervichka"}?edit=${id}` : null;
+  const FORM_PATH = { "вторичка": "vtorichka", "первичка": "pervichka", "дом": "dom" };
+  const canEditForm = !!FORM_PATH[l.type];
+  const editHref = canEditForm ? `/add/${FORM_PATH[l.type]}?edit=${id}` : null;
   const clientUrl = clientListingLink(l, me);
   let extra = {};
   try { extra = l.extra_details ? (typeof l.extra_details === "string" ? JSON.parse(l.extra_details) : l.extra_details) : {}; } catch {}
@@ -270,7 +273,7 @@ export default function ListingDetailPage() {
         <div style={sx.priceUsd}>${usd.toLocaleString("ru-RU")}</div>
         <div style={sx.priceKgs}>{kgs.toLocaleString("ru-RU")} сом</div>
         <div style={sx.charLine}>{fullCharLine(l)}</div>
-        <div style={sx.category}>{categoryLabel(l.type)}{isPso(l) && <b className="pso-tag"> (СДАН ПСО)</b>}</div>
+        <div style={sx.category}>{listingCategory(l)}{isPso(l) && <b className="pso-tag"> (СДАН ПСО)</b>}</div>
         <div style={sx.location}>{[l.zhk, l.district].filter(Boolean).join(", ") || l.city || "Бишкек"}</div>
         {l.display_id && (
           <button style={sx.idBtn} onClick={() => copy(String(l.display_id), "id")}>
@@ -287,7 +290,7 @@ export default function ListingDetailPage() {
         <div style={sx.actionsRow}>
           {canEditForm && (
             <button className="btn-secondary" style={{ flex: 1 }}
-              onClick={() => router.push(`/add/${l.type === "вторичка" ? "vtorichka" : "pervichka"}?edit=${id}`)}>
+              onClick={() => router.push(editHref)}>
               ✎ Редактировать
             </button>
           )}
