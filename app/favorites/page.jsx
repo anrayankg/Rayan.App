@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import BottomNav from "../../components/BottomNav";
 import { photoPublicUrl } from "../../components/PhotoUploader";
-import { fullCharLine, priceBlock, categoryLabel, isPso } from "../../lib/listingFormat";
+import { fullCharLine, priceBlock, categoryLabel, isPso, listingCategory } from "../../lib/listingFormat";
 import { getCurrentAgent, isOwnListing } from "../../lib/agent";
 
 // Избранное — объекты, отмеченные сердечком на этом телефоне.
@@ -55,7 +55,7 @@ export default function FavoritesPage() {
                     <div className="feed-price-usd">${usd.toLocaleString("ru-RU")}</div>
                     <div className="feed-price-kgs">{kgs.toLocaleString("ru-RU")} сом</div>
                     <div className="feed-chars">{fullCharLine(l)}</div>
-                    <div className="feed-category">{categoryLabel(l.type)}{isPso(l) && <b className="pso-tag"> (СДАН ПСО)</b>}</div>
+                    <div className="feed-category">{listingCategory(l)}{isPso(l) && <b className="pso-tag"> (СДАН ПСО)</b>}</div>
                     {l.display_id && <div className="feed-date" style={{ marginTop: 6 }}>ID {l.display_id}</div>}
                   </div>
                 </a>
