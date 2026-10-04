@@ -3,7 +3,7 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 import { publicExtraEntries, extraLabel, extraDisplayValue } from "../../../lib/extraFields";
-import { mainDetailRows, isPso } from "../../../lib/listingFormat";
+import { mainDetailRows, isPso, listingCategory } from "../../../lib/listingFormat";
 import { PLATFORM_LABELS, PLATFORM_ICON } from "../../../lib/videoLinks";
 import { fullCharLine } from "../../../lib/listingFormat";
 import BottomNav from "../../../components/BottomNav";
@@ -156,7 +156,7 @@ export default function AgentListingPage() {
         <div style={sx.priceKgs}>{kgs.toLocaleString("ru-RU")} сом</div>
 
         <div style={sx.charLine}>{fullCharLine(l)}</div>
-        <div style={sx.category}>{categoryLabel(l.type)}{isPso(l) && <b className="pso-tag"> (СДАН ПСО)</b>}</div>
+        <div style={sx.category}>{listingCategory(l)}{isPso(l) && <b className="pso-tag"> (СДАН ПСО)</b>}</div>
         <div style={sx.location}>{[l.zhk, l.district].filter(Boolean).join(", ") || l.city || "Бишкек"}</div>
 
         {hasMap && (
