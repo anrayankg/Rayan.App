@@ -797,3 +797,6 @@ body { background: var(--bg) !important; color: var(--text); }
 .owner-agent-line b { color: var(--text); }
 /* «Скопировать описание» — контрастная: в тёмной теме белая с чёрным текстом, в светлой — чёрная с белым */
 .copy-desc-btn { background: var(--text) !important; color: var(--bg) !important; border: none !important; }
+/* Поле поиска с кнопкой «Найти» на клавиатуре — без стандартного оформления браузера */
+input[type="search"] { -webkit-appearance: none; appearance: none; }
+input[type="search"]::-webkit-search-cancel-button, input[type="search"]::-webkit-search-decoration { -webkit-appearance: none; display: none; }
