@@ -3,7 +3,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase";
 import { CAT_KVARTIRY, CAT_NOVOSTROYKI, CAT_DOMA, CAT_UCHASTOK, CAT_KOMMERCIYA, CAT_ARENDA } from "../../lib/categoryIcons";
-import { fullCharLine, priceBlock, categoryLabel, isPso } from "../../lib/listingFormat";
+import { fullCharLine, priceBlock, categoryLabel, isPso, listingCategory } from "../../lib/listingFormat";
 import BottomNav from "../../components/BottomNav";
 import AddToCollectionButton from "../../components/AddToCollectionButton";
 import CollectionPickerSheet from "../../components/CollectionPickerSheet";
@@ -350,7 +350,7 @@ export default function ProfilePage() {
       {/* Поиск + фильтры */}
       <div style={sx.searchRow}>
         <span style={{ opacity: 0.5 }}>🔍</span>
-        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Поиск по моим объектам" style={sx.searchInput} />
+        <input type="search" enterKeyHint="search" onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } }} value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Поиск по моим объектам" style={sx.searchInput} />
         <button onClick={() => setPfilterOpen(true)} style={sx.searchFilterBtn} aria-label="Фильтр">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" strokeWidth="2" style={{ stroke: "var(--accent-text)" }}>
             <path d="M4 5h16M7 12h10M11 19h2" />
@@ -396,7 +396,7 @@ export default function ProfilePage() {
                     <div style={sx.bigCardPrice}>${priceBlock(l).usd.toLocaleString("ru-RU")}</div>
                     <div style={sx.bigCardPriceKgs}>{priceBlock(l).kgs.toLocaleString("ru-RU")} сом</div>
                     <div style={sx.bigCardMeta}>{fullCharLine(l)}</div>
-                    <div style={sx.bigCardCategory}>{categoryLabel(l.type)}{isPso(l) && <b className="pso-tag"> (СДАН ПСО)</b>}</div>
+                    <div style={sx.bigCardCategory}>{listingCategory(l)}{isPso(l) && <b className="pso-tag"> (СДАН ПСО)</b>}</div>
                     <div style={sx.bigCardLoc}>{[l.zhk, l.district].filter(Boolean).join(", ")}</div>
                     {l.description && <div style={sx.bigCardDesc}>{l.description}</div>}
                   </a>
