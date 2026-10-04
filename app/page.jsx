@@ -17,6 +17,7 @@ import ShareSheet from "../components/ShareSheet";
 import { buildShareUrl } from "../lib/share";
 import CollectionPickerSheet from "../components/CollectionPickerSheet";
 import FilterWizard from "../components/FilterWizard";
+import { useKeptState, useKeptScroll } from "../lib/keepState";
 import { EMPTY, FILTER_CATEGORIES, matchListing, sortListings, activeCount } from "../lib/filterConfig";
 const CATS = [
   { label: "Квартиры", key: "vtorichka", img: CAT_KVARTIRY, path: "M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" },
@@ -66,12 +67,13 @@ export default function HomePage() {
   const [allListings, setAllListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [feedTab, setFeedTab] = useState("активные");
-  const [visibleCount, setVisibleCount] = useState(40);
+  const [feedTab, setFeedTab] = useKeptState("main_tab", "активные");
+  const [visibleCount, setVisibleCount] = useKeptState("main_count", 40);
 
-  const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState(EMPTY);
+  const [search, setSearch] = useKeptState("main_search", "");
+  const [filter, setFilter] = useKeptState("main_filter", EMPTY);
   const [filterOpen, setFilterOpen] = useState(false);
+  useKeptScroll("main", !loading);
   const agentsDir = useAgentsDir();
 
   const [selected, setSelected] = useState(new Set());
