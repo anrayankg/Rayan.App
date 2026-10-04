@@ -12,6 +12,7 @@ import { getThemeChoice, applyTheme } from "../../lib/theme";
 import { buildShareUrl } from "../../lib/share";
 import { clientListingLink } from "../../lib/agent";
 import FilterWizard from "../../components/FilterWizard";
+import { useKeptState } from "../../lib/keepState";
 import ConfirmDialog from "../../components/ConfirmDialog";
 import { EMPTY, FILTER_CATEGORIES, matchListing, sortListings, activeCount } from "../../lib/filterConfig";
 
@@ -118,12 +119,12 @@ export default function ProfilePage() {
   const [myListings, setMyListings] = useState([]);
   const [myCollections, setMyCollections] = useState([]);
 
-  const [statusTab, setStatusTab] = useState("активно");
-  const [search, setSearch] = useState("");
+  const [statusTab, setStatusTab] = useKeptState("prof_tab", "активно");
+  const [search, setSearch] = useKeptState("prof_search", "");
   const [categoryFilter, setCategoryFilter] = useState(null);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [sortBy, setSortBy] = useState("new");
-  const [pfilter, setPfilter] = useState(EMPTY);
+  const [pfilter, setPfilter] = useKeptState("prof_filter", EMPTY);
   const [pfilterOpen, setPfilterOpen] = useState(false);
   const [askDeactivate, setAskDeactivate] = useState(false);
   const [theme, setTheme] = useState("system");
