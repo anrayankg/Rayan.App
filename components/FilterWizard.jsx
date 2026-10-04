@@ -112,7 +112,7 @@ function Summary({ draft, steps, openCats, openStep, setId }) {
   return (
     <>
       <div className="fl-label" style={{ marginTop: 0 }}>ID объекта</div>
-      <input className="fl-input" inputMode="numeric" placeholder="id: 000362" value={draft.id || ""}
+      <input className="fl-input" type="search" enterKeyHint="search" onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } }} placeholder="id: 000362" value={draft.id || ""}
         onChange={(e) => setId(e.target.value)} />
       <div className="fl-label">Категория</div>
       <button className={`fl-field ${cat ? "filled" : ""}`} onClick={openCats}>
@@ -194,7 +194,7 @@ function StepBody({ step, v, draft, listings, setVal, toggleIn, stepNo, autoNext
     return (
       <>
         {head}
-        {withSearch && <input className="fl-search" placeholder="Поиск…" value={q} onChange={(e) => setQ(e.target.value)} />}
+        {withSearch && <input className="fl-search" type="search" enterKeyHint="search" onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } }} placeholder="Поиск…" value={q} onChange={(e) => setQ(e.target.value)} />}
         {sel.length > 0 && (
           <div className="fl-chipset">
             {sel.map((s) => <button key={s} className="fl-selchip" onClick={() => toggleIn(step.id, s)}>{s} ✕</button>)}
