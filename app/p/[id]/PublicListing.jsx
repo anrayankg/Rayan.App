@@ -4,7 +4,7 @@ import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 import { getCurrentAgent, clientListingLink } from "../../../lib/agent";
 import { publicExtraEntries, extraLabel, extraDisplayValue } from "../../../lib/extraFields";
-import { mainDetailRows, shortDate, isPso } from "../../../lib/listingFormat";
+import { mainDetailRows, shortDate, isPso, listingCategory } from "../../../lib/listingFormat";
 import { PLATFORM_LABELS, PLATFORM_ICON } from "../../../lib/videoLinks";
 import AgentContactBlock from "../../../components/AgentContactBlock";
 import DescriptionBlock from "../../../components/DescriptionBlock";
@@ -197,7 +197,7 @@ export default function PublicListingPage() {
           {l.floor && l.floors_total ? ` · ${l.floor}/${l.floors_total} эт.` : ""}
           {l.area_m2 ? ` · ${l.area_m2} м²` : ""}
         </div>
-        <div style={sx.category}>{categoryLabel(l.type)}{isPso(l) && <b className="pso-tag"> (СДАН ПСО)</b>}</div>
+        <div style={sx.category}>{listingCategory(l)}{isPso(l) && <b className="pso-tag"> (СДАН ПСО)</b>}</div>
         <div style={sx.location}>{[l.zhk, l.district].filter(Boolean).join(", ") || l.city || "Бишкек"}</div>
 
         {/* Видеообзор — прямая кнопка(и), если агент добавил */}
