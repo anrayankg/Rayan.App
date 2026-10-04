@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
-import { fullCharLine, priceBlock, categoryLabel, isPso } from "../../../lib/listingFormat";
+import { fullCharLine, priceBlock, categoryLabel, isPso, listingCategory } from "../../../lib/listingFormat";
 const R_ICON = "/r-icon.png";
 import { collectionLink, getCurrentAgent } from "../../../lib/agent";
 import BottomNav from "../../../components/BottomNav";
@@ -132,7 +132,7 @@ export default function CollectionView() {
                     <div className="feed-price-usd">${usd.toLocaleString("ru-RU")}</div>
                     <div className="feed-price-kgs">{kgs.toLocaleString("ru-RU")} сом</div>
                     <div className="feed-chars">{fullCharLine(l)}</div>
-                    <div className="feed-category">{categoryLabel(l.type)}{isPso(l) && <b className="pso-tag"> (СДАН ПСО)</b>}</div>
+                    <div className="feed-category">{listingCategory(l)}{isPso(l) && <b className="pso-tag"> (СДАН ПСО)</b>}</div>
                     <div className="feed-location">{locationLine(l)}</div>
                     {l.description && <div className="feed-desc">{l.description}</div>}
                     <div className="feed-agent">
