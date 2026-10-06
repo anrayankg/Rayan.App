@@ -65,7 +65,7 @@ export default function FilterWizard({ open, onClose, listings, value, onApply }
 
       <div className="fl-body">
         {screen === "summary" && (
-          <Summary draft={draft} steps={steps} setId={(val) => setDraft((d) => ({ ...d, id: val }))}
+          <Summary draft={draft} steps={steps} setVal={setVal} setId={(val) => setDraft((d) => ({ ...d, id: val }))}
             openCats={() => { setSequential(true); setScreen("cats"); }}
             openStep={(i) => { setSequential(false); setIdx(i); setScreen("step"); }} />
         )}
@@ -97,7 +97,7 @@ export default function FilterWizard({ open, onClose, listings, value, onApply }
         {screen === "step" && step && step.kind === "sort" && !hasValue(step, v.sort) && (
           <button className="fl-skip" onClick={apply}>Пропустить</button>
         )}
-        <button className="fl-show" disabled={!!cityMissing && screen !== "summary"} onClick={apply}>
+        <button className="fl-show" onClick={apply}>
           Показать ({count.toLocaleString("ru-RU")})
         </button>
         {cityMissing && screen === "summary" && <div className="fl-count">Город не выбран — показываем все города</div>}
@@ -106,7 +106,7 @@ export default function FilterWizard({ open, onClose, listings, value, onApply }
   );
 }
 
-function Summary({ draft, steps, openCats, openStep, setId }) {
+function Summary({ draft, steps, openCats, openStep, setId, setVal }) {
   const cat = FILTER_CATEGORIES.find((c) => c.key === draft.cat);
   const v = draft.v || {};
   return (
@@ -119,7 +119,58 @@ function Summary({ draft, steps, openCats, openStep, setId }) {
         {cat ? <span className="val">{cat.label}</span> : <span className="ph">Выбрать</span>}
         <span className="arrow">›</span>
       </button>
-      {steps.map((s, i) => (
+      {steps.map((s, i) => {
+        // Как в Lalafo: «от / до» и цену вписываем прямо здесь, без отдельного окна
+        if (s.kind === "range") {
+          const r = v[s.id] || {};
+          return (
+            <div key={s.id}>
+              <div className="fl-label">{s.title}</div>
+              <div className="fl-pair">
+                <input className="fl-input" inputMode="decimal" placeholder="От" value={r.min || ""}
+                  onChange={(e) => setVal(s.id, { ...r, min: e.target.value.replace(/[^\d.]/g, "") })} />
+                <input className="fl-input" inputMode="decimal" placeholder="До" value={r.max || ""}
+                  onChange={(e) => setVal(s.id, { ...r, max: e.target.value.replace(/[^\d.]/g, "") })} />
+              </div>
+            </div>
+          );
+        }
+        if (s.kind === "price") {
+          const r = v[s.id] || { cur: "USD" };
+          const cur = r.cur || "USD";
+          return (
+            <div key={s.id}>
+              <div className="fl-cur-row" style={{ marginTop: 18 }}>
+                <div className="fl-label" style={{ margin: 0 }}>Цена</div>
+                <div className="fl-cur">
+                  {["KGS", "USD"].map((c) => (
+                    <button key={c} className={cur === c ? "on" : ""} onClick={() => setVal(s.id, { ...r, cur: c })}>{c}</button>
+                  ))}
+                </div>
+              </div>
+              <div className="fl-pair">
+                <input className="fl-input" inputMode="numeric" placeholder="От 0" value={r.min || ""}
+                  onChange={(e) => setVal(s.id, { ...r, cur, min: e.target.value.replace(/\D/g, "") })} />
+                <input className="fl-input" inputMode="numeric" placeholder="До" value={r.max || ""}
+                  onChange={(e) => setVal(s.id, { ...r, cur, max: e.target.value.replace(/\D/g, "") })} />
+              </div>
+            </div>
+          );
+        }
+        if (s.kind === "contract") {
+          const val = v[s.id];
+          return (
+            <div key={s.id}>
+              <div className="fl-label">Договор</div>
+              <div className="fl-contract">
+                {[["с договором", "С договором"], ["без договора", "Без договора"], ["все", "Все"]].map(([k, label]) => (
+                  <button key={k} className={val === k ? "on" : ""} onClick={() => setVal(s.id, val === k ? undefined : k)}>{label}</button>
+                ))}
+              </div>
+            </div>
+          );
+        }
+        return (
         <div key={s.id}>
           <div className="fl-label">{s.title}{s.required && <span style={{ color: "var(--danger)" }}> *</span>}</div>
           <button className={`fl-field ${hasValue(s, v[s.id]) ? "filled" : ""}`} onClick={() => openStep(i)}>
@@ -127,7 +178,8 @@ function Summary({ draft, steps, openCats, openStep, setId }) {
             <span className="arrow">›</span>
           </button>
         </div>
-      ))}
+        );
+      })}
       {!cat && <div className="fl-count" style={{ marginTop: 20 }}>Выберите категорию — появятся её параметры</div>}
     </>
   );
@@ -199,6 +251,13 @@ function StepBody({ step, v, draft, listings, setVal, toggleIn, stepNo, autoNext
           <div className="fl-chipset">
             {sel.map((s) => <button key={s} className="fl-selchip" onClick={() => toggleIn(step.id, s)}>{s} ✕</button>)}
           </div>
+        )}
+        {step.allLabel && !q && (
+          <button className="fl-opt" onClick={() => setVal(step.id, [])}>
+            <span style={{ fontWeight: 800 }}>{step.allLabel}</span>
+            <span className="fl-opt-count">{base.length}</span>
+            <span className={`check ${sel.length === 0 ? "on" : ""}`}>{sel.length === 0 ? "✓" : ""}</span>
+          </button>
         )}
         {options.map((o) => (
           <button key={o} className="fl-opt" onClick={() => toggleIn(step.id, o)}>
