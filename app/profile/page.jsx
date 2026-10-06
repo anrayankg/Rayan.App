@@ -10,7 +10,7 @@ import CollectionPickerSheet from "../../components/CollectionPickerSheet";
 import ShareSheet from "../../components/ShareSheet";
 import { getThemeChoice, applyTheme } from "../../lib/theme";
 import { buildShareUrl } from "../../lib/share";
-import { clientListingLink } from "../../lib/agent";
+import { clientListingLink, isAdmin } from "../../lib/agent";
 import FilterWizard from "../../components/FilterWizard";
 import { useKeptState } from "../../lib/keepState";
 import ConfirmDialog from "../../components/ConfirmDialog";
@@ -114,6 +114,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const [agent, setAgent] = useState(undefined);
   const [phoneInput, setPhoneInput] = useState("");
+  const [pinInput, setPinInput] = useState("");
   const [loginError, setLoginError] = useState("");
   const [busy, setBusy] = useState(false);
   const [myListings, setMyListings] = useState([]);
@@ -152,8 +153,9 @@ export default function ProfilePage() {
 
   useEffect(() => {
     try {
-      const saved = localStorage.getItem("rayan_agent");
-      setAgent(saved ? JSON.parse(saved) : null);
+      const saved = JSON.parse(localStorage.getItem("rayan_agent") || "null");
+      // старый вход без ПИН-кода больше не действует — нужно войти заново с ПИН
+      setAgent(saved && saved.pinOk ? saved : null);
     } catch { setAgent(null); }
   }, []);
 
@@ -251,21 +253,29 @@ export default function ProfilePage() {
     setLoginError("");
     const digits = digitsOnly(phoneInput);
     if (digits.length < 9) { setLoginError("Введите номер телефона полностью"); return; }
+    if (!/^\d{4}$/.test(pinInput)) { setLoginError("Введите ПИН-код — 4 цифры"); return; }
     setBusy(true);
-    const { data, error } = await supabase.from("agents").select("*");
+    // Проверка идёт внутри базы — сами ПИН-коды в телефон не скачиваются
+    const { data, error } = await supabase.rpc("agent_login", { p_phone: digits, p_pin: pinInput });
     setBusy(false);
-    if (error) { setLoginError("Ошибка: " + error.message); return; }
-    // Сравниваем последние 9 цифр: можно вводить и 553625010, и +996 553 625 010, и 0553 625 010
-    const found = (data || []).find((a) => digitsOnly(a.phone).slice(-9) === digits.slice(-9));
-    if (!found) { setLoginError("Номер не найден. Обратитесь к Айгуль, чтобы завести личный кабинет."); return; }
-    localStorage.setItem("rayan_agent", JSON.stringify(found));
-    setAgent(found);
+    if (error) {
+      setLoginError(/agent_login/.test(error.message)
+        ? "Вход по ПИН ещё не включён в базе. Обратитесь к руководителю."
+        : "Ошибка: " + error.message);
+      return;
+    }
+    if (!data) { setLoginError("Неверный номер или ПИН-код. Если вы забыли ПИН — спросите у руководителя."); return; }
+    const me = { ...data, pinOk: true };
+    if (data.role === "admin") me.pin = pinInput; // руководителю ПИН нужен для раздела «Агенты»
+    localStorage.setItem("rayan_agent", JSON.stringify(me));
+    setAgent(me);
   }
 
   function handleLogout() {
     localStorage.removeItem("rayan_agent");
     setAgent(null);
     setPhoneInput("");
+    setPinInput("");
   }
 
   if (agent === undefined) return <div style={sx.page}><div style={sx.center}>Загрузка…</div></div>;
@@ -277,13 +287,23 @@ export default function ProfilePage() {
         <div style={sx.loginBox}>
           <div style={sx.loginIcon}>👤</div>
           <div style={sx.loginTitle}>Вход в личный кабинет</div>
-          <div style={sx.loginSub}>Введите ваш рабочий номер телефона</div>
+          <div style={sx.loginSub}>Введите ваш рабочий номер телефона и ПИН-код</div>
           <input
             type="tel"
             value={phoneInput}
             onChange={(e) => setPhoneInput(e.target.value)}
             placeholder="+996 700 000 000"
             style={sx.input}
+          />
+          <input
+            type="password"
+            inputMode="numeric"
+            maxLength={4}
+            value={pinInput}
+            onChange={(e) => setPinInput(e.target.value.replace(/\D/g, "").slice(0, 4))}
+            onKeyDown={(e) => { if (e.key === "Enter") handleLogin(); }}
+            placeholder="ПИН-код (4 цифры)"
+            style={{ ...sx.input, marginTop: 10, letterSpacing: "0.4em", textAlign: "center" }}
           />
           {loginError && <div style={sx.error}>{loginError}</div>}
           <button onClick={handleLogin} disabled={busy} style={sx.loginBtn}>{busy ? "Проверяю…" : "Войти"}</button>
@@ -306,6 +326,10 @@ export default function ProfilePage() {
           ✏️ Редактировать профиль ⭐ <span style={{ fontSize: 10 }}>(скоро)</span>
         </button>
       </div>
+
+      {isAdmin(agent) && (
+        <button className="fl-next" style={{ marginTop: 14 }} onClick={() => router.push("/agents")}>👥 Агенты и ПИН-коды</button>
+      )}
 
       {/* Тема оформления */}
       <div className="theme-switch">
@@ -347,7 +371,8 @@ export default function ProfilePage() {
         ))}
       </div>
 
-      {/* Поиск + фильтры */}
+      {/* Поиск + фильтры — закреплены сверху, не уезжают при листании */}
+      <div className="prof-sticky">
       <div style={sx.searchRow}>
         <span style={{ opacity: 0.5 }}>🔍</span>
         <input type="search" enterKeyHint="search" onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } }} value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Поиск по моим объектам" style={sx.searchInput} />
@@ -366,6 +391,7 @@ export default function ProfilePage() {
         {(pfilter.cat || pfilter.id || search) && (
           <button onClick={() => { setPfilter(EMPTY); setCategoryFilter(null); setSortBy("new"); setSearch(""); }} style={sx.resetBtn}>Сбросить</button>
         )}
+      </div>
       </div>
 
       {/* Сетка объектов */}
