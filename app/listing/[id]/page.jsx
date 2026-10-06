@@ -228,7 +228,7 @@ export default function ListingDetailPage() {
   const l = listing;
   const { usd, kgs } = priceBlock(l);
   const photos = l.photos || [];
-  const FORM_PATH = { "вторичка": "vtorichka", "первичка": "pervichka", "дом": "dom" };
+  const FORM_PATH = { "вторичка": "vtorichka", "первичка": "pervichka", "дом": "dom", "участок": "uchastok" };
   const canEditForm = !!FORM_PATH[l.type];
   const editHref = canEditForm ? `/add/${FORM_PATH[l.type]}?edit=${id}` : null;
   const clientUrl = clientListingLink(l, me);
