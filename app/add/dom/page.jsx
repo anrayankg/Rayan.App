@@ -8,6 +8,7 @@ import MapPicker from "../../../components/MapPicker";
 import PhoneInput, { isPhoneComplete } from "../../../components/PhoneInput";
 import { Picker, MultiPicker } from "../../../components/Picker";
 import ConfirmDialog from "../../../components/ConfirmDialog";
+import CategorySwitch from "../../../components/CategorySwitch";
 import PhotoUploader from "../../../components/PhotoUploader";
 import VideoReviewBlock from "../../../components/VideoReviewBlock";
 
@@ -41,7 +42,7 @@ const WINDOW_DIRS = ["Север", "Юг", "Запад", "Восток", "Сев
 const CURRENT_YEAR_V = new Date().getFullYear();
 const YEAR_BUILT_DOM = Array.from({ length: CURRENT_YEAR_V - 1940 + 1 }, (_, i) => String(CURRENT_YEAR_V - i));
 const DEAL_TERMS_OPTS = ["Наличные", "Ипотека", "Рассрочка через Госрегистр", "Рассрочка от собственника", "Обмен"];
-const POSTROIKI = ["Времянка", "Гараж", "Навес", "Сарай", "Беседка", "Баня", "Бассейн"];
+const POSTROIKI = ["Времянка", "Гараж", "Навес", "Сарай", "Беседка", "Баня", "Бассейн", "Очок кана"];
 
 function Accordion({ title, children, defaultOpen = false }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -477,14 +478,10 @@ function DomForm() {
         <div className="page-title">{editId ? "Редактирование — Дом" : "Дом"}</div>
       </div>
 
-      <div className="steps">
-        <div className="step-dot done">1</div><div className="step-line" />
-        <div className="step-dot active">2</div><div className="step-line" />
-        <div className="step-dot">3</div><div className="step-line" />
-        <div className="step-dot">4</div>
-      </div>
 
       <div className="section-divider"><div className="section-divider-title big">ОБЯЗАТЕЛЬНЫЕ ПОЛЯ</div></div>
+
+      <CategorySwitch current="dom" editId={editId} />
 
       <div className="field-group">
         <Picker label="Вид дома" required options={DOM_PODTIP} value={extra.podtip || ""} onChange={setEx("podtip")} error={attemptedSubmit && !extra.podtip} />
@@ -543,6 +540,14 @@ function DomForm() {
 
       <div className="field-group">
         <Picker label="Форма участка" required options={FORMA_UCHASTKA} value={extra.formaUchastka || ""} onChange={setEx("formaUchastka")} error={attemptedSubmit && !extra.formaUchastka} />
+      </div>
+
+      <div className="field-group">
+        <Picker label="Первая линия" required options={["Да", "Нет"]} value={extra.pervayaLiniya || ""} onChange={setEx("pervayaLiniya")} error={attemptedSubmit && !extra.pervayaLiniya} />
+      </div>
+
+      <div className="field-group">
+        <Picker label="Угловой участок" required options={["Да", "Нет"]} value={extra.uglovoy || ""} onChange={setEx("uglovoy")} error={attemptedSubmit && !extra.uglovoy} />
       </div>
 
       <div className="field-group">
@@ -627,9 +632,6 @@ function DomForm() {
       </div>
       <Accordion title="УЧАСТОК" defaultOpen={true}>
         <MiniField label="Размер участка (например 29×16 м)" value={extra.razmerUchastka || ""} onChange={setEx("razmerUchastka")} />
-        <MiniYesNo label="Первая линия" value={extra.pervayaLiniya || ""} onChange={setEx("pervayaLiniya")} />
-        <MiniYesNo label="Угловой участок" value={extra.uglovoy || ""} onChange={setEx("uglovoy")} />
-        <MiniField label="Кадастровый номер" value={extra.kadastrNomer || ""} onChange={setEx("kadastrNomer")} />
         <MiniChips label="Забор" options={["Кирпичный", "Профнастил", "Бетонный", "Сетка", "Нет забора", "Другое"]} value={extra.zabor || ""} onChange={setEx("zabor")} />
         <MiniChips label="Ворота" options={["Обычные", "Автоматические", "Нет"]} value={extra.vorota || ""} onChange={setEx("vorota")} />
         <MiniChips label="Парковочные места" options={["1", "2", "3", "4", "5 и более"]} value={extra.parkovkaMest || ""} onChange={setEx("parkovkaMest")} />
@@ -647,7 +649,7 @@ function DomForm() {
         <MiniField label="Материал фасада" value={extra.fasadMaterial || ""} onChange={setEx("fasadMaterial")} />
         <MiniChips label="Материал кровли" options={["Металлочерепица", "Профнастил", "Шифер", "Мягкая кровля", "Другое"]} value={extra.krovlyaMaterial || ""} onChange={setEx("krovlyaMaterial")} />
         <MiniChips label="Состояние крыши" options={["Хорошее", "Нормальное", "Требует ремонта"]} value={extra.krovlyaSostoyanie || ""} onChange={setEx("krovlyaSostoyanie")} />
-        <MiniChips label="Состояние окон" options={["Пластиковые новые", "Пластиковые", "Деревянные", "Требуют замены"]} value={extra.sostOkna || ""} onChange={setEx("sostOkna")} />
+        <MiniChips label="Состояние окон" options={["Пластиковые новые", "Пластиковые", "Алюминиевые", "Деревянные", "Требуют замены"]} value={extra.sostOkna || ""} onChange={setEx("sostOkna")} />
         <MiniMultiChips label="Расположение окон (можно несколько)" options={WINDOW_DIRS} value={extra.okna} onChange={setEx("okna")} />
         <MiniYesNo label="Мебель остаётся" value={extra.mebelDaNet || ""} onChange={setEx("mebelDaNet")} />
         {extra.mebelDaNet === "Да" && (
@@ -667,7 +669,7 @@ function DomForm() {
 
       <Accordion title="КОММУНИКАЦИИ ПОДРОБНО">
         <MiniChips label="Мощность электричества" options={["1 фаза (220 В)", "3 фазы (380 В)"]} value={extra.moshnostElektr || ""} onChange={setEx("moshnostElektr")} />
-        <MiniYesNo label="Тёплые полы" value={extra.teplyePoly || ""} onChange={setEx("teplyePoly")} />
+        <MiniChips label="Тёплые полы" options={["Да, паровые тёплые полы", "Да, электро тёплые полы", "Нет"]} value={extra.teplyePoly || ""} onChange={setEx("teplyePoly")} />
         <MiniField label="Коммунальные платежи в месяц (в среднем)" value={extra.komPlatezhi || ""} onChange={setEx("komPlatezhi")} />
         <MiniField label="В отопительный сезон (в среднем)" value={extra.komPlatezhiZima || ""} onChange={setEx("komPlatezhiZima")} />
       </Accordion>
@@ -724,7 +726,7 @@ function DomForm() {
 
       <div className="section-divider private">
         <div className="section-divider-title big">Информация для агента</div>
-        <span className="lock-badge">🔒 ТОЛЬКО ДЛЯ ВАС</span>
+        <span className="lock-badge lock-yellow">🔒 ВИДИТЕ ТОЛЬКО ВЫ И РУКОВОДИТЕЛЬ — клиенты и другие агенты НЕ видят</span>
       </div>
       <div className="field-group">
         <div className="field-label">ФИО собственника</div>
@@ -740,6 +742,10 @@ function DomForm() {
       <div className="field-group">
         <div className="field-label">Точный адрес</div>
         <input className="field-input" value={exactAddress} onChange={(e) => setExactAddress(e.target.value)} />
+      </div>
+      <div className="field-group">
+        <div className="field-label">Кадастровый номер</div>
+        <input className="field-input" value={extra.kadastrNomer || ""} onChange={(e) => setEx("kadastrNomer")(e.target.value)} placeholder="Видят только агенты" />
       </div>
 
       <div className="field-group">
@@ -769,7 +775,7 @@ function DomForm() {
 
       <div className="section-divider" style={{ borderTopColor: "var(--line)" }}>
         <div className="section-divider-title big" style={{ color: "var(--text2)" }}>Финансовая информация</div>
-        <span className="lock-badge" style={{ color: "var(--text2)", background: "var(--fill)", borderColor: "var(--line)" }}>👥 ВИДЯТ ВСЕ АГЕНТЫ, РОП, АДМИН</span>
+        <span className="lock-badge lock-yellow">👥 ВИДЯТ ТОЛЬКО АГЕНТЫ, РОП И АДМИН — клиенты НЕ видят</span>
       </div>
       <div className="field-group">
         <div className="field-label">Цена в руки <span className="star">*</span><span className="required-note">(обязательно)</span></div>
