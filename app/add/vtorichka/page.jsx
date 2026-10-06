@@ -8,6 +8,7 @@ import MapPicker from "../../../components/MapPicker";
 import PhoneInput, { isPhoneComplete } from "../../../components/PhoneInput";
 import { Picker, MultiPicker } from "../../../components/Picker";
 import ConfirmDialog from "../../../components/ConfirmDialog";
+import CategorySwitch from "../../../components/CategorySwitch";
 import { FLOOR_CHOICES, FLOORS_TOTAL_CHOICES, floorToNumber, withFloorLabel, floorValue } from "../../../lib/floors";
 import PhotoUploader from "../../../components/PhotoUploader";
 import VideoReviewBlock from "../../../components/VideoReviewBlock";
@@ -484,14 +485,10 @@ function VtorichkaForm() {
         <div className="page-title">{editId ? "Редактирование — Вторичка" : "Вторичка"}</div>
       </div>
 
-      <div className="steps">
-        <div className="step-dot done">1</div><div className="step-line" />
-        <div className="step-dot active">2</div><div className="step-line" />
-        <div className="step-dot">3</div><div className="step-line" />
-        <div className="step-dot">4</div>
-      </div>
 
       <div className="section-divider"><div className="section-divider-title big">ОБЯЗАТЕЛЬНЫЕ ПОЛЯ</div></div>
+
+      <CategorySwitch current="vtorichka" editId={editId} />
 
       <div className="field-group">
         <LocationPicker
@@ -706,7 +703,7 @@ function VtorichkaForm() {
 
       <div className="section-divider private">
         <div className="section-divider-title big">Информация для агента</div>
-        <span className="lock-badge">🔒 ТОЛЬКО ДЛЯ ВАС</span>
+        <span className="lock-badge lock-yellow">🔒 ВИДИТЕ ТОЛЬКО ВЫ И РУКОВОДИТЕЛЬ — клиенты и другие агенты НЕ видят</span>
       </div>
       <div className="field-group">
         <div className="field-label">ФИО собственника</div>
@@ -751,7 +748,7 @@ function VtorichkaForm() {
 
       <div className="section-divider" style={{ borderTopColor: "var(--line)" }}>
         <div className="section-divider-title big" style={{ color: "var(--text2)" }}>Финансовая информация</div>
-        <span className="lock-badge" style={{ color: "var(--text2)", background: "var(--fill)", borderColor: "var(--line)" }}>👥 ВИДЯТ ВСЕ АГЕНТЫ, РОП, АДМИН</span>
+        <span className="lock-badge lock-yellow">👥 ВИДЯТ ТОЛЬКО АГЕНТЫ, РОП И АДМИН — клиенты НЕ видят</span>
       </div>
       <div className="field-group">
         <div className="field-label">Цена в руки <span className="star">*</span><span className="required-note">(обязательно)</span></div>
