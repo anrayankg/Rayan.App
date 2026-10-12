@@ -10,6 +10,7 @@ export const FORM_CATEGORIES = [
   { key: "pervichka", label: "Новостройки (первичка)" },
   { key: "dom", label: "Дома" },
   { key: "uchastok", label: "Участки" },
+  { key: "kommerciya", label: "Коммерческая недвижимость" },
 ];
 
 export default function CategorySwitch({ current, editId }) {
