@@ -8,7 +8,7 @@ import BottomNav from "../../../components/BottomNav";
 import AgentContactBlock from "../../../components/AgentContactBlock";
 import ShareSheet from "../../../components/ShareSheet";
 import ConfirmDialog from "../../../components/ConfirmDialog";
-import { HOUSE_LABELS } from "../../../lib/extraFields";
+import { HOUSE_LABELS, COMMERCE_LABELS } from "../../../lib/extraFields";
 import { useAgentsDir, agentDisplayName } from "../../../lib/agentsDir";
 import DescriptionBlock from "../../../components/DescriptionBlock";
 import { ShareOnPhoto, PencilOnPhoto } from "../../../components/PhotoActions";
@@ -134,6 +134,7 @@ const EXTRA_LABELS = {
   cenaM2: "Цена за м²", komUslugi: "Коммунальные платежи перед сделкой",
   ploshad_uchastka: "Площадь участка", naznachenie_zemli: "Назначение земли",
   ...HOUSE_LABELS,
+  ...COMMERCE_LABELS,
 };
 
 function extraLabel(key) {
@@ -228,7 +229,7 @@ export default function ListingDetailPage() {
   const l = listing;
   const { usd, kgs } = priceBlock(l);
   const photos = l.photos || [];
-  const FORM_PATH = { "вторичка": "vtorichka", "первичка": "pervichka", "дом": "dom", "участок": "uchastok" };
+  const FORM_PATH = { "вторичка": "vtorichka", "первичка": "pervichka", "дом": "dom", "участок": "uchastok", "коммерция": "kommerciya" };
   const canEditForm = !!FORM_PATH[l.type];
   const editHref = canEditForm ? `/add/${FORM_PATH[l.type]}?edit=${id}` : null;
   const clientUrl = clientListingLink(l, me);
