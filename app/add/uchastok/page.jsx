@@ -8,6 +8,7 @@ import MapPicker from "../../../components/MapPicker";
 import PhoneInput, { isPhoneComplete } from "../../../components/PhoneInput";
 import { Picker, MultiPicker } from "../../../components/Picker";
 import ConfirmDialog from "../../../components/ConfirmDialog";
+import AgentAssign from "../../../components/AgentAssign";
 import CategorySwitch from "../../../components/CategorySwitch";
 import PhotoUploader from "../../../components/PhotoUploader";
 import VideoReviewBlock from "../../../components/VideoReviewBlock";
@@ -151,14 +152,7 @@ function UchastokForm() {
   const [agentName, setAgentName] = useState("");
   const [agentPhone, setAgentPhone] = useState("");
 
-  // временное решение: запоминаем имя/телефон агента в этом браузере,
-  // чтобы не вводить заново каждый раз (полноценный вход в аккаунт — следующий этап)
-  useEffect(() => {
-    const savedName = localStorage.getItem("rayan_agent_name");
-    const savedPhone = localStorage.getItem("rayan_agent_phone");
-    if (savedName) setAgentName(savedName);
-    if (savedPhone) setAgentPhone(savedPhone);
-  }, []); // теперь ПУБЛИЧНОЕ поле
+  // имя и телефон агента подставляет компонент AgentAssign (из входа по ПИН)
   const [exactAddress, setExactAddress] = useState("");
   const [agentComment, setAgentComment] = useState("");
   const [docPhotos, setDocPhotos] = useState([]); // storage-пути для базы
@@ -423,8 +417,6 @@ function UchastokForm() {
       }, { onConflict: "listing_id" });
       if (e3) throw e3;
 
-      localStorage.setItem("rayan_agent_name", agentName);
-      localStorage.setItem("rayan_agent_phone", agentPhone);
 
       setSuccess(true);
       setTimeout(() => router.push(editId ? `/listing/${editId}` : "/"), 1200);
@@ -770,13 +762,7 @@ function UchastokForm() {
         <div className="section-divider-title">Контакт агента</div>
         <span className="lock-badge" style={{ color: "var(--accent-text)", background: "var(--fill)", borderColor: "var(--line)" }}>👁 ВИДЕН ВСЕМ</span>
       </div>
-      <div className="field-group">
-        <div className="field-label">Имя агента <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-        <input className={`field-input required-input ${attemptedSubmit && !agentName ? "field-error" : ""}`} value={agentName} onChange={(e) => setAgentName(e.target.value)} />
-      </div>
-      <div className="field-group">
-        <PhoneInput label="Телефон агента" required value={agentPhone} onChange={setAgentPhone} whiteBg error={attemptedSubmit && !isPhoneComplete(agentPhone)} />
-      </div>
+      <AgentAssign name={agentName} phone={agentPhone} attempted={attemptedSubmit} onChange={(n, ph) => { setAgentName(n); setAgentPhone(ph); }} />
 
       {error && <div className="status-msg error">Ошибка: {error}</div>}
       {success && <div className="status-msg success">{editId ? "Изменения сохранены! Возвращаемся к объекту..." : "Объект сохранён! Возвращаемся на главную..."}</div>}
