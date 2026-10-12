@@ -10,7 +10,7 @@ import CollectionPickerSheet from "../../components/CollectionPickerSheet";
 import ShareSheet from "../../components/ShareSheet";
 import { getThemeChoice, applyTheme } from "../../lib/theme";
 import { buildShareUrl } from "../../lib/share";
-import { clientListingLink, isAdmin } from "../../lib/agent";
+import { clientListingLink, isAdmin, isManager, isOwnListing } from "../../lib/agent";
 import FilterWizard from "../../components/FilterWizard";
 import { useKeptState } from "../../lib/keepState";
 import ConfirmDialog from "../../components/ConfirmDialog";
@@ -166,7 +166,7 @@ export default function ProfilePage() {
       const { data } = await supabase.from("listings")
         .select("id, display_id, type, status, price, currency, currency_new, district, zhk, room_type, rooms, area_m2, floor, floors_total, series, construction_status, delivery_year, delivery_quarter, extra_details, photos, agent_phone, created_at, description")
         .not("agent_phone", "is", null);
-      setMyListings((data || []).filter((l) => digitsOnly(l.agent_phone) === myDigits));
+      setMyListings((data || []).filter((l) => isOwnListing(l, agent)));
 
       const { data: cols } = await supabase.from("collections").select("*").eq("agent_id", agent.id).order("created_at", { ascending: false });
       setMyCollections(cols || []);
@@ -322,13 +322,14 @@ export default function ProfilePage() {
         <div style={sx.avatarBig}>{(agent.name || "?")[0]}</div>
         <div style={sx.name}>{agent.name}</div>
         <div style={sx.phone}>{agent.phone}</div>
+        <div style={{ color: "var(--accent-text)", fontWeight: 800, fontSize: 13, marginTop: 4 }}>{isAdmin(agent) ? "Директор" : agent.role === "rop" ? "Руководитель отдела" : "Агент"}</div>
         <button style={{ ...sx.editProfileBtn, opacity: 0.6 }} disabled>
           ✏️ Редактировать профиль ⭐ <span style={{ fontSize: 10 }}>(скоро)</span>
         </button>
       </div>
 
-      {isAdmin(agent) && (
-        <button className="fl-next" style={{ marginTop: 14 }} onClick={() => router.push("/agents")}>👥 Агенты и ПИН-коды</button>
+      {isManager(agent) && (
+        <button className="fl-next" style={{ marginTop: 14 }} onClick={() => router.push("/agents")}>{isAdmin(agent) ? "👥 Руководители, агенты и ПИН-коды" : "👥 Мои агенты и ПИН-коды"}</button>
       )}
 
       {/* Тема оформления */}
