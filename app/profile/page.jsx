@@ -9,6 +9,7 @@ import AddToCollectionButton from "../../components/AddToCollectionButton";
 import CollectionPickerSheet from "../../components/CollectionPickerSheet";
 import ShareSheet from "../../components/ShareSheet";
 import { getThemeChoice, applyTheme } from "../../lib/theme";
+import { useAgentsDir } from "../../lib/agentsDir";
 import { buildShareUrl } from "../../lib/share";
 import { clientListingLink, isAdmin, isManager, isOwnListing } from "../../lib/agent";
 import FilterWizard from "../../components/FilterWizard";
@@ -117,10 +118,33 @@ export default function ProfilePage() {
   const [pinInput, setPinInput] = useState("");
   const [loginError, setLoginError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [myListings, setMyListings] = useState([]);
+  const [teamListings, setMyListings] = useState([]);
   const [myCollections, setMyCollections] = useState([]);
 
   const [statusTab, setStatusTab] = useKeptState("prof_tab", "активно");
+  // Чьи объекты показывать: по умолчанию ТОЛЬКО мои. Директор и РОП могут переключить на команду или на одного агента.
+  const [scope, setScope] = useKeptState("prof_scope", "mine");
+  const agentsDir = useAgentsDir();
+  const last9 = (x) => digitsOnly(x).slice(-9);
+  const myListings = useMemo(() => {
+    if (!agent || !isManager(agent) || scope === "all") return teamListings;
+    const target = scope === "mine" ? last9(agent.phone) : scope;
+    return teamListings.filter((l) => last9(l.agent_phone) === target);
+  }, [teamListings, scope, agent]);
+  const scopeOptions = useMemo(() => {
+    if (!agent || !isManager(agent)) return [];
+    const by = {};
+    teamListings.forEach((l) => { const k = last9(l.agent_phone); if (k) by[k] = (by[k] || 0) + 1; });
+    const me9 = last9(agent.phone);
+    const names = Object.values(agentsDir || {});
+    const nameOf = (k) => (names.find((a) => last9(a.phone) === k) || {}).name || ("+996" + k);
+    const others = Object.keys(by).filter((k) => k !== me9).sort((a, b) => nameOf(a).localeCompare(nameOf(b), "ru"));
+    return [
+      { v: "mine", t: `Мои объекты (${by[me9] || 0})` },
+      { v: "all", t: `${isAdmin(agent) ? "Все объекты агентства" : "Вся моя команда"} (${teamListings.length})` },
+      ...others.map((k) => ({ v: k, t: `${nameOf(k)} (${by[k]})` })),
+    ];
+  }, [teamListings, agent, agentsDir]);
   const [search, setSearch] = useKeptState("prof_search", "");
   const [categoryFilter, setCategoryFilter] = useState(null);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
@@ -357,6 +381,15 @@ export default function ProfilePage() {
           <div style={sx.quickLabel}>Клиенты</div>
         </a>
       </div>
+
+      {scopeOptions.length > 0 && (
+        <div className="scope-box">
+          <label>Чьи объекты показывать</label>
+          <select value={scope} onChange={(e) => setScope(e.target.value)}>
+            {scopeOptions.map((o) => <option key={o.v} value={o.v}>{o.t}</option>)}
+          </select>
+        </div>
+      )}
 
       {/* Вкладки статусов */}
       <div style={sx.statusTabsRow}>
