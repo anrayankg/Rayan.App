@@ -9,6 +9,7 @@ import PhoneInput, { isPhoneComplete } from "../../../components/PhoneInput";
 import { Picker, MultiPicker } from "../../../components/Picker";
 import ConfirmDialog from "../../../components/ConfirmDialog";
 import AgentAssign from "../../../components/AgentAssign";
+import AutoTextarea from "../../../components/AutoTextarea";
 import CategorySwitch from "../../../components/CategorySwitch";
 import PhotoUploader from "../../../components/PhotoUploader";
 import VideoReviewBlock from "../../../components/VideoReviewBlock";
@@ -636,7 +637,7 @@ function UchastokForm() {
 
       <div className="field-group">
         <div className="field-label">Описание для клиента <span className="star">*</span><span className="required-note">(обязательно)</span></div>
-        <textarea className={`field-textarea required-input ${attemptedSubmit && !description ? "field-error" : ""}`} value={description} onChange={(e) => setDescription(e.target.value)} />
+        <AutoTextarea className={`field-textarea required-input ${attemptedSubmit && !description ? "field-error" : ""}`} value={description} onChange={(e) => setDescription(e.target.value)} />
         <button className="ai-btn" type="button" disabled>✨ Сформировать описание с ИИ (следующий этап)</button>
       </div>
 
@@ -719,7 +720,7 @@ function UchastokForm() {
       </div>
       <div className="field-group">
         <div className="field-label">Комментарий агента</div>
-        <textarea className="field-textarea" value={agentComment} onChange={(e) => setAgentComment(e.target.value)} placeholder="Видят все агенты, РОП, Админ — не видит клиент" />
+        <AutoTextarea className="field-textarea" value={agentComment} onChange={(e) => setAgentComment(e.target.value)} placeholder="Видят все агенты, РОП, Админ — не видит клиент" />
       </div>
 
       <div className="section-divider private"><div className="section-divider-title">Договор</div></div>
