@@ -420,7 +420,7 @@ export default function ListingDetailPage() {
             <div className="owner-contact-phone">{contact.owner_phone || contact.owner_whatsapp}</div>
             <a className="owner-call" href={`tel:${String(contact.owner_phone || contact.owner_whatsapp).replace(/[^\d+]/g, "")}`}>Позвонить собственнику</a>
             <div className="owner-contact-row">
-              <a className="owner-soc" href={waLink(contact.owner_whatsapp || contact.owner_phone, `Здравствуйте! По вашему объекту${l.display_id ? " ID " + l.display_id : ""}`)} target="_blank" rel="noreferrer">
+              <a className="owner-soc" href={waLink(contact.owner_whatsapp || contact.owner_phone, `Здравствуйте! Я пишу по поводу этого объекта:\n${clientUrl}`)} target="_blank" rel="noreferrer">
                 <WhatsAppLogo size={30} /> WhatsApp
               </a>
               <a className="owner-soc" href={tgLink(contact.owner_phone || contact.owner_whatsapp)} target="_blank" rel="noreferrer">
