@@ -54,71 +54,137 @@ async function geocodeDistrict(district, cityPart) {
   return valid ? { lat: valid.lat, lng: valid.lng, zoom: 15 } : null;
 }
 
-export default function MapPicker({ label, required, lat, lng, flyToQuery, flyToCity, onChange }) {
+export default function MapPicker({ label, required, lat, lng, flyToQuery, flyToCity, onChange, onAddress }) {
   const mapRef = useRef(null);
   const mapInstance = useRef(null);
   const markerRef = useRef(null);
+  const onChangeRef = useRef(onChange);
+  const onAddressRef = useRef(onAddress);
+  onChangeRef.current = onChange;
+  onAddressRef.current = onAddress;
   const [ready, setReady] = useState(false);
+  const [flyStatus, setFlyStatus] = useState(null);
+
+  // поиск адреса (как в Tamyr): печатаем — появляются подсказки — выбрали — карта переносит туда
+  const [query, setQuery] = useState("");
+  const [sugg, setSugg] = useState([]);
+  const [open, setOpen] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [addrText, setAddrText] = useState("");
+  const [geoMsg, setGeoMsg] = useState("");
+  const timer = useRef(null);
+  const seq = useRef(0);
+
+  function putMarker(plat, plng, zoom) {
+    const L = window.L, map = mapInstance.current;
+    if (!L || !map) return;
+    if (markerRef.current) markerRef.current.setLatLng([plat, plng]);
+    else markerRef.current = L.marker([plat, plng]).addTo(map);
+    if (zoom) map.flyTo([plat, plng], zoom, { duration: 0.8 });
+  }
+
+  async function lookupAddress(plat, plng) {
+    try {
+      const r = await fetch(`/api/geocode?lat=${plat}&lng=${plng}`);
+      const d = await r.json();
+      const c = d && d.candidates && d.candidates[0];
+      const text = c ? [c.label, c.sub].filter(Boolean).join(", ") : "";
+      setAddrText(text);
+      if (text && onAddressRef.current) onAddressRef.current(text);
+    } catch { setAddrText(""); }
+  }
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-
     function initMap() {
       const L = window.L;
       if (!mapRef.current || mapInstance.current) return;
-
       const start = lat && lng ? [lat, lng] : DEFAULT_CENTER;
-      const map = L.map(mapRef.current).setView(start, 13);
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "© OpenStreetMap",
-      }).addTo(map);
-
-      if (lat && lng) {
-        markerRef.current = L.marker([lat, lng]).addTo(map);
-      }
-
+      const map = L.map(mapRef.current).setView(start, lat && lng ? 16 : 13);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OpenStreetMap", maxZoom: 19 }).addTo(map);
+      if (lat && lng) markerRef.current = L.marker([lat, lng]).addTo(map);
       map.on("click", (e) => {
-        const { lat: newLat, lng: newLng } = e.latlng;
-        if (markerRef.current) {
-          markerRef.current.setLatLng([newLat, newLng]);
-        } else {
-          markerRef.current = L.marker([newLat, newLng]).addTo(map);
-        }
-        onChange(newLat, newLng);
+        const { lat: nLat, lng: nLng } = e.latlng;
+        putMarker(nLat, nLng);
+        onChangeRef.current(nLat, nLng);
+        lookupAddress(nLat, nLng);
       });
-
       mapInstance.current = map;
       setReady(true);
     }
-
-    if (window.L) {
-      initMap();
-    } else {
+    if (window.L) initMap();
+    else {
       const cssLink = document.createElement("link");
       cssLink.rel = "stylesheet";
       cssLink.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
       document.head.appendChild(cssLink);
-
       const script = document.createElement("script");
       script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
       script.onload = initMap;
       document.body.appendChild(script);
     }
-
-    return () => {
-      if (mapInstance.current) {
-        mapInstance.current.remove();
-        mapInstance.current = null;
-      }
-    };
+    return () => { if (mapInstance.current) { mapInstance.current.remove(); mapInstance.current = null; markerRef.current = null; } };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const [flyStatus, setFlyStatus] = useState(null);
+  // подсказки при вводе (с паузой, чтобы не слать запрос на каждую букву)
+  function onType(v) {
+    setQuery(v);
+    setOpen(true);
+    clearTimeout(timer.current);
+    if (v.trim().length < 2) { setSugg([]); setSearching(false); return; }
+    setSearching(true);
+    const my = ++seq.current;
+    timer.current = setTimeout(async () => {
+      const list = await geocodeCandidates(v.trim());
+      if (my !== seq.current) return;
+      setSugg(list.slice(0, 7));
+      setSearching(false);
+    }, 350);
+  }
 
-  // Авто-перелёт карты к нужному району при выборе — сначала пробуем район
-  // (с несколькими формулировками для номерных микрорайонов), если не
-  // нашли ничего подтверждённого — хотя бы до уровня города.
+  async function exactSearch() {
+    const v = query.trim();
+    if (v.length < 2) return;
+    setSearching(true);
+    try {
+      const r = await fetch(`/api/geocode?q=${encodeURIComponent(v)}&exact=1`);
+      const d = await r.json();
+      setSugg(((d && d.candidates) || []).slice(0, 7));
+    } catch { setSugg([]); }
+    setSearching(false);
+    setOpen(true);
+  }
+
+  function pick(c) {
+    setOpen(false);
+    setSugg([]);
+    const text = [c.label, c.sub].filter(Boolean).join(", ");
+    setQuery(c.label || text);
+    setAddrText(text);
+    putMarker(c.lat, c.lng, 17);
+    onChangeRef.current(c.lat, c.lng);
+    if (onAddressRef.current) onAddressRef.current(text);
+  }
+
+  function locateMe() {
+    setGeoMsg("");
+    if (!navigator.geolocation) { setGeoMsg("Телефон не даёт определить место"); return; }
+    setGeoMsg("Определяем…");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        putMarker(latitude, longitude, 17);
+        onChangeRef.current(latitude, longitude);
+        lookupAddress(latitude, longitude);
+        setGeoMsg("");
+      },
+      () => setGeoMsg("Не удалось определить. Разрешите доступ к геопозиции в настройках браузера."),
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }
+
+  // Авто-перелёт к выбранному району (как раньше)
   useEffect(() => {
     if (!mapInstance.current) return;
     if (!flyToQuery && !flyToCity) return;
@@ -133,15 +199,11 @@ export default function MapPicker({ label, required, lat, lng, flyToQuery, flyTo
         if (valid) result = { lat: valid.lat, lng: valid.lng, zoom: 12 };
       }
       if (cancelled) return;
-      if (result) {
-        mapInstance.current.flyTo([result.lat, result.lng], result.zoom);
-        setFlyStatus("found");
-      } else {
-        setFlyStatus("notfound");
-      }
+      if (result) { mapInstance.current.flyTo([result.lat, result.lng], result.zoom); setFlyStatus("found"); }
+      else setFlyStatus("notfound");
     })();
     return () => { cancelled = true; };
-  }, [flyToQuery, flyToCity]);
+  }, [flyToQuery, flyToCity, ready]);
 
   return (
     <div>
@@ -150,19 +212,54 @@ export default function MapPicker({ label, required, lat, lng, flyToQuery, flyTo
           {label} {required && <span className="star">*</span>}
         </div>
       )}
-      <div
-        ref={mapRef}
-        style={{
-          width: "100%", height: 220, borderRadius: "var(--r)", overflow: "hidden",
-          border: "1px solid var(--line)", background: "var(--surface)",
-        }}
-      />
-      <div style={{ color: "var(--muted)", fontSize: 10.5, marginTop: 6 }}>
+
+      <div className="map-search">
+        <div className="map-search-box">
+          <span className="map-search-ico">🔍</span>
+          <input
+            type="search"
+            enterKeyHint="search"
+            value={query}
+            placeholder="Найти: улица, дом, ЖК, район…"
+            onChange={(e) => onType(e.target.value)}
+            onFocus={() => setOpen(true)}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); exactSearch(); e.currentTarget.blur(); } }}
+          />
+          {query && <button type="button" className="map-search-x" aria-label="Очистить" onClick={() => { setQuery(""); setSugg([]); }}>✕</button>}
+        </div>
+        {open && query.trim().length >= 2 && (
+          <div className="map-sugg">
+            {searching && sugg.length === 0 && <div className="map-sugg-note">Ищем…</div>}
+            {!searching && sugg.length === 0 && (
+              <div className="map-sugg-note">
+                Ничего не нашли. Нажмите «Найти» на клавиатуре для точного поиска или укажите точку на карте вручную.
+              </div>
+            )}
+            {sugg.map((c, i) => (
+              <button type="button" key={i} className="map-sugg-item" onClick={() => pick(c)}>
+                <span className="map-sugg-pin">📍</span>
+                <span className="map-sugg-text">
+                  <b>{c.label || c.name}</b>
+                  {c.sub && <small>{c.sub}</small>}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="map-wrap">
+        <div ref={mapRef} className="map-box" />
+        <button type="button" className="map-locate" onClick={locateMe}>◎ Определить адрес</button>
+      </div>
+      {geoMsg && <div className="map-note">{geoMsg}</div>}
+      {addrText && <div className="map-addr">📍 {addrText}</div>}
+      <div className="map-note">
         {lat && lng
-          ? `Точка выбрана: ${lat.toFixed(5)}, ${lng.toFixed(5)}`
+          ? `Точка выбрана: ${lat.toFixed(5)}, ${lng.toFixed(5)}. Можно нажать на карту, чтобы поправить.`
           : flyStatus === "notfound"
-          ? "Не нашли автоматически — найдите место на карте и тапните по нему"
-          : "Найдите нужное место на карте и тапните по нему, чтобы поставить точку"}
+          ? "Район не нашли автоматически — введите адрес в строке выше или нажмите на карту"
+          : "Введите адрес в строке выше или нажмите на карту, чтобы поставить точку"}
       </div>
     </div>
   );
