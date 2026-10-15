@@ -10,6 +10,7 @@ import CollectionPickerSheet from "../../components/CollectionPickerSheet";
 import ShareSheet from "../../components/ShareSheet";
 import { getThemeChoice, applyTheme } from "../../lib/theme";
 import { useAgentsDir } from "../../lib/agentsDir";
+import { Picker } from "../../components/Picker";
 import { buildShareUrl } from "../../lib/share";
 import { clientListingLink, isAdmin, isManager, isOwnListing } from "../../lib/agent";
 import FilterWizard from "../../components/FilterWizard";
@@ -123,7 +124,7 @@ export default function ProfilePage() {
 
   const [statusTab, setStatusTab] = useKeptState("prof_tab", "активно");
   // Чьи объекты показывать: по умолчанию ТОЛЬКО мои. Директор и РОП могут переключить на команду или на одного агента.
-  const [scope, setScope] = useKeptState("prof_scope", "mine");
+  const [scope, setScope] = useKeptState("prof_scope", "mine", "local");
   const agentsDir = useAgentsDir();
   const last9 = (x) => digitsOnly(x).slice(-9);
   const myListings = useMemo(() => {
@@ -152,6 +153,12 @@ export default function ProfilePage() {
   const [pfilter, setPfilter] = useKeptState("prof_filter", EMPTY);
   const [pfilterOpen, setPfilterOpen] = useState(false);
   const [askDeactivate, setAskDeactivate] = useState(false);
+  // Передача объектов другому агенту (директор / РОП)
+  const [moveOpen, setMoveOpen] = useState(false);
+  const [moveTo, setMoveTo] = useState("");
+  const [moveAsk, setMoveAsk] = useState(false);
+  const [moveBusy, setMoveBusy] = useState(false);
+  const [moveMsg, setMoveMsg] = useState("");
   const [theme, setTheme] = useState("system");
   useEffect(() => { setTheme(getThemeChoice()); }, []);
   const [profileShareUrl, setProfileShareUrl] = useState("");
@@ -244,6 +251,43 @@ export default function ProfilePage() {
     if (l.ad_status === "активна") return { label: "Реклама активна", bg: "#1FA35C", icon: "✅" };
     if (l.ad_status === "просрочена") return { label: "Просрочена реклама", bg: "#D64545", icon: "⚠️" };
     return { label: "Требует рекламы", bg: "var(--surface2)", icon: "⚠️" };
+  }
+
+  const moveCandidates = useMemo(() => {
+    if (!agent || !isManager(agent)) return [];
+    const all = Object.values(agentsDir || {});
+    if (isAdmin(agent)) return all;
+    const ok = new Set([...(agent.team || []), agent.phone].map((x) => last9(x)));
+    return all.filter((a) => ok.has(last9(a.phone)));
+  }, [agent, agentsDir]);
+  const moveLabel = (a) => `${a.name} · ${a.phone}`;
+  const moveTarget = moveCandidates.find((a) => moveLabel(a) === moveTo) || null;
+  // что передаём: выбранные кружочками, а если ничего не выбрано — всё, что сейчас показано (с учётом фильтра)
+  const moveList = () => (selected.size > 0 ? myListings.filter((l) => selected.has(l.id)) : visibleListings);
+
+  async function doMove() {
+    if (!moveTarget) return;
+    setMoveBusy(true); setMoveMsg("");
+    const list = moveList();
+    const ids = list.map((l) => l.id);
+    let failed = 0;
+    for (let i = 0; i < ids.length; i += 100) {
+      const chunk = ids.slice(i, i + 100);
+      const { error } = await supabase.from("listings").update({ agent_phone: moveTarget.phone, agent_name: moveTarget.name }).in("id", chunk);
+      if (error) failed += chunk.length;
+    }
+    setMoveBusy(false);
+    setMoveAsk(false);
+    const okIds = new Set(ids);
+    if (failed === 0) {
+      setMyListings((prev) => prev.map((l) => (okIds.has(l.id) ? { ...l, agent_phone: moveTarget.phone, agent_name: moveTarget.name } : l)));
+      setSelected(new Set());
+      setMoveOpen(false);
+      setMoveTo("");
+      alert(`Готово: передано объектов — ${ids.length}. Теперь они закреплены за агентом ${moveTarget.name}.`);
+    } else {
+      setMoveMsg(`Не все объекты передались (ошибок: ${failed}). Попробуйте ещё раз.`);
+    }
   }
 
   async function bulkDeactivate() {
@@ -382,14 +426,6 @@ export default function ProfilePage() {
         </a>
       </div>
 
-      {scopeOptions.length > 0 && (
-        <div className="scope-box">
-          <label>Чьи объекты показывать</label>
-          <select value={scope} onChange={(e) => setScope(e.target.value)}>
-            {scopeOptions.map((o) => <option key={o.v} value={o.v}>{o.t}</option>)}
-          </select>
-        </div>
-      )}
 
       {/* Вкладки статусов */}
       <div style={sx.statusTabsRow}>
@@ -407,6 +443,13 @@ export default function ProfilePage() {
 
       {/* Поиск + фильтры — закреплены сверху, не уезжают при листании */}
       <div className="prof-sticky">
+      {scopeOptions.length > 0 && (
+        <div className="scope-box">
+          <select value={scope} onChange={(e) => setScope(e.target.value)}>
+            {scopeOptions.map((o) => <option key={o.v} value={o.v}>{o.t}</option>)}
+          </select>
+        </div>
+      )}
       <div style={sx.searchRow}>
         <span style={{ opacity: 0.5 }}>🔍</span>
         <input type="search" enterKeyHint="search" onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } }} value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Поиск по моим объектам" style={sx.searchInput} />
@@ -433,6 +476,11 @@ export default function ProfilePage() {
         <div style={sx.emptyMsg}>Ничего не найдено в этой вкладке.</div>
       ) : (
         <>
+          {isManager(agent) && (
+            <button className="move-btn" onClick={() => { setMoveMsg(""); setMoveOpen(true); }}>
+              🔁 Передать объекты другому агенту{selected.size > 0 ? ` (выбрано ${selected.size})` : ` (показано ${visibleListings.length})`}
+            </button>
+          )}
           <div style={sx.selectHeaderRow}>
             <span style={sx.selectHeaderText}>
               {selected.size > 0 ? `Выбрано ${selected.size}/${visibleListings.length}` : `Всего объявлений: ${visibleListings.length}`}
@@ -458,6 +506,7 @@ export default function ProfilePage() {
                     <div style={sx.bigCardMeta}>{fullCharLine(l)}</div>
                     <div style={sx.bigCardCategory}>{listingCategory(l)}{isPso(l) && <b className="pso-tag"> (СДАН ПСО)</b>}</div>
                     <div style={sx.bigCardLoc}>{[l.zhk, l.district].filter(Boolean).join(", ")}</div>
+                    {isManager(agent) && scope !== "mine" && <div className="card-agent">Агент: {(Object.values(agentsDir || {}).find((x) => last9(x.phone) === last9(l.agent_phone)) || {}).name || l.agent_name || l.agent_phone || "—"}</div>}
                     {l.description && <div style={sx.bigCardDesc}>{l.description}</div>}
                   </a>
                   <div style={sx.statsBox}>
@@ -539,6 +588,31 @@ export default function ProfilePage() {
           : statusTab === "черновики" ? DRAFT_STATUSES.includes(l.status)
           : !ACTIVE_STATUSES.includes(l.status) && !DRAFT_STATUSES.includes(l.status))}
         value={pfilter} onApply={setPfilter} />
+      {moveOpen && (
+        <div className="cd-overlay" onClick={() => !moveBusy && setMoveOpen(false)}>
+          <div className="cd-box" onClick={(e) => e.stopPropagation()}>
+            <div className="cd-title">Передать объекты агенту</div>
+            <div className="ag-muted" style={{ marginBottom: 12 }}>
+              Будет передано: <b style={{ color: "var(--text)" }}>{moveList().length}</b>{" "}
+              {selected.size > 0 ? "выбранных объектов." : "объектов — всё, что сейчас показано в списке с учётом фильтра, поиска и вкладки."}
+              {" "}Номер агента в этих объектах заменится на номер нового агента.
+            </div>
+            <div className="ag-muted" style={{ marginBottom: 12 }}>
+              Хотите передать только часть (например, 1–2-комнатные одному агенту, 3–5-комнатные другому, дома третьему)? Закройте окно, поставьте нужный фильтр кнопкой «Фильтр» и нажмите «Передать» снова.
+            </div>
+            <Picker label="Кому передать" required options={moveCandidates.map(moveLabel)} value={moveTo} onChange={setMoveTo} />
+            {moveMsg && <div className="ag-error">{moveMsg}</div>}
+            <div className="cd-actions">
+              <button className="cd-cancel" disabled={moveBusy} onClick={() => setMoveOpen(false)}>Отмена</button>
+              <button className="cd-ok" disabled={!moveTarget || moveBusy || moveList().length === 0} onClick={() => setMoveAsk(true)}>Далее</button>
+            </div>
+          </div>
+        </div>
+      )}
+      <ConfirmDialog open={moveAsk} title="Передать объекты?"
+        text={moveTarget ? `${moveList().length} объектов будут закреплены за агентом ${moveTarget.name} (${moveTarget.phone}). Это изменит номер агента в карточках.` : ""}
+        confirmText={moveBusy ? "Передаю…" : "Передать"} cancelText="Отклонить"
+        onConfirm={doMove} onCancel={() => !moveBusy && setMoveAsk(false)} />
       <ConfirmDialog open={askDeactivate} danger title="Снять с продажи?"
         text={`Выбрано объектов: ${selected.size}. Они перейдут во вкладку «Снятые».`}
         confirmText="Снять" cancelText="Отклонить"
