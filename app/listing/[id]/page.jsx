@@ -9,6 +9,7 @@ import AgentContactBlock from "../../../components/AgentContactBlock";
 import ShareSheet from "../../../components/ShareSheet";
 import ConfirmDialog from "../../../components/ConfirmDialog";
 import OwnerOtherListings from "../../../components/OwnerOtherListings";
+import { auditFields } from "../../../lib/audit";
 import { HOUSE_LABELS, COMMERCE_LABELS } from "../../../lib/extraFields";
 import { useAgentsDir, agentDisplayName } from "../../../lib/agentsDir";
 import DescriptionBlock from "../../../components/DescriptionBlock";
@@ -43,7 +44,7 @@ function EditableRow({ label, rawValue, displayValue, field, listingId, onSaved,
     setSaving(true);
     try {
       const toSave = type === "number" ? (val === "" ? null : Number(val)) : val;
-      const { error } = await supabase.from("listings").update({ [field]: toSave }).eq("id", listingId);
+      const { error } = await supabase.from("listings").update({ ...auditFields(), [field]: toSave }).eq("id", listingId);
       if (error) throw error;
       onSaved(toSave);
       setEditing(false);
@@ -195,7 +196,7 @@ export default function ListingDetailPage() {
   async function approve() {
     setApproving(true);
     try {
-      const { error: e } = await supabase.from("listings").update({ status: "активен" }).eq("id", id);
+      const { error: e } = await supabase.from("listings").update({ ...auditFields(), status: "активен" }).eq("id", id);
       if (e) throw e;
       setListing((l) => ({ ...l, status: "активен" }));
     } catch (err) {
@@ -335,7 +336,7 @@ export default function ListingDetailPage() {
             videos={l.video_links || []}
             onChange={async (newVideos) => {
               setListing((x) => ({ ...x, video_links: newVideos }));
-              const { error: e } = await supabase.from("listings").update({ video_links: newVideos }).eq("id", id);
+              const { error: e } = await supabase.from("listings").update({ ...auditFields(), video_links: newVideos }).eq("id", id);
               if (e) alert("Не удалось сохранить видео: " + e.message);
             }}
           />
@@ -399,7 +400,9 @@ export default function ListingDetailPage() {
         {/* Закрытая информация — видна только владельцу */}
         <div style={{ ...sx.section, ...sx.privateSection }}>
           <div style={{ ...sx.sectionTitle, color: "var(--muted)" }}>🔒 Договор</div>
-          <Row label="Статус договора" value={l.contract_status || "не указан"} />
+          <Row label="Договор с собственником" value={l.contract_status === "с договором" ? "Заключён" : l.contract_status === "без договора" ? "Договора нет" : "Не заполнено"} />
+          {l.contract_status === "с договором" && <Row label="Дата заключения" value={l.contract_date ? l.contract_date.split("-").reverse().join(".") : "не указана"} />}
+          {l.contract_status === "с договором" && <Row label="Тип договора" value={l.contract_type} />}
         </div>
 
         {contact && (
@@ -449,7 +452,7 @@ export default function ListingDetailPage() {
           setPhotoEdit(false);
           setListing((x) => ({ ...x, photos: newPhotos }));
           setActivePhoto(0);
-          const { error: e } = await supabase.from("listings").update({ photos: newPhotos }).eq("id", id);
+          const { error: e } = await supabase.from("listings").update({ ...auditFields(), photos: newPhotos }).eq("id", id);
           if (e) alert("Не удалось сохранить фото: " + e.message);
         }} />
       <ConfirmDialog open={askDelete} danger title="Удалить объект?"
