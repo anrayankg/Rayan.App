@@ -848,3 +848,45 @@ input[type="search"]::-webkit-search-cancel-button, input[type="search"]::-webki
 .scope-box label { display: block; font-size: 12.5px; color: var(--muted); font-weight: 700; margin-bottom: 6px; }
 .scope-box select { width: 100%; min-height: 50px; background: var(--surface); color: var(--text); border: 1px solid var(--line); border-radius: var(--r); padding: 0 12px; font-size: 16px; font-weight: 700; }
 .card-agent { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+/* Карта: поиск адреса с подсказками, как в Tamyr */
+.map-search { position: relative; margin-bottom: 10px; z-index: 30; }
+.map-search-box { display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 0 12px; min-height: 52px; }
+.map-search-box:focus-within { border-color: var(--accent); }
+.map-search-box input { flex: 1; background: transparent; border: none; outline: none; color: var(--text); font-size: 16px; min-height: 50px; }
+.map-search-box input::placeholder { color: var(--muted); }
+.map-search-x { background: var(--fill); border: none; color: var(--text); width: 28px; height: 28px; border-radius: 50%; font-size: 12px; }
+.map-sugg { position: absolute; left: 0; right: 0; top: 58px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); max-height: 340px; overflow-y: auto; }
+.map-sugg-item { display: flex; gap: 10px; width: 100%; text-align: left; background: none; border: none; border-bottom: 1px solid var(--line-soft); padding: 12px; color: var(--text); }
+.map-sugg-item:last-child { border-bottom: none; }
+.map-sugg-text { display: flex; flex-direction: column; min-width: 0; }
+.map-sugg-text b { font-size: 15px; }
+.map-sugg-text small { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+.map-sugg-note { padding: 14px 12px; color: var(--muted); font-size: 13.5px; line-height: 1.4; }
+.map-wrap { position: relative; }
+.map-box { width: 100%; height: 300px; border-radius: var(--r); overflow: hidden; border: 1px solid var(--line); background: var(--surface); z-index: 1; }
+.map-locate { position: absolute; left: 10px; bottom: 10px; z-index: 500; background: var(--surface); color: var(--accent-text); border: 1px solid var(--line); border-radius: 22px; padding: 11px 16px; font-size: 15px; font-weight: 800; box-shadow: var(--shadow); }
+.map-addr { margin-top: 8px; font-size: 14px; font-weight: 700; color: var(--text); line-height: 1.4; }
+.map-note { color: var(--muted); font-size: 12px; margin-top: 6px; line-height: 1.4; }
+/* Другие объекты этого человека */
+.oo-panel { margin-top: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.oo-head { display: flex; align-items: center; gap: 12px; width: 100%; background: none; border: none; padding: 14px; color: var(--text); text-align: left; }
+.oo-ava { width: 46px; height: 46px; border-radius: 50%; background: var(--surface2); display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 18px; flex-shrink: 0; }
+.oo-text { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.oo-text b { font-size: 17px; }
+.oo-text small { color: var(--muted); font-size: 14px; margin-top: 2px; }
+.oo-arrow { color: var(--muted); font-size: 22px; }
+.oo-title { display: block; width: 100%; background: none; border: none; border-top: 1px solid var(--line-soft); padding: 14px; text-align: left; color: var(--text); font-size: 16px; font-weight: 800; }
+.oo-list { border-top: 1px solid var(--line-soft); }
+.oo-item { display: block; padding: 12px 14px; border-bottom: 1px solid var(--line-soft); text-decoration: none; color: var(--text); }
+.oo-item:last-child { border-bottom: none; }
+.oo-price { font-weight: 800; font-size: 17px; }
+.oo-chars { font-size: 14px; margin-top: 2px; }
+.oo-cat { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+/* Нижнее меню всегда поверх карточек (кружки выбора больше не мешают нажать «Профиль») */
+.bottomnav { z-index: 90 !important; }
+.select-circle { z-index: 2; }
+
+.move-btn { width: 100%; min-height: 48px; background: var(--fill); border: 1px solid var(--line); color: var(--text); border-radius: var(--r); font-size: 15px; font-weight: 800; margin: 4px 0 12px; }
+.prof-sticky .scope-box { margin: 0 0 8px; }
+.prof-sticky .scope-box select { min-height: 46px; }
