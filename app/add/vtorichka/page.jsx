@@ -9,6 +9,7 @@ import PhoneInput, { isPhoneComplete } from "../../../components/PhoneInput";
 import { Picker, MultiPicker } from "../../../components/Picker";
 import ConfirmDialog from "../../../components/ConfirmDialog";
 import AgentAssign from "../../../components/AgentAssign";
+import { auditFields } from "../../../lib/audit";
 import AutoTextarea from "../../../components/AutoTextarea";
 import CategorySwitch from "../../../components/CategorySwitch";
 import { FLOOR_CHOICES, FLOORS_TOTAL_CHOICES, floorToNumber, withFloorLabel, floorValue } from "../../../lib/floors";
@@ -228,7 +229,9 @@ function VtorichkaForm() {
       e.target.value = "";
     }
   }
-  const [contractStatus, setContractStatus] = useState("без договора");
+  const [contractStatus, setContractStatus] = useState(""); // обязательно выбрать: с договором / без договора
+  const [contractDate, setContractDate] = useState("");
+  const [contractType, setContractType] = useState("");
 
   const [extra, setExtra] = useState({});
   const setEx = (key) => (val) => setExtra((p) => ({ ...p, [key]: val }));
@@ -243,6 +246,7 @@ function VtorichkaForm() {
     !roomType && "Комнатность", !series && "Серия дома",
     !area && "Площадь", !floor && "Этаж", !floorsTotal && "Этажность",
     docs.length === 0 && "Документы", !heating && "Отопление", !commsTouched && "Коммуникации",
+    !contractStatus && "Договор с собственником (есть / нет)",
     !price && "Цена",
     !isPhoneComplete(ownerPhone) && "Телефон собственника",
     !isPhoneComplete(ownerWhatsapp) && "WhatsApp собственника",
@@ -288,7 +292,9 @@ function VtorichkaForm() {
         setDescription(l.description || "");
         setPhotos(l.photos || []);
         setVideos(l.video_links || []);
-        setContractStatus(l.contract_status || "без договора");
+        setContractStatus(l.contract_status || "");
+        setContractDate(l.contract_date || "");
+        setContractType(l.contract_type || "");
         setExtra(l.extra_details || {});
         setAgentName(l.agent_name || "");
         setAgentPhone(l.agent_phone || "");
@@ -343,7 +349,10 @@ function VtorichkaForm() {
         deal_terms: dealTerms.join(", "),
         obmen_na: dealTerms.includes("Обмен") ? [...obmenNa, obmenDrugoe].filter(Boolean).join(", ") : null,
         torg, description, photos, video_links: videos,
-        contract_status: contractStatus,
+        contract_status: contractStatus || null,
+        contract_date: contractStatus === "с договором" && contractDate ? contractDate : null,
+        contract_type: contractStatus === "с договором" && contractType ? contractType : null,
+        ...auditFields(),
         extra_details: withFloorLabel(extra, floor),
         agent_phone: agentPhone, agent_name: agentName,
       };
@@ -406,7 +415,10 @@ function VtorichkaForm() {
         description,
         photos,
         video_links: videos,
-        contract_status: contractStatus,
+        contract_status: contractStatus || null,
+        contract_date: contractStatus === "с договором" && contractDate ? contractDate : null,
+        contract_type: contractStatus === "с договором" && contractType ? contractType : null,
+        ...auditFields(),
         extra_details: withFloorLabel(extra, floor),
         agent_phone: agentPhone,
         agent_name: agentName,
@@ -765,18 +777,23 @@ function VtorichkaForm() {
         <AutoTextarea className="field-textarea" value={agentComment} onChange={(e) => setAgentComment(e.target.value)} placeholder="Видят все агенты, РОП, Админ — не видит клиент" />
       </div>
 
-      <div className="section-divider private"><div className="section-divider-title">Договор</div></div>
+      <div className="section-divider private"><div className="section-divider-title">Договор с собственником <span className="star">*</span></div></div>
       <div className="field-group">
-        <div className="chip-group">
+        <div className={`chip-group ${attemptedSubmit && !contractStatus ? "field-error" : ""}`}>
           {["без договора", "с договором"].map((s) => (
             <div key={s} className={`chip ${contractStatus === s ? "selected" : ""}`} onClick={() => setContractStatus(s)}>
               {s === "без договора" ? "Без договора" : "С договором"}
             </div>
           ))}
         </div>
+        {attemptedSubmit && !contractStatus && <div className="ag-error">Выберите: договор с собственником есть или его нет</div>}
         {contractStatus === "с договором" && (
           <div style={{ marginTop: 14 }}>
-            <div className="mini-field-label">Фото договора</div>
+            <div className="mini-field-label">Дата заключения договора</div>
+            <input className="field-input" type="date" value={contractDate} onChange={(e) => setContractDate(e.target.value)} />
+            <div className="mini-field-label" style={{ marginTop: 10 }}>Тип договора (если нужно указать)</div>
+            <input className="field-input" value={contractType} onChange={(e) => setContractType(e.target.value)} placeholder="Например: эксклюзивный" />
+            <div className="mini-field-label" style={{ marginTop: 14 }}>Фото договора</div>
             <div className="doc-upload-row">
               <label className="doc-upload-btn">
                 📷 Снять камерой
