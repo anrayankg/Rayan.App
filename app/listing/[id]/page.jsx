@@ -8,6 +8,7 @@ import BottomNav from "../../../components/BottomNav";
 import AgentContactBlock from "../../../components/AgentContactBlock";
 import ShareSheet from "../../../components/ShareSheet";
 import ConfirmDialog from "../../../components/ConfirmDialog";
+import OwnerOtherListings from "../../../components/OwnerOtherListings";
 import { HOUSE_LABELS, COMMERCE_LABELS } from "../../../lib/extraFields";
 import { useAgentsDir, agentDisplayName } from "../../../lib/agentsDir";
 import DescriptionBlock from "../../../components/DescriptionBlock";
@@ -86,7 +87,7 @@ function Row({ label, value }) {
   );
 }
 
-function PhoneRow({ label, value }) {
+function PhoneRow({ label, value, waText }) {
   if (!value) return null;
   const clean = String(value).replace(/[^\d+]/g, "");
   return (
@@ -96,7 +97,7 @@ function PhoneRow({ label, value }) {
         <a href={`tel:${clean}`} style={{ color: "var(--text)", fontWeight: 700, fontSize: 15, textDecoration: "none" }}>{value}</a>
       </div>
       <div style={{ display: "flex", gap: 10 }}>
-        <SocialButton kind="whatsapp" size={44} href={waLink(value)} label="WhatsApp" />
+        <SocialButton kind="whatsapp" size={44} href={waLink(value, waText)} label="WhatsApp" />
         <SocialButton kind="telegram" size={44} href={tgLink(value)} label="Telegram" />
       </div>
     </div>
@@ -233,6 +234,7 @@ export default function ListingDetailPage() {
   const canEditForm = !!FORM_PATH[l.type];
   const editHref = canEditForm ? `/add/${FORM_PATH[l.type]}?edit=${id}` : null;
   const clientUrl = clientListingLink(l, me);
+  const ownerMsg = `Здравствуйте! Я пишу по поводу этого объекта:\n${clientUrl}`;
   let extra = {};
   try { extra = l.extra_details ? (typeof l.extra_details === "string" ? JSON.parse(l.extra_details) : l.extra_details) : {}; } catch {}
 
@@ -376,6 +378,24 @@ export default function ListingDetailPage() {
           )}
         </div>
 
+        {/* Связь с СОБСТВЕННИКОМ — сразу под основными данными. Это видят только вы и руководитель. */}
+        {contact && (contact.owner_phone || contact.owner_whatsapp) && (
+          <div className="owner-contact">
+            <div className="owner-contact-title">🔒 Связаться с собственником{contact.owner_name ? ` — ${contact.owner_name}` : ""}</div>
+            <div className="owner-contact-phone">{contact.owner_phone || contact.owner_whatsapp}</div>
+            <a className="owner-call" href={`tel:${String(contact.owner_phone || contact.owner_whatsapp).replace(/[^\d+]/g, "")}`}>Позвонить собственнику</a>
+            <div className="owner-contact-row">
+              <a className="owner-soc" href={waLink(contact.owner_whatsapp || contact.owner_phone, ownerMsg)} target="_blank" rel="noreferrer">
+                <WhatsAppLogo size={30} /> WhatsApp
+              </a>
+              <a className="owner-soc" href={tgLink(contact.owner_phone || contact.owner_whatsapp)} target="_blank" rel="noreferrer">
+                <TelegramLogo size={30} /> Telegram
+              </a>
+            </div>
+          </div>
+        )}
+        {contact && <OwnerOtherListings listing={l} contact={contact} />}
+
         {/* Закрытая информация — видна только владельцу */}
         <div style={{ ...sx.section, ...sx.privateSection }}>
           <div style={{ ...sx.sectionTitle, color: "var(--muted)" }}>🔒 Договор</div>
@@ -387,8 +407,9 @@ export default function ListingDetailPage() {
             <div style={{ ...sx.sectionTitle, color: "var(--muted)" }}>🔒 Собственник</div>
             <Row label="Источник" value={contact.source_type} />
             <Row label="ФИО" value={contact.owner_name} />
-            <PhoneRow label="Телефон собственника" value={contact.owner_phone} />
-            <PhoneRow label="WhatsApp собственника" value={contact.owner_whatsapp} />
+            {contact.owner_whatsapp && String(contact.owner_whatsapp).replace(/\D/g, "").slice(-9) !== String(contact.owner_phone || "").replace(/\D/g, "").slice(-9) && (
+              <PhoneRow label="Другой WhatsApp собственника" value={contact.owner_whatsapp} waText={ownerMsg} />
+            )}
             <Row label="Точный адрес" value={contact.exact_address} />
           </div>
         )}
@@ -413,22 +434,6 @@ export default function ListingDetailPage() {
           </div>
         )}
 
-        {/* Внизу — связь с СОБСТВЕННИКОМ (себе звонить не нужно). Это видят только вы и руководитель. */}
-        {contact && (contact.owner_phone || contact.owner_whatsapp) && (
-          <div className="owner-contact">
-            <div className="owner-contact-title">🔒 Связаться с собственником{contact.owner_name ? ` — ${contact.owner_name}` : ""}</div>
-            <div className="owner-contact-phone">{contact.owner_phone || contact.owner_whatsapp}</div>
-            <a className="owner-call" href={`tel:${String(contact.owner_phone || contact.owner_whatsapp).replace(/[^\d+]/g, "")}`}>Позвонить собственнику</a>
-            <div className="owner-contact-row">
-              <a className="owner-soc" href={waLink(contact.owner_whatsapp || contact.owner_phone, `Здравствуйте! Я пишу по поводу этого объекта:\n${clientUrl}`)} target="_blank" rel="noreferrer">
-                <WhatsAppLogo size={30} /> WhatsApp
-              </a>
-              <a className="owner-soc" href={tgLink(contact.owner_phone || contact.owner_whatsapp)} target="_blank" rel="noreferrer">
-                <TelegramLogo size={30} /> Telegram
-              </a>
-            </div>
-          </div>
-        )}
         <div className="owner-agent-line">
           Агент объекта: <b>{agentDisplayName(agentsDir, l.agent_phone, l.agent_name)}</b> {l.agent_phone ? `· ${l.agent_phone}` : ""}
         </div>
