@@ -10,6 +10,7 @@ import CollectionPickerSheet from "../../components/CollectionPickerSheet";
 import ShareSheet from "../../components/ShareSheet";
 import { getThemeChoice, applyTheme } from "../../lib/theme";
 import { useAgentsDir } from "../../lib/agentsDir";
+import { auditFields } from "../../lib/audit";
 import { Picker } from "../../components/Picker";
 import { buildShareUrl } from "../../lib/share";
 import { clientListingLink, isAdmin, isManager, isOwnListing } from "../../lib/agent";
@@ -148,6 +149,7 @@ export default function ProfilePage() {
   }, [teamListings, agent, agentsDir]);
   const [search, setSearch] = useKeptState("prof_search", "");
   const [categoryFilter, setCategoryFilter] = useState(null);
+  const [onlyNew, setOnlyNew] = useState(false);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [sortBy, setSortBy] = useState("new");
   const [pfilter, setPfilter] = useKeptState("prof_filter", EMPTY);
@@ -218,6 +220,24 @@ export default function ProfilePage() {
     return map;
   }, [myListings]);
 
+  // Переход из «Статистики»: /profile?scope=..&cat=..&contract=..&tab=..&new=1
+  useEffect(() => {
+    try {
+      const q = new URLSearchParams(window.location.search);
+      if (![...q.keys()].length) return;
+      const catMap = { vtorichka: "vtorichka", pervichka: "pervichka", dom: "dom", uchastok: "uchastok", kommerciya: "kommerciya" };
+      const cat = catMap[q.get("cat") || ""] || null;
+      const cmap = { yes: "с договором", no: "без договора", empty: "не заполнено" };
+      const contract = cmap[q.get("contract") || ""];
+      if (q.get("scope")) setScope(q.get("scope"));
+      if (q.get("tab")) setStatusTab(q.get("tab"));
+      setOnlyNew(q.get("new") === "1");
+      setPfilter({ cat, v: contract ? { contract } : {}, id: "" });
+      setSearch("");
+      window.history.replaceState(null, "", "/profile");
+    } catch {}
+  }, []); // eslint-disable-line
+
   const visibleListings = useMemo(() => {
     let list = myListings.filter((l) => {
       if (statusTab === "активно") return ACTIVE_STATUSES.includes(l.status);
@@ -225,13 +245,14 @@ export default function ProfilePage() {
       return !ACTIVE_STATUSES.includes(l.status) && !DRAFT_STATUSES.includes(l.status);
     });
     if (categoryFilter) list = list.filter((l) => l.type === categoryFilter);
+    if (onlyNew) list = list.filter((l) => l.created_at && Date.now() - new Date(l.created_at).getTime() < 864e5);
     list = list.filter((l) => matchListing(l, pfilter));
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       list = list.filter((l) => [l.district, l.zhk, l.description, l.display_id].filter(Boolean).join(" ").toLowerCase().includes(q));
     }
     return sortListings(list, (pfilter.v || {}).sort || sortBy);
-  }, [myListings, statusTab, categoryFilter, search, sortBy, pfilter]);
+  }, [myListings, statusTab, categoryFilter, search, sortBy, pfilter, onlyNew]);
 
   function toggleSelect(id) {
     setSelected((prev) => {
@@ -273,7 +294,7 @@ export default function ProfilePage() {
     let failed = 0;
     for (let i = 0; i < ids.length; i += 100) {
       const chunk = ids.slice(i, i + 100);
-      const { error } = await supabase.from("listings").update({ agent_phone: moveTarget.phone, agent_name: moveTarget.name }).in("id", chunk);
+      const { error } = await supabase.from("listings").update({ ...auditFields(), agent_phone: moveTarget.phone, agent_name: moveTarget.name }).in("id", chunk);
       if (error) failed += chunk.length;
     }
     setMoveBusy(false);
@@ -292,7 +313,7 @@ export default function ProfilePage() {
 
   async function bulkDeactivate() {
     setBulkBusy(true);
-    await supabase.from("listings").update({ status: "снят с продажи" }).in("id", Array.from(selected));
+    await supabase.from("listings").update({ ...auditFields(), status: "снят с продажи" }).in("id", Array.from(selected));
     setMyListings((prev) => prev.map((l) => (selected.has(l.id) ? { ...l, status: "снят с продажи" } : l)));
     setSelected(new Set());
     setBulkBusy(false);
@@ -334,7 +355,7 @@ export default function ProfilePage() {
     }
     if (!data) { setLoginError("Неверный номер или ПИН-код. Если вы забыли ПИН — спросите у руководителя."); return; }
     const me = { ...data, pinOk: true };
-    if (data.role === "admin") me.pin = pinInput; // руководителю ПИН нужен для раздела «Агенты»
+    me.pin = pinInput; // ПИН нужен для защищённых запросов (раздел «Агенты», статистика)
     localStorage.setItem("rayan_agent", JSON.stringify(me));
     setAgent(me);
   }
@@ -395,6 +416,8 @@ export default function ProfilePage() {
           ✏️ Редактировать профиль ⭐ <span style={{ fontSize: 10 }}>(скоро)</span>
         </button>
       </div>
+
+      <button className="fl-skip" style={{ marginTop: 14 }} onClick={() => router.push("/stats")}>📊 Статистика</button>
 
       {isManager(agent) && (
         <button className="fl-next" style={{ marginTop: 14 }} onClick={() => router.push("/agents")}>{isAdmin(agent) ? "👥 Руководители, агенты и ПИН-коды" : "👥 Мои агенты и ПИН-коды"}</button>
@@ -464,9 +487,10 @@ export default function ProfilePage() {
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" strokeWidth="2.2" style={{ stroke: "var(--accent-text)" }}><path d="M4 5h16M7 12h10M11 19h2" /></svg>
           Фильтр{activeCount(pfilter) > 0 && <span className="fl-open-count">{activeCount(pfilter)}</span>}
         </button>
+        {onlyNew && <span className="fl-open-cat">Только новые за 24 часа</span>}
         {(pfilter.cat || pfilter.id) && <span className="fl-open-cat">{[pfilter.id ? `ID ${pfilter.id}` : null, (FILTER_CATEGORIES.find((c) => c.key === pfilter.cat) || {}).label].filter(Boolean).join(" · ")}</span>}
-        {(pfilter.cat || pfilter.id || search) && (
-          <button onClick={() => { setPfilter(EMPTY); setCategoryFilter(null); setSortBy("new"); setSearch(""); }} style={sx.resetBtn}>Сбросить</button>
+        {(pfilter.cat || pfilter.id || search || onlyNew) && (
+          <button onClick={() => { setPfilter(EMPTY); setCategoryFilter(null); setSortBy("new"); setSearch(""); setOnlyNew(false); }} style={sx.resetBtn}>Сбросить</button>
         )}
       </div>
       </div>
