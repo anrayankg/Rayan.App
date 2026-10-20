@@ -9,6 +9,7 @@ import PhoneInput, { isPhoneComplete } from "../../../components/PhoneInput";
 import { Picker, MultiPicker } from "../../../components/Picker";
 import ConfirmDialog from "../../../components/ConfirmDialog";
 import AgentAssign from "../../../components/AgentAssign";
+import IssykKulGeo from "../../../components/IssykKulPicker";
 import { auditFields } from "../../../lib/audit";
 import AutoTextarea from "../../../components/AutoTextarea";
 import CategorySwitch from "../../../components/CategorySwitch";
@@ -115,7 +116,14 @@ function UchastokForm() {
   const [commsTouched, setCommsTouched] = useState(false);
 
   const [city, setCity] = useState("Бишкек");
+  const [region, setRegion] = useState(""); // "иссык-куль" — объект внутри раздела «Иссык-Куль»
   const [district, setDistrict] = useState("");
+  useEffect(() => {
+    try {
+      const q = new URLSearchParams(window.location.search);
+      if (q.get("region") === "issykkul") { setRegion("иссык-куль"); setCity(""); }
+    } catch {}
+  }, []);
   const [roomType, setRoomType] = useState("");
   const [area, setArea] = useState("");
   const [plot, setPlot] = useState(""); // площадь участка по документам, соток
@@ -213,7 +221,7 @@ function UchastokForm() {
     setFn(arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val]);
   }
 
-  const districtRequired = city === "Бишкек";
+  const districtRequired = city === "Бишкек" || !!region;
   const commsSel = extra.kommunikacii || [];
   const missingFields = [
     !city && "Город", city && districtRequired && !district && "Район", !(mapLat && mapLng) && "Точка на карте",
@@ -269,6 +277,7 @@ function UchastokForm() {
         setContractStatus(l.contract_status || "");
         setContractDate(l.contract_date || "");
         setContractType(l.contract_type || "");
+        setRegion(l.region || "");
         setExtra(typeof l.extra_details === "string" ? JSON.parse(l.extra_details || "{}") : (l.extra_details || {}));
         setAgentName(l.agent_name || "");
         setAgentPhone(l.agent_phone || "");
@@ -323,6 +332,7 @@ function UchastokForm() {
         obmen_na: dealTerms.includes("Обмен") ? [...obmenNa, obmenDrugoe].filter(Boolean).join(", ") : null,
         torg, description, photos, video_links: videos,
         contract_status: contractStatus || null,
+        region: region || null,
         contract_date: contractStatus === "с договором" && contractDate ? contractDate : null,
         contract_type: contractStatus === "с договором" && contractType ? contractType : null,
         ...auditFields(),
@@ -383,6 +393,7 @@ function UchastokForm() {
         photos,
         video_links: videos,
         contract_status: contractStatus || null,
+        region: region || null,
         contract_date: contractStatus === "с договором" && contractDate ? contractDate : null,
         contract_type: contractStatus === "с договором" && contractType ? contractType : null,
         ...auditFields(),
@@ -460,16 +471,28 @@ function UchastokForm() {
 
       <div className="section-divider"><div className="section-divider-title big">ОБЯЗАТЕЛЬНЫЕ ПОЛЯ</div></div>
 
-      <CategorySwitch current="uchastok" editId={editId} />
+      <CategorySwitch current="uchastok" editId={editId} region={region} />
 
       <div className="field-group">
-        <LocationPicker
-          label="Город"
-          required
-          options={CITIES}
-          value={city}
-          onChange={(v) => { setCity(v); setDistrict(""); }}
-        />
+        {region ? (
+          <>
+            <div className="ik-banner">🏖 Раздел «Иссык-Куль»</div>
+            <IssykKulGeo district={district} city={city} errorDistrict={attemptedSubmit && !district} errorCity={attemptedSubmit && !city}
+              onChange={(d, c, aimak, kind, la, lo) => { setDistrict(d); setCity(c); setEx("aiylAimak")(aimak || ""); setEx("tipNP")(kind || ""); if (la && lo) { setMapLat(la); setMapLng(lo); } }} />
+            <div className="field-group">
+              <div className="field-label">Адрес или описание местоположения</div>
+              <input className="field-input" value={extra.adresOpisanie || ""} onChange={(e) => setEx("adresOpisanie")(e.target.value)} placeholder="Улица, ориентир, курорт или комплекс" />
+            </div>
+          </>
+        ) : (
+          <LocationPicker
+            label="Город"
+            required
+            options={CITIES}
+            value={city}
+            onChange={(v) => { setCity(v); setDistrict(""); }}
+          />
+        )}
       </div>
 
       <div className="field-group">
@@ -646,6 +669,17 @@ function UchastokForm() {
         <MiniField label="Кто показывает" value={extra.pokazKto || ""} onChange={setEx("pokazKto")} />
         <MiniField label="Телефон показывающего" value={extra.pokaz || ""} onChange={setEx("pokaz")} />
       </Accordion>
+
+      {region && (
+        <Accordion title="ОЗЕРО И КУРОРТ (Иссык-Куль)" defaultOpen={true}>
+          <MiniField label="Название ЖК / пансионата / комплекса" value={extra.kurortZhk || ""} onChange={setEx("kurortZhk")} />
+          <MiniField label="Расстояние до озера, метров (вводится по реальным данным)" value={extra.rasstoyanieOzero || ""} onChange={setEx("rasstoyanieOzero")} />
+          <MiniChips label="Положение относительно берега" options={["Первая береговая линия", "Вторая линия", "В пешей доступности", "Не в пешей доступности"]} value={extra.liniyaOzero || ""} onChange={setEx("liniyaOzero")} />
+          <MiniField label="Ограничения строительства (если известны)" value={extra.ogranStroit || ""} onChange={setEx("ogranStroit")} />
+          <MiniChips label="Возможен туристический или коммерческий проект" options={["Да", "Нет", "Уточняется"]} value={extra.turProekt || ""} onChange={setEx("turProekt")} />
+          <div className="field-hint">«Да» отмечайте только если это подтверждено назначением земли по документам и применимыми требованиями.</div>
+        </Accordion>
+      )}
 
       <div className="field-group">
         <div className="field-label">Описание для клиента <span className="star">*</span><span className="required-note">(обязательно)</span></div>
