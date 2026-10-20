@@ -1,4 +1,5 @@
 "use client";
+import { priceSuffix } from "../../../lib/listingFormat";
 import { useEffect, useState, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
@@ -10,7 +11,7 @@ import ShareSheet from "../../../components/ShareSheet";
 import ConfirmDialog from "../../../components/ConfirmDialog";
 import OwnerOtherListings from "../../../components/OwnerOtherListings";
 import { auditFields } from "../../../lib/audit";
-import { HOUSE_LABELS, COMMERCE_LABELS } from "../../../lib/extraFields";
+import { HOUSE_LABELS, COMMERCE_LABELS, RENT_INVEST_LABELS } from "../../../lib/extraFields";
 import { useAgentsDir, agentDisplayName } from "../../../lib/agentsDir";
 import DescriptionBlock from "../../../components/DescriptionBlock";
 import { ShareOnPhoto, PencilOnPhoto } from "../../../components/PhotoActions";
@@ -137,6 +138,7 @@ const EXTRA_LABELS = {
   ploshad_uchastka: "Площадь участка", naznachenie_zemli: "Назначение земли",
   ...HOUSE_LABELS,
   ...COMMERCE_LABELS,
+  ...RENT_INVEST_LABELS,
 };
 
 function extraLabel(key) {
@@ -231,7 +233,7 @@ export default function ListingDetailPage() {
   const l = listing;
   const { usd, kgs } = priceBlock(l);
   const photos = l.photos || [];
-  const FORM_PATH = { "вторичка": "vtorichka", "первичка": "pervichka", "дом": "dom", "участок": "uchastok", "коммерция": "kommerciya" };
+  const FORM_PATH = { "вторичка": "vtorichka", "первичка": "pervichka", "дом": "dom", "участок": "uchastok", "коммерция": "kommerciya", "аренда": "arenda", "инвестиции": "investicii" };
   const canEditForm = !!FORM_PATH[l.type];
   const editHref = canEditForm ? `/add/${FORM_PATH[l.type]}?edit=${id}` : null;
   const clientUrl = clientListingLink(l, me);
@@ -274,8 +276,8 @@ export default function ListingDetailPage() {
       )}
 
       <div style={sx.body}>
-        <div style={sx.priceUsd}>${usd.toLocaleString("ru-RU")}</div>
-        <div style={sx.priceKgs}>{kgs.toLocaleString("ru-RU")} сом</div>
+        <div style={sx.priceUsd}>${usd.toLocaleString("ru-RU")}{priceSuffix(l)}</div>
+        <div style={sx.priceKgs}>{kgs.toLocaleString("ru-RU")} сом{priceSuffix(l)}</div>
         <div style={sx.charLine}>{fullCharLine(l)}</div>
         <div style={sx.category}>{listingCategory(l)}{isPso(l) && <b className="pso-tag"> (СДАН ПСО)</b>}</div>
         <div style={sx.location}>{[l.zhk, l.district].filter(Boolean).join(", ") || l.city || "Бишкек"}</div>
