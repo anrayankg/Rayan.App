@@ -230,7 +230,7 @@ function StepBody({ step, v, draft, listings, setVal, toggleIn, stepNo, autoNext
   );
 
   if (step.kind === "cities" || step.kind === "districts" || step.kind === "multi") {
-    let options = step.kind === "cities" ? CITIES : step.kind === "districts" ? districtsFor(v.city) : step.options;
+    let options = step.kind === "cities" ? (step.options || CITIES) : step.kind === "districts" ? districtsFor(v.city) : step.options;
     if (step.kind === "districts" && options.length === 0) {
       return <>{head}<div className="fl-count" style={{ textAlign: "left" }}>Для выбранных городов районы пока не заведены (сейчас районы есть только у Бишкека). Нажмите «Пропустить».</div></>;
     }

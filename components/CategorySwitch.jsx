@@ -11,9 +11,11 @@ export const FORM_CATEGORIES = [
   { key: "dom", label: "Дома" },
   { key: "uchastok", label: "Участки" },
   { key: "kommerciya", label: "Коммерческая недвижимость" },
+  { key: "arenda", label: "Аренда" },
+  { key: "investicii", label: "Инвестиции" },
 ];
 
-export default function CategorySwitch({ current, editId }) {
+export default function CategorySwitch({ current, editId, region }) {
   const router = useRouter();
   const cur = FORM_CATEGORIES.find((c) => c.key === current);
   return (
@@ -26,7 +28,7 @@ export default function CategorySwitch({ current, editId }) {
         onChange={(label) => {
           const next = FORM_CATEGORIES.find((c) => c.label === label);
           if (!next || next.key === current) return;
-          router.replace(`/add/${next.key}${editId ? `?edit=${editId}` : ""}`);
+          router.replace(`/add/${next.key}${editId ? `?edit=${editId}` : region ? "?region=issykkul" : ""}`);
         }}
       />
       {editId && <div className="field-hint">Сменили категорию — объект откроется в форме нового раздела. Проверьте поля и нажмите «Сохранить».</div>}

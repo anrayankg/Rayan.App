@@ -1,4 +1,5 @@
 "use client";
+import { priceSuffix } from "../lib/listingFormat";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
@@ -81,7 +82,7 @@ export default function OwnerOtherListings({ listing, contact }) {
             const href = me && isOwnListing(l, me) ? `/listing/${l.id}` : `/a/${l.id}`;
             return (
               <a key={l.id} href={href} className="oo-item" onClick={(e) => { e.preventDefault(); router.push(href); }}>
-                <div className="oo-price">${usd.toLocaleString("ru-RU")}</div>
+                <div className="oo-price">${usd.toLocaleString("ru-RU")}{priceSuffix(l)}</div>
                 <div className="oo-chars">{fullCharLine(l)}</div>
                 <div className="oo-cat">{listingCategory(l)}{l.display_id ? ` · ID ${l.display_id}` : ""}</div>
               </a>
