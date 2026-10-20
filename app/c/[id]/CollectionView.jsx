@@ -1,4 +1,5 @@
 "use client";
+import { priceSuffix } from "../../../lib/listingFormat";
 import { useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
@@ -129,8 +130,8 @@ export default function CollectionView() {
                     {photo ? <img src={photo} alt="" /> : <div className="feed-card-noimg">Нет фото</div>}
                   </div>
                   <div className="feed-card-body">
-                    <div className="feed-price-usd">${usd.toLocaleString("ru-RU")}</div>
-                    <div className="feed-price-kgs">{kgs.toLocaleString("ru-RU")} сом</div>
+                    <div className="feed-price-usd">${usd.toLocaleString("ru-RU")}{priceSuffix(l)}</div>
+                    <div className="feed-price-kgs">{kgs.toLocaleString("ru-RU")} сом{priceSuffix(l)}</div>
                     <div className="feed-chars">{fullCharLine(l)}</div>
                     <div className="feed-category">{listingCategory(l)}{isPso(l) && <b className="pso-tag"> (СДАН ПСО)</b>}</div>
                     <div className="feed-location">{locationLine(l)}</div>
@@ -173,7 +174,7 @@ export default function CollectionView() {
                     ? <img src={photoUrl(s.photos[0])} alt="" style={sx.cardPhoto} />
                     : <div className="feed-card-noimg">Нет фото</div>}
                 </div>
-                <div style={sx.similarPrice}>${priceBlock(s).usd.toLocaleString("ru-RU")}</div>
+                <div style={sx.similarPrice}>${priceBlock(s).usd.toLocaleString("ru-RU")}{priceSuffix(s)}</div>
                 <div style={sx.similarChar}>{fullCharLine(s)}</div>
               </a>
             ))}
