@@ -1,4 +1,5 @@
 "use client";
+import { priceSuffix } from "../lib/listingFormat";
 import { useEffect, useState, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Home, Heart, User, Megaphone } from "lucide-react";
@@ -370,8 +371,8 @@ export default function HomePage() {
                   </button>
                 </div>
                 <div className="feed-card-body">
-                  <div className="feed-price-usd">${usd.toLocaleString("ru-RU")}</div>
-                  <div className="feed-price-kgs">{kgs.toLocaleString("ru-RU")} сом</div>
+                  <div className="feed-price-usd">${usd.toLocaleString("ru-RU")}{priceSuffix(l)}</div>
+                  <div className="feed-price-kgs">{kgs.toLocaleString("ru-RU")} сом{priceSuffix(l)}</div>
                   <div className="feed-chars">{fullCharLine(l)}</div>
                   <div className="feed-category">{listingCategory(l)}{isPso(l) && <b className="pso-tag"> (СДАН ПСО)</b>}</div>
                   <div className="feed-location">{locationLine(l)}</div>
