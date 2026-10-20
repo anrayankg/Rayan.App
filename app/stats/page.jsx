@@ -15,6 +15,9 @@ const CAT = {
   "дом": { label: "Дома", key: "dom" },
   "участок": { label: "Участки", key: "uchastok" },
   "коммерция": { label: "Коммерческая", key: "kommerciya" },
+  "иссык-куль": { label: "Иссык-Куль", key: "issykkul" },
+  "аренда": { label: "Аренда", key: "arenda" },
+  "инвестиции": { label: "Инвестиции", key: "investicii" },
 };
 const ZERO = { work: 0, active: 0, drafts: 0, new24: 0, c_yes: 0, c_no: 0, c_empty: 0, deact: 0, needs_ad: 0 };
 const sum = (rows) => rows.reduce((a, r) => { const o = { ...a }; Object.keys(ZERO).forEach((k) => { o[k] = (a[k] || 0) + Number(r[k] || 0); }); return o; }, { ...ZERO });
@@ -149,8 +152,9 @@ function Inner() {
     const direct = agents.filter((a) => a.role === "agent" && !a.manager_id);
     const director = agents.filter((a) => a.role === "admin");
     const orphans = rows.filter((r) => !agentP9s.has(r.p9));
-    const orphanT = sum(orphans);
-    const orphanNums = [...new Set(orphans.map((r) => r.p9))];
+    const orphanGroups = [...new Set(orphans.map((r) => r.p9))]
+      .map((x) => ({ p9: x, t: sum(orphans.filter((r) => r.p9 === x)) }))
+      .filter((g) => g.t.work + g.t.deact > 0);
     content = (
       <>
         {head("Статистика компании", "Рабочая база: активные объекты и черновики. Деактивированные и архивные сюда не входят.")}
@@ -180,15 +184,21 @@ function Inner() {
         })}
         {(direct.length > 0 || director.length > 0) && <div className="st-section">Без РОП (напрямую у директора)</div>}
         {[...director, ...direct].map((a) => agentLine(a))}
-        {orphanT.work + orphanT.deact > 0 && (
-          <div className="st-agent warn">
-            <div className="st-agent-name"><b>Без закреплённого агента</b>
-              <small>Номера в объектах не совпадают ни с одним агентом ({orphanNums.map((x) => "+996" + x).join(", ")}). Передайте их агентам в Профиле → «Чьи объекты» → «Передать объекты».</small></div>
-            <div className="st-row3">
-              <div><b>{orphanT.work}</b><small>рабочих</small></div><div><b>{orphanT.c_yes}</b><small>с договором</small></div>
-              <div><b>{share(orphanT) === null ? "—" : share(orphanT) + "%"}</b><small>доля</small></div><div><b>{orphanT.new24}</b><small>новых 24ч</small></div>
-            </div>
-          </div>
+        {orphanGroups.length > 0 && (
+          <>
+            <div className="st-section">Без закреплённого агента</div>
+            <div className="st-muted">В этих объектах номер агента не совпадает ни с одним агентом (остался от переноса базы). Нажмите «Посмотреть и передать», затем «Передать объекты другому агенту».</div>
+            {orphanGroups.map((g) => (
+              <div key={g.p9 || "none"} className="st-agent warn">
+                <div className="st-agent-name"><b>{g.p9 ? `+996${g.p9}` : "Номер агента не указан"}</b></div>
+                <div className="st-row3">
+                  <div><b>{g.t.work}</b><small>рабочих</small></div><div><b>{g.t.c_yes}</b><small>с договором</small></div>
+                  <div><b>{share(g.t) === null ? "—" : share(g.t) + "%"}</b><small>доля</small></div><div><b>{g.t.new24}</b><small>новых 24ч</small></div>
+                </div>
+                <button className="st-view" onClick={() => router.push(`/profile?scope=${g.p9 || "none"}&tab=${g.t.active > 0 ? "активно" : "черновики"}`)}>Посмотреть и передать</button>
+              </div>
+            ))}
+          </>
         )}
       </>
     );
