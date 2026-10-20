@@ -1,4 +1,5 @@
 "use client";
+import { priceSuffix } from "../../lib/listingFormat";
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase";
@@ -130,13 +131,14 @@ export default function ProfilePage() {
   const last9 = (x) => digitsOnly(x).slice(-9);
   const myListings = useMemo(() => {
     if (!agent || !isManager(agent) || scope === "all") return teamListings;
-    const target = scope === "mine" ? last9(agent.phone) : scope;
+    const target = scope === "mine" ? last9(agent.phone) : scope === "none" ? "" : scope;
     return teamListings.filter((l) => last9(l.agent_phone) === target);
   }, [teamListings, scope, agent]);
   const scopeOptions = useMemo(() => {
     if (!agent || !isManager(agent)) return [];
     const by = {};
-    teamListings.forEach((l) => { const k = last9(l.agent_phone); if (k) by[k] = (by[k] || 0) + 1; });
+    let noAgent = 0;
+    teamListings.forEach((l) => { const k = last9(l.agent_phone); if (k) by[k] = (by[k] || 0) + 1; else noAgent += 1; });
     const me9 = last9(agent.phone);
     const names = Object.values(agentsDir || {});
     const nameOf = (k) => (names.find((a) => last9(a.phone) === k) || {}).name || ("+996" + k);
@@ -144,6 +146,7 @@ export default function ProfilePage() {
     return [
       { v: "mine", t: `Мои объекты (${by[me9] || 0})` },
       { v: "all", t: `${isAdmin(agent) ? "Все объекты агентства" : "Вся моя команда"} (${teamListings.length})` },
+      ...(noAgent > 0 ? [{ v: "none", t: `Без закреплённого агента (${noAgent})` }] : []),
       ...others.map((k) => ({ v: k, t: `${nameOf(k)} (${by[k]})` })),
     ];
   }, [teamListings, agent, agentsDir]);
@@ -196,9 +199,11 @@ export default function ProfilePage() {
     if (!agent) return;
     async function loadMine() {
       const myDigits = digitsOnly(agent.phone);
-      const { data } = await supabase.from("listings")
-        .select("id, display_id, type, status, price, currency, currency_new, district, zhk, room_type, rooms, area_m2, floor, floors_total, series, construction_status, delivery_year, delivery_quarter, extra_details, photos, agent_phone, created_at, description")
-        .not("agent_phone", "is", null);
+      let q = supabase.from("listings")
+        .select("id, display_id, type, status, price, currency, currency_new, district, zhk, room_type, rooms, area_m2, floor, floors_total, series, construction_status, delivery_year, delivery_quarter, extra_details, photos, agent_phone, agent_name, contract_status, contract_date, region, city, price_period, created_at, description");
+      // директору нужны и объекты вообще без номера агента — чтобы их можно было передать
+      if (!isAdmin(agent)) q = q.not("agent_phone", "is", null);
+      const { data } = await q;
       setMyListings((data || []).filter((l) => isOwnListing(l, agent)));
 
       const { data: cols } = await supabase.from("collections").select("*").eq("agent_id", agent.id).order("created_at", { ascending: false });
@@ -225,7 +230,7 @@ export default function ProfilePage() {
     try {
       const q = new URLSearchParams(window.location.search);
       if (![...q.keys()].length) return;
-      const catMap = { vtorichka: "vtorichka", pervichka: "pervichka", dom: "dom", uchastok: "uchastok", kommerciya: "kommerciya" };
+      const catMap = { vtorichka: "vtorichka", pervichka: "pervichka", dom: "dom", uchastok: "uchastok", kommerciya: "kommerciya", issykkul: "issykkul", arenda: "arenda", investicii: "investicii" };
       const cat = catMap[q.get("cat") || ""] || null;
       const cmap = { yes: "с договором", no: "без договора", empty: "не заполнено" };
       const contract = cmap[q.get("contract") || ""];
@@ -525,8 +530,8 @@ export default function ProfilePage() {
                     <div style={{ ...sx.adBar, background: ad.bg }}>{ad.icon} {ad.label}</div>
                   </div>
                   <a href={`/listing/${l.id}`} style={{ textDecoration: "none", color: "var(--text)" }}>
-                    <div style={sx.bigCardPrice}>${priceBlock(l).usd.toLocaleString("ru-RU")}</div>
-                    <div style={sx.bigCardPriceKgs}>{priceBlock(l).kgs.toLocaleString("ru-RU")} сом</div>
+                    <div style={sx.bigCardPrice}>${priceBlock(l).usd.toLocaleString("ru-RU")}{priceSuffix(l)}</div>
+                    <div style={sx.bigCardPriceKgs}>{priceBlock(l).kgs.toLocaleString("ru-RU")} сом{priceSuffix(l)}</div>
                     <div style={sx.bigCardMeta}>{fullCharLine(l)}</div>
                     <div style={sx.bigCardCategory}>{listingCategory(l)}{isPso(l) && <b className="pso-tag"> (СДАН ПСО)</b>}</div>
                     <div style={sx.bigCardLoc}>{[l.zhk, l.district].filter(Boolean).join(", ")}</div>
