@@ -1,4 +1,5 @@
 "use client";
+import { priceSuffix } from "../../../lib/listingFormat";
 import { useEffect, useState, useRef } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
@@ -186,8 +187,8 @@ export default function PublicListingPage() {
 
       <div style={sx.body}>
         {/* Цена */}
-        <div style={sx.priceUsd}>${usd.toLocaleString("ru-RU")}</div>
-        <div style={sx.priceKgs}>{kgs.toLocaleString("ru-RU")} сом</div>
+        <div style={sx.priceUsd}>${usd.toLocaleString("ru-RU")}{priceSuffix(l)}</div>
+        <div style={sx.priceKgs}>{kgs.toLocaleString("ru-RU")} сом{priceSuffix(l)}</div>
 
         {/* Характеристики */}
         <div style={sx.charLine}>
