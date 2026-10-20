@@ -1,4 +1,5 @@
 "use client";
+import { priceSuffix } from "../../lib/listingFormat";
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import BottomNav from "../../components/BottomNav";
@@ -52,8 +53,8 @@ export default function FavoritesPage() {
                     {photo ? <img src={photo} alt="" /> : <div className="feed-card-noimg">Нет фото</div>}
                   </div>
                   <div className="feed-card-body">
-                    <div className="feed-price-usd">${usd.toLocaleString("ru-RU")}</div>
-                    <div className="feed-price-kgs">{kgs.toLocaleString("ru-RU")} сом</div>
+                    <div className="feed-price-usd">${usd.toLocaleString("ru-RU")}{priceSuffix(l)}</div>
+                    <div className="feed-price-kgs">{kgs.toLocaleString("ru-RU")} сом{priceSuffix(l)}</div>
                     <div className="feed-chars">{fullCharLine(l)}</div>
                     <div className="feed-category">{listingCategory(l)}{isPso(l) && <b className="pso-tag"> (СДАН ПСО)</b>}</div>
                     {l.display_id && <div className="feed-date" style={{ marginTop: 6 }}>ID {l.display_id}</div>}
