@@ -9,6 +9,7 @@ import PhoneInput, { isPhoneComplete } from "../../../components/PhoneInput";
 import { Picker, MultiPicker } from "../../../components/Picker";
 import ConfirmDialog from "../../../components/ConfirmDialog";
 import AgentAssign from "../../../components/AgentAssign";
+import IssykKulGeo from "../../../components/IssykKulPicker";
 import { auditFields } from "../../../lib/audit";
 import AutoTextarea from "../../../components/AutoTextarea";
 import CategorySwitch from "../../../components/CategorySwitch";
@@ -119,7 +120,14 @@ function KommerciyaForm() {
   const [commsTouched, setCommsTouched] = useState(false);
 
   const [city, setCity] = useState("Бишкек");
+  const [region, setRegion] = useState(""); // "иссык-куль" — объект внутри раздела «Иссык-Куль»
   const [district, setDistrict] = useState("");
+  useEffect(() => {
+    try {
+      const q = new URLSearchParams(window.location.search);
+      if (q.get("region") === "issykkul") { setRegion("иссык-куль"); setCity(""); }
+    } catch {}
+  }, []);
   const [roomType, setRoomType] = useState("");
   const [area, setArea] = useState("");
   const [floor, setFloor] = useState("");
@@ -218,7 +226,7 @@ function KommerciyaForm() {
     setFn(arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val]);
   }
 
-  const districtRequired = city === "Бишкек";
+  const districtRequired = city === "Бишкек" || !!region;
   const commsSel = extra.kommunikacii || [];
   const inside = extra.formaObekta === "Помещение внутри здания";
   const detached = extra.formaObekta === "Отдельно стоящее здание";
@@ -235,8 +243,8 @@ function KommerciyaForm() {
     withLand && !plot && "Площадь участка", withLand && !extra.knigaUchastka && "Книга на участок",
     withLand && !extra.naznachenie_zemli && "Назначение земли", withLand && !extra.pravoZemli && "Право на землю",
     !extra.remont && "Состояние / ремонт", commsSel.length === 0 && "Коммуникации", !heating && "Отопление",
-    docs.length === 0 && "Документы", !extra.tehpasportDom && "Техпаспорт", !extra.domSdan && "Сдан в эксплуатацию",
-    !(extra.stenyKonstrukciya && extra.stenyKonstrukciya.length) && "Материал стен", !extra.godPostroiki && "Год постройки",
+    docs.length === 0 && "Документы", !underBuild && !extra.tehpasportDom && "Техпаспорт", !extra.domSdan && "Сдан в эксплуатацию",
+    !(extra.stenyKonstrukciya && extra.stenyKonstrukciya.length) && "Материал стен", !underBuild && !extra.godPostroiki && "Год постройки",
     !contractStatus && "Договор с собственником (есть / нет)",
     !price && "Цена",
     !isPhoneComplete(ownerPhone) && "Телефон собственника",
@@ -286,6 +294,7 @@ function KommerciyaForm() {
         setContractStatus(l.contract_status || "");
         setContractDate(l.contract_date || "");
         setContractType(l.contract_type || "");
+        setRegion(l.region || "");
         setExtra(typeof l.extra_details === "string" ? JSON.parse(l.extra_details || "{}") : (l.extra_details || {}));
         setAgentName(l.agent_name || "");
         setAgentPhone(l.agent_phone || "");
@@ -341,6 +350,7 @@ function KommerciyaForm() {
         obmen_na: dealTerms.includes("Обмен") ? [...obmenNa, obmenDrugoe].filter(Boolean).join(", ") : null,
         torg, description, photos, video_links: videos,
         contract_status: contractStatus || null,
+        region: region || null,
         contract_date: contractStatus === "с договором" && contractDate ? contractDate : null,
         contract_type: contractStatus === "с договором" && contractType ? contractType : null,
         ...auditFields(),
@@ -405,6 +415,7 @@ function KommerciyaForm() {
         photos,
         video_links: videos,
         contract_status: contractStatus || null,
+        region: region || null,
         contract_date: contractStatus === "с договором" && contractDate ? contractDate : null,
         contract_type: contractStatus === "с договором" && contractType ? contractType : null,
         ...auditFields(),
@@ -482,7 +493,7 @@ function KommerciyaForm() {
 
       <div className="section-divider"><div className="section-divider-title big">ОБЯЗАТЕЛЬНЫЕ ПОЛЯ</div></div>
 
-      <CategorySwitch current="kommerciya" editId={editId} />
+      <CategorySwitch current="kommerciya" editId={editId} region={region} />
 
       <div className="field-group">
         <Picker label="Тип коммерческого объекта" required options={TIP_OBEKTA} value={extra.tipObekta || ""} onChange={setEx("tipObekta")} error={attemptedSubmit && !extra.tipObekta} />
@@ -499,13 +510,25 @@ function KommerciyaForm() {
       </div>
 
       <div className="field-group">
-        <LocationPicker
-          label="Город"
-          required
-          options={CITIES}
-          value={city}
-          onChange={(v) => { setCity(v); setDistrict(""); }}
-        />
+        {region ? (
+          <>
+            <div className="ik-banner">🏖 Раздел «Иссык-Куль»</div>
+            <IssykKulGeo district={district} city={city} errorDistrict={attemptedSubmit && !district} errorCity={attemptedSubmit && !city}
+              onChange={(d, c, aimak, kind, la, lo) => { setDistrict(d); setCity(c); setEx("aiylAimak")(aimak || ""); setEx("tipNP")(kind || ""); if (la && lo) { setMapLat(la); setMapLng(lo); } }} />
+            <div className="field-group">
+              <div className="field-label">Адрес или описание местоположения</div>
+              <input className="field-input" value={extra.adresOpisanie || ""} onChange={(e) => setEx("adresOpisanie")(e.target.value)} placeholder="Улица, ориентир, курорт или комплекс" />
+            </div>
+          </>
+        ) : (
+          <LocationPicker
+            label="Город"
+            required
+            options={CITIES}
+            value={city}
+            onChange={(v) => { setCity(v); setDistrict(""); }}
+          />
+        )}
       </div>
 
       <div className="field-group">
@@ -629,7 +652,7 @@ function KommerciyaForm() {
       </div>
 
       <div className="field-group">
-        <Picker label="Техпаспорт" required options={["Есть", "Нет"]} value={extra.tehpasportDom || ""} onChange={setEx("tehpasportDom")} error={attemptedSubmit && !extra.tehpasportDom} />
+        <Picker label="Техпаспорт" required={!underBuild} options={["Есть", "Нет"]} value={extra.tehpasportDom || ""} onChange={setEx("tehpasportDom")} error={attemptedSubmit && !underBuild && !extra.tehpasportDom} />
       </div>
 
       <div className="field-group">
@@ -640,9 +663,13 @@ function KommerciyaForm() {
         <MultiPicker label="Из чего построено (материал стен)" required options={WALL_CONSTRUCTION_OPTS} value={extra.stenyKonstrukciya || []} onChange={setEx("stenyKonstrukciya")} error={attemptedSubmit && !(extra.stenyKonstrukciya && extra.stenyKonstrukciya.length)} />
       </div>
 
-      <div className="field-group">
-        <Picker label="Год постройки" required options={YEAR_BUILT} value={extra.godPostroiki || ""} onChange={setEx("godPostroiki")} error={attemptedSubmit && !extra.godPostroiki} />
-      </div>
+      {!underBuild ? (
+        <div className="field-group">
+          <Picker label="Год постройки" required options={YEAR_BUILT} value={extra.godPostroiki || ""} onChange={setEx("godPostroiki")} error={attemptedSubmit && !extra.godPostroiki} />
+        </div>
+      ) : (
+        <div className="field-hint" style={{ margin: "4px 0 14px" }}>Год постройки не нужен: у строящегося объекта выше указан «Год сдачи».</div>
+      )}
 
       <div className="field-group">
         <div className="field-label">Цена <span className="star">*</span><span className="required-note">(обязательно)</span></div>
@@ -822,6 +849,21 @@ function KommerciyaForm() {
         <MiniField label="Что видно с дороги" value={extra.chtoVidnoSDorogi || ""} onChange={setEx("chtoVidnoSDorogi")} />
         <MiniField label="Почему интересен инвестору" value={extra.pochemuInvestoru || ""} onChange={setEx("pochemuInvestoru")} />
       </Accordion>
+
+      {region && (
+        <Accordion title="ОЗЕРО И КУРОРТ (Иссык-Куль)" defaultOpen={true}>
+          <MiniField label="Название ЖК / пансионата / комплекса" value={extra.kurortZhk || ""} onChange={setEx("kurortZhk")} />
+          <MiniField label="Расстояние до озера, метров (вводится по реальным данным)" value={extra.rasstoyanieOzero || ""} onChange={setEx("rasstoyanieOzero")} />
+          <MiniChips label="Положение относительно берега" options={["Первая береговая линия", "Вторая линия", "В пешей доступности", "Не в пешей доступности"]} value={extra.liniyaOzero || ""} onChange={setEx("liniyaOzero")} />
+          <MiniYesNo label="Курортная или туристическая зона" value={extra.kurortZona || ""} onChange={setEx("kurortZona")} />
+          <MiniChips label="Сезонный пешеходный трафик" options={["Высокий", "Средний", "Низкий"]} value={extra.trafikPeshehSezon || ""} onChange={setEx("trafikPeshehSezon")} />
+          <MiniChips label="Сезонный автомобильный трафик" options={["Высокий", "Средний", "Низкий"]} value={extra.trafikAvtoSezon || ""} onChange={setEx("trafikAvtoSezon")} />
+          <MiniYesNo label="Использование в туристическом бизнесе" value={extra.turBiznes || ""} onChange={setEx("turBiznes")} />
+          <MiniYesNo label="Есть действующий бизнес" value={extra.deystvBiznes || ""} onChange={setEx("deystvBiznes")} />
+          <MiniYesNo label="Возможна круглогодичная работа" value={extra.kruglogodichno || ""} onChange={setEx("kruglogodichno")} />
+          <MiniField label="Сезонность доходов" value={extra.dohodSezonnost || ""} onChange={setEx("dohodSezonnost")} />
+        </Accordion>
+      )}
 
       <div className="field-group">
         <div className="field-label">Описание для клиента <span className="star">*</span><span className="required-note">(обязательно)</span></div>
