@@ -1,4 +1,5 @@
 "use client";
+import { priceSuffix } from "../../../lib/listingFormat";
 import { useEffect, useState, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
@@ -152,8 +153,8 @@ export default function AgentListingPage() {
       )}
 
       <div style={sx.body}>
-        <div style={sx.priceUsd}>${usd.toLocaleString("ru-RU")}</div>
-        <div style={sx.priceKgs}>{kgs.toLocaleString("ru-RU")} сом</div>
+        <div style={sx.priceUsd}>${usd.toLocaleString("ru-RU")}{priceSuffix(l)}</div>
+        <div style={sx.priceKgs}>{kgs.toLocaleString("ru-RU")} сом{priceSuffix(l)}</div>
 
         <div style={sx.charLine}>{fullCharLine(l)}</div>
         <div style={sx.category}>{listingCategory(l)}{isPso(l) && <b className="pso-tag"> (СДАН ПСО)</b>}</div>
