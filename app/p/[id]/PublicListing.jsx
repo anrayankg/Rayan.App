@@ -65,18 +65,23 @@ export default function PublicListingPage() {
   const overrideName = searchParams.get("agent_name") || searchParams.get("an");
   // Новые ссылки: ?ag=<id агента> — берём имя и телефон агента, который отправил ссылку.
   const agParam = searchParams.get("ag");
+  // Самые новые ссылки: ?k=<короткий код агента> — номер можно менять, ссылка остаётся рабочей.
+  const kParam = (searchParams.get("k") || "").replace(/[^a-zA-Z0-9]/g, "").slice(0, 12);
   // Новые короткие ссылки: ?a=<9 последних цифр телефона агента>
   const aParam = (searchParams.get("a") || "").replace(/\D/g, "");
   const [sender, setSender] = useState(null);
   useEffect(() => {
-    if (agParam) {
+    if (kParam) {
+      supabase.from("agents").select("id, name, phone").eq("link_code", kParam).maybeSingle()
+        .then(({ data }) => { if (data) setSender(data); });
+    } else if (agParam) {
       supabase.from("agents").select("id, name, phone").eq("id", agParam).maybeSingle()
         .then(({ data }) => { if (data) setSender(data); });
     } else if (aParam.length >= 9) {
       supabase.from("agents").select("id, name, phone").ilike("phone", `%${aParam.slice(-9)}`).limit(1)
         .then(({ data }) => { if (data && data[0]) setSender(data[0]); else setSender({ phone: "+996" + aParam.slice(-9) }); });
     }
-  }, [agParam, aParam]);
+  }, [kParam, agParam, aParam]);
   const [listing, setListing] = useState(null);
   const [error, setError] = useState(null);
   const [activePhoto, setActivePhoto] = useState(0);
