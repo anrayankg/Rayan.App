@@ -37,6 +37,7 @@ export default function CollectionView() {
   const searchParams = useSearchParams();
   const isManageMode = searchParams.get("manage") === "1";
   const agParam = searchParams.get("ag");
+  const kParam = (searchParams.get("k") || "").replace(/[^a-zA-Z0-9]/g, "").slice(0, 12);
   const aParam = (searchParams.get("a") || "").replace(/\D/g, "");
   const [collection, setCollection] = useState(null);
   const [listings, setListings] = useState([]);
@@ -56,7 +57,10 @@ export default function CollectionView() {
 
       // Кому звонить клиенту: агент из ссылки (?ag=), иначе — хозяин подборки.
       const agentId = agParam || col.agent_id;
-      if (aParam.length >= 9) {
+      if (kParam) {
+        const { data: byCode } = await supabase.from("agents").select("id, name, phone").eq("link_code", kParam).maybeSingle();
+        if (byCode) setAgentInfo(byCode);
+      } else if (aParam.length >= 9) {
         const { data: byPhone } = await supabase.from("agents").select("id, name, phone").ilike("phone", `%${aParam.slice(-9)}`).limit(1);
         if (byPhone && byPhone[0]) setAgentInfo(byPhone[0]); else setAgentInfo({ phone: "+996" + aParam.slice(-9) });
       } else if (agentId) {
@@ -85,7 +89,7 @@ export default function CollectionView() {
       }
     }
     load();
-  }, [id, agParam]);
+  }, [id, agParam, kParam]);
 
   async function removeFromCollection(listingId) {
     const newIds = (collection.listing_ids || []).filter((x) => (typeof x === "string" ? x : x.id) !== listingId);
@@ -95,7 +99,7 @@ export default function CollectionView() {
   }
 
   // Номер агента, который прислал подборку, переходит и в каждый объект
-  const agQuery = aParam.length >= 9 ? `?a=${aParam.slice(-9)}` : agParam ? `?ag=${encodeURIComponent(agParam)}` : (collection && collection.agent_id ? `?ag=${encodeURIComponent(collection.agent_id)}` : "");
+  const agQuery = kParam ? `?k=${kParam}` : aParam.length >= 9 ? `?a=${aParam.slice(-9)}` : agParam ? `?ag=${encodeURIComponent(agParam)}` : (collection && collection.agent_id ? `?ag=${encodeURIComponent(collection.agent_id)}` : "");
 
   if (error) return <div style={sx.page}><div style={sx.center}>{error}</div></div>;
   if (!collection) return <div style={sx.page}><div style={sx.center}>Загрузка…</div></div>;
