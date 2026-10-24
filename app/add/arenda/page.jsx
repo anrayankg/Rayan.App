@@ -10,6 +10,7 @@ import { Picker, MultiPicker } from "../../../components/Picker";
 import ConfirmDialog from "../../../components/ConfirmDialog";
 import AgentAssign from "../../../components/AgentAssign";
 import IssykKulGeo from "../../../components/IssykKulPicker";
+import ShoreDistancePicker from "../../../components/ShoreDistancePicker";
 import { auditFields } from "../../../lib/audit";
 import AutoTextarea from "../../../components/AutoTextarea";
 import CategorySwitch from "../../../components/CategorySwitch";
@@ -77,11 +78,13 @@ function Accordion({ title, children, defaultOpen = false }) {
     </div>
   );
 }
-function MiniField({ label, value, onChange }) {
+function MiniField({ label, value, onChange, long }) {
   return (
     <div>
       <div className="mini-field-label">{label}</div>
-      <input className="field-input" value={value} onChange={(e) => onChange(e.target.value)} />
+      {long
+        ? <AutoTextarea compact minRows={3} className="field-textarea" value={value} onChange={(e) => onChange(e.target.value)} />
+        : <input className="field-input" value={value} onChange={(e) => onChange(e.target.value)} />}
     </div>
   );
 }
@@ -546,11 +549,12 @@ function ArendaForm() {
           <>
             <div className="ik-banner">🏖 Раздел «Иссык-Куль»</div>
             <IssykKulGeo district={district} city={city} errorDistrict={attemptedSubmit && !district} errorCity={attemptedSubmit && !city}
-              onChange={(d, c, aimak, kind, la, lo) => { setDistrict(d); setCity(c); setEx("aiylAimak")(aimak || ""); setEx("tipNP")(kind || ""); if (la && lo) { setMapLat(la); setMapLng(lo); } }} />
+              onChange={(d, c, aimak, kind, la, lo, code) => { setDistrict(d); setCity(c); setEx("aiylAimak")(aimak || ""); setEx("tipNP")(kind || ""); setEx("soateCode")(code || ""); if (la && lo) { setMapLat(la); setMapLng(lo); } }} />
             <div className="field-group">
-              <div className="field-label">Адрес или описание местоположения</div>
+              <div className="field-label">Микрорайон, улица, адрес или описание местоположения</div>
               <input className="field-input" value={extra.adresOpisanie || ""} onChange={(e) => setEx("adresOpisanie")(e.target.value)} placeholder="Улица, ориентир, курорт или комплекс" />
             </div>
+            <ShoreDistancePicker value={extra.rasstoyanieOzero || ""} onPick={(label, m) => { setEx("rasstoyanieOzero")(label); setEx("rasstoyanieOzeroM")(m === null || m === undefined ? "" : m); }} />
           </>
         ) : (
           <LocationPicker
@@ -727,8 +731,8 @@ function ArendaForm() {
         <input className="field-input" type="date" value={extra.dataDostupnosti || ""} onChange={(e) => setEx("dataDostupnosti")(e.target.value)} />
         <div className="mini-field-label">Дата начала аренды (если согласована)</div>
         <input className="field-input" type="date" value={extra.dataNachala || ""} onChange={(e) => setEx("dataNachala")(e.target.value)} />
-        <MiniField label="Условия проживания или использования" value={extra.usloviyaProzhivaniya || ""} onChange={setEx("usloviyaProzhivaniya")} />
-        <MiniField label="Что входит в стоимость" value={extra.vhoditVStoimost || ""} onChange={setEx("vhoditVStoimost")} />
+        <MiniField label="Условия проживания или использования" value={extra.usloviyaProzhivaniya || ""} onChange={setEx("usloviyaProzhivaniya")} long />
+        <MiniField label="Что входит в стоимость" value={extra.vhoditVStoimost || ""} onChange={setEx("vhoditVStoimost")} long />
       </Accordion>
 
       <Accordion title="ПОКАЗ">
@@ -740,22 +744,20 @@ function ArendaForm() {
 
       {region && (
         <Accordion title="ОЗЕРО И КУРОРТ (Иссык-Куль)" defaultOpen={true}>
-          <MiniField label="Название ЖК / пансионата / комплекса" value={extra.kurortZhk || ""} onChange={setEx("kurortZhk")} />
-          <MiniField label="Расстояние до озера, метров (вводится по реальным данным)" value={extra.rasstoyanieOzero || ""} onChange={setEx("rasstoyanieOzero")} />
-          <MiniChips label="Положение относительно берега" options={["Первая береговая линия", "Вторая линия", "В пешей доступности", "Не в пешей доступности"]} value={extra.liniyaOzero || ""} onChange={setEx("liniyaOzero")} />
-          <MiniChips label="Вид на озеро" options={["Прямой", "Частичный", "Отсутствует", "Не уточнён"]} value={extra.vidIzOkna || ""} onChange={setEx("vidIzOkna")} />
           <MiniChips label="Доступ к пляжу" options={["Собственный", "Общий пляж комплекса", "Общественный", "По пропуску", "Отсутствует", "Другое"]} value={extra.dostupPlyazh || ""} onChange={setEx("dostupPlyazh")} />
+          <MiniField label="Название ЖК / пансионата / комплекса" value={extra.kurortZhk || ""} onChange={setEx("kurortZhk")} />
+          <MiniChips label="Вид на озеро" options={["Прямой", "Частичный", "Отсутствует", "Не уточнён"]} value={extra.vidIzOkna || ""} onChange={setEx("vidIzOkna")} />
           <MiniMultiChips label="Инфраструктура комплекса" options={["Бассейн", "Ресторан", "Кафе", "Детская площадка", "Спортивная площадка", "Парковка", "СПА / баня", "Пляж", "Конференц-зал", "Зона отдыха", "Другое"]} value={extra.infraKompleksa} onChange={setEx("infraKompleksa")} />
           <MiniChips label="Парковка" options={["Есть", "Нет"]} value={extra.parkovkaIK || ""} onChange={setEx("parkovkaIK")} />
           <MiniChips label="Сезонность использования" options={["Круглогодично", "Только летний сезон", "Только зимний сезон", "По договорённости"]} value={extra.sezonnost || ""} onChange={setEx("sezonnost")} />
-          <MiniField label="Дополнительные условия, связанные с курортной недвижимостью" value={extra.dopUsloviyaKurort || ""} onChange={setEx("dopUsloviyaKurort")} />
+          <MiniField label="Дополнительные условия, связанные с курортной недвижимостью" value={extra.dopUsloviyaKurort || ""} onChange={setEx("dopUsloviyaKurort")} long />
           <MiniField label="Количество гостей" value={extra.kolvoGostey || ""} onChange={setEx("kolvoGostey")} />
           <MiniField label="Количество спальных мест" value={extra.spalnyhMest || ""} onChange={setEx("spalnyhMest")} />
-          <MiniField label="Свободные даты" value={extra.svobodnyeDaty || ""} onChange={setEx("svobodnyeDaty")} />
-          <MiniField label="Сезонные цены" value={extra.sezonnyeCeny || ""} onChange={setEx("sezonnyeCeny")} />
+          <MiniField label="Свободные даты" value={extra.svobodnyeDaty || ""} onChange={setEx("svobodnyeDaty")} long />
+          <MiniField label="Сезонные цены" value={extra.sezonnyeCeny || ""} onChange={setEx("sezonnyeCeny")} long />
           <MiniField label="Время заезда" value={extra.zaezdVremya || ""} onChange={setEx("zaezdVremya")} />
           <MiniField label="Время выезда" value={extra.viezdVremya || ""} onChange={setEx("viezdVremya")} />
-          <MiniField label="Условия бронирования и отмены" value={extra.usloviyaBroni || ""} onChange={setEx("usloviyaBroni")} />
+          <MiniField label="Условия бронирования и отмены" value={extra.usloviyaBroni || ""} onChange={setEx("usloviyaBroni")} long />
           <MiniMultiChips label="Сезон доступности" options={["Весь год", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Зимний сезон", "По договорённости"]} value={extra.sezonDostupnosti} onChange={setEx("sezonDostupnosti")} />
         </Accordion>
       )}
@@ -913,9 +915,10 @@ function ArendaForm() {
       {(!editId || !currentStatus || currentStatus === "черновик") && <button
         disabled={saving || videoPendingError}
         onClick={handleSaveDraft}
-        style={{ width: "100%", marginTop: 10, background: "none", border: "none", color: "var(--muted)", fontSize: 13, fontWeight: 700, padding: "10px 0" }}
+        className="draft-btn"
       >
-        Сохранить черновик и продолжить позже
+        💾 Сохранить черновик
+        <small>можно продолжить позже, обязательные поля заполнять не нужно</small>
       </button>}
       <div className="progress-note">Поля со звёздочкой * обязательны</div>
     </div>
