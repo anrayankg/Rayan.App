@@ -237,7 +237,21 @@ function IconWhatsapp() {
   return <svg width="17" height="17" viewBox="0 0 24 24" fill="none" strokeWidth="2" style={{ stroke: "var(--accent-text)" }}><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" /></svg>;
 }
 
+// Длинный текст (с абзацами) показываем под названием поля, слева, с сохранением переносов строк
 function Row({ label, value }) {
+  if (value === null || value === undefined || value === "") return null;
+  const text = Array.isArray(value) ? value.join(", ") : String(value);
+  if (text.length > 48 || text.includes("\n")) {
+    return (
+      <div style={{ ...sx.row, display: "block" }}>
+        <div style={sx.rowLabel}>{label}</div>
+        <div style={{ ...sx.rowValue, textAlign: "left", whiteSpace: "pre-line", marginTop: 6, width: "100%", maxWidth: "100%", lineHeight: 1.5 }}>{text}</div>
+      </div>
+    );
+  }
+  return <RowShort label={label} value={value} />;
+}
+function RowShort({ label, value }) {
   if (!value || value === "—") return null;
   return (
     <div style={sx.row}>
