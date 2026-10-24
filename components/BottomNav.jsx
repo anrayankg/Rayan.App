@@ -1,5 +1,8 @@
 "use client";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { getCurrentAgent } from "../lib/agent";
+import { adLoadState, adCounts } from "../lib/ads";
 import { Home, Heart, Megaphone, User, Plus } from "lucide-react";
 
 // Общее нижнее меню — на главной странице оно уже было, но на остальных страницах
@@ -18,6 +21,27 @@ const NAV_FILLABLE = { "Главная": true, "Избранное": true, "Пр
 
 export default function BottomNav({ active }) {
   const router = useRouter();
+  // Сколько объектов ждут рекламного действия (кэш на минуту, чтобы не нагружать базу)
+  const [adCount, setAdCount] = useState(0);
+  useEffect(() => {
+    let on = true;
+    async function load() {
+      const me = getCurrentAgent();
+      if (!me || !me.pin) { setAdCount(0); return; }
+      try {
+        const raw = sessionStorage.getItem("rayan_ad_badge");
+        if (raw) { const c = JSON.parse(raw); if (Date.now() - c.t < 60000) { if (on) setAdCount(c.n); return; } }
+      } catch {}
+      try {
+        const n = adCounts(await adLoadState(me)).need;
+        try { sessionStorage.setItem("rayan_ad_badge", JSON.stringify({ t: Date.now(), n })); } catch {}
+        if (on) setAdCount(n);
+      } catch { if (on) setAdCount(0); }
+    }
+    load();
+    window.addEventListener("rayan-ads-changed", load);
+    return () => { on = false; window.removeEventListener("rayan-ads-changed", load); };
+  }, []);
   return (
     <div className="bottomnav">
       {NAV.map((n, i) => {
@@ -35,7 +59,10 @@ export default function BottomNav({ active }) {
         const color = isActive ? "var(--green-accent)" : "var(--muted)";
         return (
           <div key={i} className={`nav-item ${isActive ? "active" : ""}`} onClick={() => router.push(n.path)} style={{ cursor: "pointer" }}>
-            <Icon size={21} color={color} fill={isActive && canFill ? color : "none"} strokeWidth={isActive && canFill ? 1.6 : 1.8} />
+            <span className="nav-icon-wrap">
+              <Icon size={21} color={color} fill={isActive && canFill ? color : "none"} strokeWidth={isActive && canFill ? 1.6 : 1.8} />
+              {n.label === "Реклама" && adCount > 0 && <span className="nav-badge">{adCount > 99 ? "99+" : adCount}</span>}
+            </span>
             <span>{n.label}</span>
           </div>
         );
