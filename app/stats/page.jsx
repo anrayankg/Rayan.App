@@ -2,6 +2,7 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "../../lib/supabase";
+import { useKeptState } from "../../lib/keepState";
 import { getCurrentAgent, isAdmin } from "../../lib/agent";
 import BottomNav from "../../components/BottomNav";
 
@@ -19,7 +20,7 @@ const CAT = {
   "аренда": { label: "Аренда", key: "arenda" },
   "инвестиции": { label: "Инвестиции", key: "investicii" },
 };
-const ZERO = { work: 0, active: 0, drafts: 0, new24: 0, c_yes: 0, c_no: 0, c_empty: 0, deact: 0, needs_ad: 0 };
+const ZERO = { work: 0, active: 0, drafts: 0, new24: 0, c_yes: 0, c_no: 0, c_empty: 0, deact: 0, needs_ad: 0, ad_new: 0, ad_update: 0 };
 const sum = (rows) => rows.reduce((a, r) => { const o = { ...a }; Object.keys(ZERO).forEach((k) => { o[k] = (a[k] || 0) + Number(r[k] || 0); }); return o; }, { ...ZERO });
 const share = (t) => {
   const d = t.c_yes + t.c_no;
@@ -27,12 +28,19 @@ const share = (t) => {
 };
 const fmtDate = (iso) => { if (!iso) return ""; const d = new Date(iso); return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${d.getFullYear()}`; };
 
-function periodRange(p) {
+// Периоды: от выбранного момента до сейчас; «свой период» — две даты
+function periodRange(p, cFrom, cTo) {
   const now = new Date();
-  if (p === "today") { const d = new Date(now); d.setHours(0, 0, 0, 0); return d.toISOString(); }
-  const days = p === "7" ? 7 : 30;
-  return new Date(now.getTime() - days * 864e5).toISOString();
+  if (p === "custom") {
+    const f = cFrom ? new Date(cFrom + "T00:00:00") : null;
+    const t = cTo ? new Date(cTo + "T23:59:59") : null;
+    return { from: f ? f.toISOString() : new Date(now.getTime() - 30 * 864e5).toISOString(), to: t ? t.toISOString() : null };
+  }
+  if (p === "today") { const d = new Date(now); d.setHours(0, 0, 0, 0); return { from: d.toISOString(), to: null }; }
+  const days = { "7": 7, "30": 30, "180": 182, "365": 365 }[p] || 30;
+  return { from: new Date(now.getTime() - days * 864e5).toISOString(), to: null };
 }
+const PERIODS = [["today", "Сегодня"], ["7", "7 дней"], ["30", "30 дней"], ["180", "6 месяцев"], ["365", "Год"], ["custom", "Свой период"]];
 
 function Metric({ label, value, href, tone, router }) {
   const inner = (<><div className={`st-num ${tone || ""}`}>{value}</div><div className="st-lbl">{label}</div></>);
@@ -59,7 +67,9 @@ function Inner() {
   const router = useRouter();
   const sp = useSearchParams();
   const [me, setMe] = useState(undefined);
-  const [period, setPeriod] = useState("30");
+  const [period, setPeriod] = useKeptState("stats_period", "30", "local");
+  const [cFrom, setCFrom] = useKeptState("stats_from", "", "local");
+  const [cTo, setCTo] = useKeptState("stats_to", "", "local");
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
 
@@ -67,7 +77,7 @@ function Inner() {
   useEffect(() => {
     if (!me) return;
     setData(null); setError("");
-    supabase.rpc("staff_stats", { p_phone: me.phone, p_pin: me.pin || "", p_from: periodRange(period), p_to: null })
+    (() => { const r = periodRange(period, cFrom, cTo); return supabase.rpc("staff_stats", { p_phone: me.phone, p_pin: me.pin || "", p_from: r.from, p_to: r.to }); })()
       .then(({ data: d, error: e }) => {
         if (e) {
           setError(/staff_stats/.test(e.message) ? "В базе ещё не включена статистика. Выполните файл RAYAN_statistika.sql в Supabase." : /Нет доступа/.test(e.message) ? "Нет доступа. Выйдите из Профиля и войдите заново по номеру и ПИН-коду." : "Не удалось загрузить: " + e.message);
@@ -75,14 +85,20 @@ function Inner() {
         }
         setData(d);
       });
-  }, [me, period]);
+  }, [me, period, cFrom, cTo]);
 
   const agents = (data && data.agents) || [];
   const rows = (data && data.rows) || [];
   const per = (data && data.period) || [];
+  const hist = (data && data.hist) || [];
   const role = (data && data.role) || (me && me.role) || "agent";
   const byP9 = (p9) => rows.filter((r) => r.p9 === p9);
-  const perOf = (p9) => per.find((x) => x.p9 === p9) || { added: 0, contracts: 0, published: 0 };
+  const perOf = (p9) => {
+    const e = per.find((x) => x.p9 === p9) || {};
+    const h = hist.find((x) => x.p9 === p9) || {};
+    // добавлено — по дате создания объекта, договоры — по дате договора (они есть и за прошлое); опубликовано — из истории действий
+    return { added: Number(h.added || 0), contracts: Number(h.contracts_dated || 0), nodate: Number(h.contracts_nodate || 0), published: Number(e.published || 0) };
+  };
   const agentP9s = new Set(agents.map((a) => last9(a.phone)));
 
   const ropParam = sp.get("rop");
@@ -135,8 +151,8 @@ function Inner() {
   );
 
   const periodBar = (
-    <div className="st-periods">
-      {[["today", "Сегодня"], ["7", "7 дней"], ["30", "30 дней"]].map(([k, t]) => (
+    <div className="st-periods six">
+      {PERIODS.map(([k, t]) => (
         <button key={k} className={period === k ? "on" : ""} onClick={() => setPeriod(k)}>{t}</button>
       ))}
     </div>
@@ -243,7 +259,7 @@ function Inner() {
             <Metric label="с договором" value={total.c_yes} tone="good" href={lnk("", "&tab=активно&contract=yes")} router={router} />
             <Metric label="без договора" value={total.c_no} href={lnk("", "&tab=активно&contract=no")} router={router} />
             <Metric label="не заполнено" value={total.c_empty} tone="warn" href={lnk("", "&tab=активно&contract=empty")} router={router} />
-            <Metric label="требуют рекламы" value={total.needs_ad} />
+            <Metric label="требуют рекламы" value={total.ad_new + total.ad_update} href={`/ads?agent=${p9}`} router={router} />
           </div>
           {total.deact > 0 && <div className="st-muted">Деактивированные и архивные: {total.deact} (в рабочую базу не входят)</div>}
         </div>
@@ -251,12 +267,22 @@ function Inner() {
         <div className="st-card">
           <div className="st-card-title">За выбранный период</div>
           {periodBar}
+          {period === "custom" && (
+            <div className="st-custom">
+              <div><label>С даты</label><input className="field-input" type="date" value={cFrom} onChange={(e) => setCFrom(e.target.value)} /></div>
+              <div><label>По дату</label><input className="field-input" type="date" value={cTo} onChange={(e) => setCTo(e.target.value)} /></div>
+            </div>
+          )}
           <div className="st-grid3">
             <Metric label="добавлено объектов" value={pr.added} />
             <Metric label="заключено договоров" value={pr.contracts} tone="good" />
             <Metric label="опубликовано" value={pr.published} />
           </div>
-          <div className="st-muted">История действий ведётся с {fmtDate(data.events_since) || "момента включения"}. Что было раньше, восстановить нельзя — мы не додумываем.</div>
+          <div className="st-muted">
+            «Добавлено» считается по дате создания объекта, «договоры» — по дате заключения, которую указывает агент (за любой прошлый период).
+            {pr.nodate > 0 && <> У {pr.nodate} объектов с договором дата не указана — в периоды они не попадают.</>}
+            {" "}«Опубликовано» ведётся с {fmtDate(data.events_since) || "момента включения истории"}: что публиковалось раньше, в базе не записано, и мы это не додумываем.
+          </div>
         </div>
 
         {cats.map((r) => {
@@ -270,7 +296,7 @@ function Inner() {
                 <Metric label="активных" value={t.active} href={lnk(c.key, "&tab=активно")} router={router} />
                 <Metric label="новых за 24ч" value={t.new24} href={lnk(c.key, "&tab=активно&new=1")} router={router} />
                 <Metric label="черновиков" value={t.drafts} href={lnk(c.key, "&tab=черновики")} router={router} />
-                <Metric label="требуют рекламы" value={t.needs_ad} />
+                <Metric label="требуют рекламы" value={t.ad_new + t.ad_update} href={`/ads?agent=${p9}`} router={router} />
               </div>
               <div className="st-grid3">
                 <Metric label="с договором" value={t.c_yes} tone="good" href={lnk(c.key, "&tab=активно&contract=yes")} router={router} />
