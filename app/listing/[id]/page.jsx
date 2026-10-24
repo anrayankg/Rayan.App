@@ -10,6 +10,7 @@ import AgentContactBlock from "../../../components/AgentContactBlock";
 import ShareSheet from "../../../components/ShareSheet";
 import ConfirmDialog from "../../../components/ConfirmDialog";
 import OwnerOtherListings from "../../../components/OwnerOtherListings";
+import AdPanel from "../../../components/AdPanel";
 import { auditFields } from "../../../lib/audit";
 import { HOUSE_LABELS, COMMERCE_LABELS, RENT_INVEST_LABELS } from "../../../lib/extraFields";
 import { useAgentsDir, agentDisplayName } from "../../../lib/agentsDir";
@@ -79,7 +80,21 @@ function EditableRow({ label, rawValue, displayValue, field, listingId, onSaved,
   );
 }
 
+// Длинный текст (с абзацами) показываем под названием поля, слева, с сохранением переносов строк
 function Row({ label, value }) {
+  if (value === null || value === undefined || value === "") return null;
+  const text = Array.isArray(value) ? value.join(", ") : String(value);
+  if (text.length > 48 || text.includes("\n")) {
+    return (
+      <div style={{ ...sx.row, display: "block" }}>
+        <div style={sx.rowLabel}>{label}</div>
+        <div style={{ ...sx.rowValue, textAlign: "left", whiteSpace: "pre-line", marginTop: 6, width: "100%", maxWidth: "100%", lineHeight: 1.5 }}>{text}</div>
+      </div>
+    );
+  }
+  return <RowShort label={label} value={value} />;
+}
+function RowShort({ label, value }) {
   if (value === null || value === undefined || value === "") return null;
   return (
     <div style={sx.row}>
@@ -398,6 +413,8 @@ export default function ListingDetailPage() {
           </div>
         )}
         {contact && <OwnerOtherListings listing={l} contact={contact} />}
+
+        <AdPanel listing={l} />
 
         {/* Закрытая информация — видна только владельцу */}
         <div style={{ ...sx.section, ...sx.privateSection }}>
