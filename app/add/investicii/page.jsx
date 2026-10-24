@@ -10,6 +10,7 @@ import { Picker, MultiPicker } from "../../../components/Picker";
 import ConfirmDialog from "../../../components/ConfirmDialog";
 import AgentAssign from "../../../components/AgentAssign";
 import IssykKulGeo from "../../../components/IssykKulPicker";
+import ShoreDistancePicker from "../../../components/ShoreDistancePicker";
 import { auditFields } from "../../../lib/audit";
 import AutoTextarea from "../../../components/AutoTextarea";
 import CategorySwitch from "../../../components/CategorySwitch";
@@ -58,11 +59,13 @@ function Accordion({ title, children, defaultOpen = false }) {
     </div>
   );
 }
-function MiniField({ label, value, onChange }) {
+function MiniField({ label, value, onChange, long }) {
   return (
     <div>
       <div className="mini-field-label">{label}</div>
-      <input className="field-input" value={value} onChange={(e) => onChange(e.target.value)} />
+      {long
+        ? <AutoTextarea compact minRows={3} className="field-textarea" value={value} onChange={(e) => onChange(e.target.value)} />
+        : <input className="field-input" value={value} onChange={(e) => onChange(e.target.value)} />}
     </div>
   );
 }
@@ -127,7 +130,7 @@ function InvesticiiForm() {
   const [confirmSave, setConfirmSave] = useState(false);
   const [commsTouched, setCommsTouched] = useState(false);
 
-  const [city, setCity] = useState("Бишкек");
+  const [city, setCity] = useState(""); // у инвестиционного проекта место не обязательно
   const [region, setRegion] = useState(""); // "иссык-куль" — объект внутри раздела «Иссык-Куль»
   const [district, setDistrict] = useState("");
   useEffect(() => {
@@ -244,7 +247,6 @@ function InvesticiiForm() {
   const missingFields = [
     !extra.tipPublikacii && "Что размещаете: предложение или поиск инвестора", !extra.napravlenie && "Направление проекта", isOtherInv && !extra.napravlenieInoe && "Уточните направление",
     !extra.nazvanieProekta && "Название проекта", !extra.kratkoeOpisanie && "Краткое описание проекта",
-    !city && "Город или населённый пункт", city && districtRequired && !district && "Район",
     !price && "Сколько денег требуется привлечь", !extra.riski && "Основные риски проекта",
     !contractStatus && "Договор RAYAN с источником (есть / нет)",
     !isPhoneComplete(ownerPhone) && "Телефон источника",
@@ -338,7 +340,7 @@ function InvesticiiForm() {
         type: "инвестиции",
         price: numOrNull(price),
         currency_new: currency,
-        district, city,
+        district, city: city || "Не указан",
         area_m2: numOrNull(area), plot_sotka: numOrNull(String(plot).replace(",", ".")),
         floor: null, floors_total: null,
         zhk, sk,
@@ -396,7 +398,7 @@ function InvesticiiForm() {
         price: Number(price),
         currency_new: currency,
         district,
-        city,
+        city: city || "Не указан",
         area_m2: numOrNull(area),
         plot_sotka: numOrNull(String(plot).replace(",", ".")),
         floor: null,
@@ -515,27 +517,28 @@ function InvesticiiForm() {
         <div className="field-label">Краткое описание проекта <span className="star">*</span></div>
         <AutoTextarea className={`field-textarea ${attemptedSubmit && !extra.kratkoeOpisanie ? "field-error" : ""}`} value={extra.kratkoeOpisanie || ""} onChange={(e) => setEx("kratkoeOpisanie")(e.target.value)} placeholder="Суть проекта в нескольких предложениях" />
       </div>
+      {!isSeek && (
+        <>
       <div className="field-group">
-        <Picker label="География проекта" options={INV_GEO} value={extra.geografiya || ""}
+        <Picker label="География проекта (если проект привязан к месту)" options={INV_GEO} value={extra.geografiya || ""}
           onChange={(v) => { setEx("geografiya")(v); if (v === "За пределами Кыргызстана") { setCity("За пределами Кыргызстана"); setDistrict(""); } }} />
-        <div className="field-hint">Ниже выберите город или населённый пункт. Для Иссык-Куля появятся «Район» и «Населённый пункт» из официального справочника. Для проекта за границей опишите место в поле «Адрес или описание».</div>
+        <div className="field-hint">Место указывать не обязательно. Если проект привязан к месту — выберите город; для Иссык-Куля появятся «Район или город» и «Населённый пункт».</div>
       </div>
 
       <div className="field-group">
         {ikGeo ? (
           <>
             {region && <div className="ik-banner">🏖 Раздел «Иссык-Куль»</div>}
-            <IssykKulGeo district={district} city={city} errorDistrict={attemptedSubmit && !district} errorCity={attemptedSubmit && !city}
-              onChange={(d, c, aimak, kind, la, lo) => { setDistrict(d); setCity(c); setEx("aiylAimak")(aimak || ""); setEx("tipNP")(kind || ""); if (la && lo) { setMapLat(la); setMapLng(lo); } }} />
+            <IssykKulGeo district={district} city={city} errorDistrict={false} errorCity={false}
+              onChange={(d, c, aimak, kind, la, lo, code) => { setDistrict(d); setCity(c); setEx("aiylAimak")(aimak || ""); setEx("tipNP")(kind || ""); setEx("soateCode")(code || ""); if (la && lo) { setMapLat(la); setMapLng(lo); } }} />
             <div className="field-group">
-              <div className="field-label">Адрес или описание местоположения</div>
+              <div className="field-label">Микрорайон, улица, адрес или описание местоположения</div>
               <input className="field-input" value={extra.adresOpisanie || ""} onChange={(e) => setEx("adresOpisanie")(e.target.value)} placeholder="Улица, ориентир, курорт или комплекс" />
             </div>
           </>
         ) : (
           <LocationPicker
-            label="Город"
-            required
+            label="Город (необязательно)"
             options={CITIES}
             value={city}
             onChange={(v) => { setCity(v); setDistrict(""); }}
@@ -546,8 +549,7 @@ function InvesticiiForm() {
       <div className="field-group">
         {CITY_DISTRICTS[city]?.length > 0 ? (
           <LocationPicker
-            label="Район"
-            required
+            label="Район (необязательно)"
             options={CITY_DISTRICTS[city]}
             value={district}
             onChange={setDistrict}
@@ -575,6 +577,8 @@ function InvesticiiForm() {
           <div className="field-label">Точный адрес или описание местоположения</div>
           <input className="field-input" value={extra.adresOpisanie || ""} onChange={(e) => setEx("adresOpisanie")(e.target.value)} placeholder="Адрес, район, описание участка" />
         </div>
+      )}
+        </>
       )}
 
       <div className="field-group">
@@ -607,8 +611,8 @@ function InvesticiiForm() {
         <MiniField label="Количество объектов / помещений" value={extra.kolvoObektov || ""} onChange={setEx("kolvoObektov")} />
         <MiniField label="Планируемый срок начала проекта" value={extra.srokNachala || ""} onChange={setEx("srokNachala")} />
         <MiniField label="Планируемый срок завершения" value={extra.srokZaversheniya || ""} onChange={setEx("srokZaversheniya")} />
-        <MiniField label="Что уже сделано в проекте" value={extra.chtoSdelano || ""} onChange={setEx("chtoSdelano")} />
-        <MiniField label="Что ещё необходимо сделать" value={extra.chtoOstalos || ""} onChange={setEx("chtoOstalos")} />
+        <MiniField label="Что уже сделано в проекте" value={extra.chtoSdelano || ""} onChange={setEx("chtoSdelano")} long />
+        <MiniField label="Что ещё необходимо сделать" value={extra.chtoOstalos || ""} onChange={setEx("chtoOstalos")} long />
       </Accordion>
 
       <Accordion title="ФИНАНСОВЫЕ ПАРАМЕТРЫ">
@@ -616,10 +620,10 @@ function InvesticiiForm() {
         <MiniField label="Сколько собственных средств уже вложено" value={extra.sobstvennyeVlozheniya || ""} onChange={setEx("sobstvennyeVlozheniya")} />
         <MiniField label="Минимальная сумма участия инвестора" value={extra.minUchastie || ""} onChange={setEx("minUchastie")} />
         <MiniField label="Максимальная сумма участия (если ограничена)" value={extra.maxUchastie || ""} onChange={setEx("maxUchastie")} />
-        <MiniField label="Какую часть проекта планируется профинансировать инвестициями" value={extra.chastFinansirovaniya || ""} onChange={setEx("chastFinansirovaniya")} />
+        <MiniField label="Какую часть проекта планируется профинансировать инвестициями" value={extra.chastFinansirovaniya || ""} onChange={setEx("chastFinansirovaniya")} long />
         <MiniMultiChips label="На что требуются деньги" options={["Приобретение земли", "Покупка недвижимости", "Проектирование", "Разрешительные документы", "Строительные работы", "Строительные материалы", "Подключение коммуникаций", "Отделка", "Благоустройство", "Покупка оборудования", "Запуск бизнеса", "Расширение действующего проекта", "Другое"]} value={extra.naChtoDengi} onChange={setEx("naChtoDengi")} />
         <MiniField label="Планируемая продолжительность инвестиционного цикла" value={extra.tsiklInvest || ""} onChange={setEx("tsiklInvest")} />
-        <MiniField label="Источник остальных средств" value={extra.istochnikOstalnyh || ""} onChange={setEx("istochnikOstalnyh")} />
+        <MiniField label="Источник остальных средств" value={extra.istochnikOstalnyh || ""} onChange={setEx("istochnikOstalnyh")} long />
       </Accordion>
 
       <Accordion title="УСЛОВИЯ ДЛЯ ИНВЕСТОРА">
@@ -632,13 +636,13 @@ function InvesticiiForm() {
         <MiniChips label="Период, за который указан доход" options={["Месяц", "Год", "Весь инвестиционный цикл", "Другой период"]} value={extra.periodDohoda || ""} onChange={setEx("periodDohoda")} />
         <MiniField label="Планируемый срок возврата капитала" value={extra.srokVozvrata || ""} onChange={setEx("srokVozvrata")} />
         <MiniChips label="Участие инвестора в управлении" options={["Да", "Нет", "По договорённости"]} value={extra.uchastieUpravlenie || ""} onChange={setEx("uchastieUpravlenie")} />
-        <MiniField label="Как предоставляется отчётность инвестору" value={extra.otchetnost || ""} onChange={setEx("otchetnost")} />
-        <MiniField label="Кто отвечает за управление и реализацию проекта" value={extra.otvetstvennyi || ""} onChange={setEx("otvetstvennyi")} />
-        <MiniField label="Как принимаются ключевые решения" value={extra.resheniya || ""} onChange={setEx("resheniya")} />
-        <MiniField label="Условия выхода инвестора из проекта" value={extra.usloviyaVyhoda || ""} onChange={setEx("usloviyaVyhoda")} />
-        <MiniField label="Условия распределения прибыли и убытков" value={extra.pribylUbytki || ""} onChange={setEx("pribylUbytki")} />
-        <MiniField label="Гарантии или способы обеспечения по договору (если применимо)" value={extra.garantii || ""} onChange={setEx("garantii")} />
-        <MiniField label="Дополнительные условия участия" value={extra.dopUsloviyaInvest || ""} onChange={setEx("dopUsloviyaInvest")} />
+        <MiniField label="Как предоставляется отчётность инвестору" value={extra.otchetnost || ""} onChange={setEx("otchetnost")} long />
+        <MiniField label="Кто отвечает за управление и реализацию проекта" value={extra.otvetstvennyi || ""} onChange={setEx("otvetstvennyi")} long />
+        <MiniField label="Как принимаются ключевые решения" value={extra.resheniya || ""} onChange={setEx("resheniya")} long />
+        <MiniField label="Условия выхода инвестора из проекта" value={extra.usloviyaVyhoda || ""} onChange={setEx("usloviyaVyhoda")} long />
+        <MiniField label="Условия распределения прибыли и убытков" value={extra.pribylUbytki || ""} onChange={setEx("pribylUbytki")} long />
+        <MiniField label="Гарантии или способы обеспечения по договору (если применимо)" value={extra.garantii || ""} onChange={setEx("garantii")} long />
+        <MiniField label="Дополнительные условия участия" value={extra.dopUsloviyaInvest || ""} onChange={setEx("dopUsloviyaInvest")} long />
         <div className="field-hint">Прогнозный доход, срок окупаемости и возврат капитала не гарантированы, если это не подтверждено договорными условиями. Даже договор не устраняет инвестиционные риски.</div>
       </Accordion>
 
@@ -647,10 +651,10 @@ function InvesticiiForm() {
         <MiniField label="Правовой статус участка / недвижимости" value={extra.pravovoyStatus || ""} onChange={setEx("pravovoyStatus")} />
         <MiniChips label="Назначение земли (если применимо)" options={["ПМЖ", "ИЖС", "Коммерческое", "Дачный участок", "Садоводство", "Сельхозназначение", "Под ЖК", "Другое"]} value={extra.naznachenieZemliInv || ""} onChange={setEx("naznachenieZemliInv")} />
         <MiniMultiChips label="Документы проекта" options={INV_DOCS} value={docs} onChange={setDocs} />
-        <MiniField label="Стадия получения разрешений" value={extra.stadiyaRazresheniy || ""} onChange={setEx("stadiyaRazresheniy")} />
+        <MiniField label="Стадия получения разрешений" value={extra.stadiyaRazresheniy || ""} onChange={setEx("stadiyaRazresheniy")} long />
         <MiniChips label="Обременения, аресты или залоги" options={["Есть", "Нет", "Неизвестно"]} value={extra.obremeneniya || ""} onChange={setEx("obremeneniya")} />
-        <MiniField label="Какие именно (если есть)" value={extra.obremeneniyaOpisanie || ""} onChange={setEx("obremeneniyaOpisanie")} />
-        <MiniField label="Другие документы проекта" value={extra.drugieDokumenty || ""} onChange={setEx("drugieDokumenty")} />
+        <MiniField label="Какие именно (если есть)" value={extra.obremeneniyaOpisanie || ""} onChange={setEx("obremeneniyaOpisanie")} long />
+        <MiniField label="Другие документы проекта" value={extra.drugieDokumenty || ""} onChange={setEx("drugieDokumenty")} long />
         <div className="field-hint">Указывайте фактический статус документов. Анкета не подтверждает, что проект законен или разрешён к строительству. Фото и сканы документов добавляются ниже в закрытой части «Информация для агента».</div>
       </Accordion>
 
@@ -675,21 +679,21 @@ function InvesticiiForm() {
       </Accordion>
 
       <Accordion title="РИСКИ И МАТЕРИАЛЫ">
-        <MiniField label="Возможные задержки и факторы, влияющие на сроки" value={extra.zaderzhki || ""} onChange={setEx("zaderzhki")} />
-        <MiniField label="Зависимость от разрешений, финансирования, строительства или продаж" value={extra.zavisimost || ""} onChange={setEx("zavisimost")} />
+        <MiniField label="Возможные задержки и факторы, влияющие на сроки" value={extra.zaderzhki || ""} onChange={setEx("zaderzhki")} long />
+        <MiniField label="Зависимость от разрешений, финансирования, строительства или продаж" value={extra.zavisimost || ""} onChange={setEx("zavisimost")} long />
         <div className="field-hint">Основные фото добавляются ниже в «Фото объекта». Документы-файлы пока не загружаются: вставьте ссылку (Google Диск, Яндекс Диск и т.п.).</div>
         <MiniField label="Ссылка на фото текущей стадии строительства" value={extra.ssylkaFotoStadii || ""} onChange={setEx("ssylkaFotoStadii")} />
         <MiniField label="Ссылка на визуализации / 3D" value={extra.ssylkaVizualizacii || ""} onChange={setEx("ssylkaVizualizacii")} />
         <MiniField label="Ссылка на генплан или схему участка" value={extra.ssylkaGenplan || ""} onChange={setEx("ssylkaGenplan")} />
         <MiniField label="Ссылка на презентацию проекта" value={extra.ssylkaPrezentaciya || ""} onChange={setEx("ssylkaPrezentaciya")} />
         <MiniField label="Ссылка на финансовую модель / смету" value={extra.ssylkaSmeta || ""} onChange={setEx("ssylkaSmeta")} />
-        <MiniField label="Дополнительные материалы" value={extra.dopMaterialy || ""} onChange={setEx("dopMaterialy")} />
+        <MiniField label="Дополнительные материалы" value={extra.dopMaterialy || ""} onChange={setEx("dopMaterialy")} long />
       </Accordion>
 
       {isOffer && (
       <Accordion title="ДЛЯ ПРЕДЛОЖЕНИЯ ИНВЕСТОРАМ" defaultOpen={true}>
-        <MiniField label="Что именно получает инвестор в обмен на вложения" value={extra.chtoPoluchaetInvestor || ""} onChange={setEx("chtoPoluchaetInvestor")} />
-        <MiniField label="Доступная доля или объём участия" value={extra.dostupnayaDolya || ""} onChange={setEx("dostupnayaDolya")} />
+        <MiniField label="Что именно получает инвестор в обмен на вложения" value={extra.chtoPoluchaetInvestor || ""} onChange={setEx("chtoPoluchaetInvestor")} long />
+        <MiniField label="Доступная доля или объём участия" value={extra.dostupnayaDolya || ""} onChange={setEx("dostupnayaDolya")} long />
         <MiniField label="Сколько уже привлечено" value={extra.uzhePrivlecheno || ""} onChange={setEx("uzhePrivlecheno")} />
         <MiniField label="Сколько ещё требуется привлечь" value={extra.eshcheTrebuetsya || ""} onChange={setEx("eshcheTrebuetsya")} />
         <MiniField label="Контакт для обсуждения условий" value={extra.kontaktObsuzhdeniya || ""} onChange={setEx("kontaktObsuzhdeniya")} />
@@ -701,9 +705,9 @@ function InvesticiiForm() {
       {isSeek && (
       <Accordion title="ДЛЯ ПОИСКА ИНВЕСТОРА" defaultOpen={true}>
         <MiniField label="К какому сроку требуется финансирование" value={extra.kSroku || ""} onChange={setEx("kSroku")} />
-        <MiniField label="Почему финансирование нужно именно сейчас" value={extra.pochemuSeychas || ""} onChange={setEx("pochemuSeychas")} />
-        <MiniField label="Что будет достигнуто после получения инвестиций" value={extra.chtoBudetDostignuto || ""} onChange={setEx("chtoBudetDostignuto")} />
-        <MiniField label="Какой вклад, кроме денег, вносит инициатор проекта" value={extra.vkladKromeDeneg || ""} onChange={setEx("vkladKromeDeneg")} />
+        <MiniField label="Почему финансирование нужно именно сейчас" value={extra.pochemuSeychas || ""} onChange={setEx("pochemuSeychas")} long />
+        <MiniField label="Что будет достигнуто после получения инвестиций" value={extra.chtoBudetDostignuto || ""} onChange={setEx("chtoBudetDostignuto")} long />
+        <MiniField label="Какой вклад, кроме денег, вносит инициатор проекта" value={extra.vkladKromeDeneg || ""} onChange={setEx("vkladKromeDeneg")} long />
       </Accordion>
 
       )}
@@ -870,9 +874,10 @@ function InvesticiiForm() {
       {(!editId || !currentStatus || currentStatus === "черновик") && <button
         disabled={saving || videoPendingError}
         onClick={handleSaveDraft}
-        style={{ width: "100%", marginTop: 10, background: "none", border: "none", color: "var(--muted)", fontSize: 13, fontWeight: 700, padding: "10px 0" }}
+        className="draft-btn"
       >
-        Сохранить черновик и продолжить позже
+        💾 Сохранить черновик
+        <small>можно продолжить позже, обязательные поля заполнять не нужно</small>
       </button>}
       <div className="progress-note">Поля со звёздочкой * обязательны</div>
     </div>
