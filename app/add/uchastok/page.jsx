@@ -10,6 +10,7 @@ import { Picker, MultiPicker } from "../../../components/Picker";
 import ConfirmDialog from "../../../components/ConfirmDialog";
 import AgentAssign from "../../../components/AgentAssign";
 import IssykKulGeo from "../../../components/IssykKulPicker";
+import ShoreDistancePicker from "../../../components/ShoreDistancePicker";
 import { auditFields } from "../../../lib/audit";
 import AutoTextarea from "../../../components/AutoTextarea";
 import CategorySwitch from "../../../components/CategorySwitch";
@@ -46,11 +47,13 @@ function Accordion({ title, children, defaultOpen = false }) {
     </div>
   );
 }
-function MiniField({ label, value, onChange }) {
+function MiniField({ label, value, onChange, long }) {
   return (
     <div>
       <div className="mini-field-label">{label}</div>
-      <input className="field-input" value={value} onChange={(e) => onChange(e.target.value)} />
+      {long
+        ? <AutoTextarea compact minRows={3} className="field-textarea" value={value} onChange={(e) => onChange(e.target.value)} />
+        : <input className="field-input" value={value} onChange={(e) => onChange(e.target.value)} />}
     </div>
   );
 }
@@ -478,11 +481,12 @@ function UchastokForm() {
           <>
             <div className="ik-banner">🏖 Раздел «Иссык-Куль»</div>
             <IssykKulGeo district={district} city={city} errorDistrict={attemptedSubmit && !district} errorCity={attemptedSubmit && !city}
-              onChange={(d, c, aimak, kind, la, lo) => { setDistrict(d); setCity(c); setEx("aiylAimak")(aimak || ""); setEx("tipNP")(kind || ""); if (la && lo) { setMapLat(la); setMapLng(lo); } }} />
+              onChange={(d, c, aimak, kind, la, lo, code) => { setDistrict(d); setCity(c); setEx("aiylAimak")(aimak || ""); setEx("tipNP")(kind || ""); setEx("soateCode")(code || ""); if (la && lo) { setMapLat(la); setMapLng(lo); } }} />
             <div className="field-group">
-              <div className="field-label">Адрес или описание местоположения</div>
+              <div className="field-label">Микрорайон, улица, адрес или описание местоположения</div>
               <input className="field-input" value={extra.adresOpisanie || ""} onChange={(e) => setEx("adresOpisanie")(e.target.value)} placeholder="Улица, ориентир, курорт или комплекс" />
             </div>
+            <ShoreDistancePicker value={extra.rasstoyanieOzero || ""} onPick={(label, m) => { setEx("rasstoyanieOzero")(label); setEx("rasstoyanieOzeroM")(m === null || m === undefined ? "" : m); }} />
           </>
         ) : (
           <LocationPicker
@@ -672,10 +676,9 @@ function UchastokForm() {
 
       {region && (
         <Accordion title="ОЗЕРО И КУРОРТ (Иссык-Куль)" defaultOpen={true}>
+          <MiniChips label="Доступ к пляжу" options={["Собственный", "Общий пляж комплекса", "Общественный", "По пропуску", "Отсутствует", "Другое"]} value={extra.dostupPlyazh || ""} onChange={setEx("dostupPlyazh")} />
           <MiniField label="Название ЖК / пансионата / комплекса" value={extra.kurortZhk || ""} onChange={setEx("kurortZhk")} />
-          <MiniField label="Расстояние до озера, метров (вводится по реальным данным)" value={extra.rasstoyanieOzero || ""} onChange={setEx("rasstoyanieOzero")} />
-          <MiniChips label="Положение относительно берега" options={["Первая береговая линия", "Вторая линия", "В пешей доступности", "Не в пешей доступности"]} value={extra.liniyaOzero || ""} onChange={setEx("liniyaOzero")} />
-          <MiniField label="Ограничения строительства (если известны)" value={extra.ogranStroit || ""} onChange={setEx("ogranStroit")} />
+          <MiniField label="Ограничения строительства (если известны)" value={extra.ogranStroit || ""} onChange={setEx("ogranStroit")} long />
           <MiniChips label="Возможен туристический или коммерческий проект" options={["Да", "Нет", "Уточняется"]} value={extra.turProekt || ""} onChange={setEx("turProekt")} />
           <div className="field-hint">«Да» отмечайте только если это подтверждено назначением земли по документам и применимыми требованиями.</div>
         </Accordion>
@@ -839,9 +842,10 @@ function UchastokForm() {
       {(!editId || !currentStatus || currentStatus === "черновик") && <button
         disabled={saving || videoPendingError}
         onClick={handleSaveDraft}
-        style={{ width: "100%", marginTop: 10, background: "none", border: "none", color: "var(--muted)", fontSize: 13, fontWeight: 700, padding: "10px 0" }}
+        className="draft-btn"
       >
-        Сохранить черновик и продолжить позже
+        💾 Сохранить черновик
+        <small>можно продолжить позже, обязательные поля заполнять не нужно</small>
       </button>}
       <div className="progress-note">Поля со звёздочкой * обязательны</div>
     </div>
