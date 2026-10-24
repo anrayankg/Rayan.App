@@ -3,7 +3,7 @@ import { useEffect, useRef } from "react";
 
 // Текстовое поле, которое растёт вместе с текстом: описание видно целиком,
 // его удобно читать и править без прокрутки внутри маленького окошка.
-export default function AutoTextarea({ value, className = "", minRows = 8, ...rest }) {
+export default function AutoTextarea({ value, className = "", minRows = 8, compact = false, ...rest }) {
   const ref = useRef(null);
   const fit = () => {
     const el = ref.current;
@@ -13,5 +13,5 @@ export default function AutoTextarea({ value, className = "", minRows = 8, ...re
   };
   useEffect(() => { fit(); }, [value]);
   useEffect(() => { const t = setTimeout(fit, 150); return () => clearTimeout(t); }, []);
-  return <textarea ref={ref} rows={minRows} value={value} className={`${className} auto-ta`} onInput={fit} {...rest} />;
+  return <textarea ref={ref} rows={minRows} value={value} className={`${className} auto-ta ${compact ? "auto-ta-sm" : ""}`} onInput={fit} {...rest} />;
 }
