@@ -243,6 +243,9 @@ export default function ProfilePage() {
     } catch {}
   }, []); // eslint-disable-line
 
+  // «Назад» возвращает туда, откуда пришли (например, в статистику), а не на главную
+  const goBack = () => { if (typeof window !== "undefined" && window.history.length > 1) router.back(); else router.push("/"); };
+
   const visibleListings = useMemo(() => {
     let list = myListings.filter((l) => {
       if (statusTab === "активно") return ACTIVE_STATUSES.includes(l.status);
@@ -377,7 +380,7 @@ export default function ProfilePage() {
   if (!agent) {
     return (
       <div style={sx.page}>
-        <button onClick={() => router.push("/")} style={sx.backBtn}>‹</button>
+        <button onClick={goBack} style={sx.backBtn}>‹</button>
         <div style={sx.loginBox}>
           <div style={sx.loginIcon}>👤</div>
           <div style={sx.loginTitle}>Вход в личный кабинет</div>
@@ -409,7 +412,7 @@ export default function ProfilePage() {
 
   return (
     <div style={sx.page}>
-      <button onClick={() => router.push("/")} style={sx.backBtn}>‹</button>
+      <button onClick={goBack} style={sx.backBtn}>‹</button>
 
       {/* Профиль */}
       <div style={sx.profileHeader}>
@@ -510,6 +513,22 @@ export default function ProfilePage() {
               🔁 Передать объекты другому агенту{selected.size > 0 ? ` (выбрано ${selected.size})` : ` (показано ${visibleListings.length})`}
             </button>
           )}
+          <div className="cond-box">
+            <div className="cond-title">
+              Показано {visibleListings.length} из {myListings.length}
+              {isManager(agent) && scopeOptions.length > 0 ? ` · ${(scopeOptions.find((o) => o.v === scope) || {}).t || ""}`.replace(/ \(\d+\)$/, "") : ""}
+            </div>
+            <div className="cond-chips">
+              <span className="cond-chip">Вкладка: {({ "активно": "Активно", "черновики": "Черновики", "деактивировано": "Деактивировано" })[statusTab] || statusTab}</span>
+              {pfilter.cat && <button className="cond-chip x" onClick={() => setPfilter({ ...pfilter, cat: null, v: {} })}>{(FILTER_CATEGORIES.find((c) => c.key === pfilter.cat) || {}).label || pfilter.cat} ✕</button>}
+              {pfilter.v && pfilter.v.contract && <button className="cond-chip x" onClick={() => setPfilter({ ...pfilter, v: { ...pfilter.v, contract: undefined } })}>Договор: {pfilter.v.contract} ✕</button>}
+              {onlyNew && <button className="cond-chip x" onClick={() => setOnlyNew(false)}>Новые за 24 часа ✕</button>}
+              {search.trim() && <button className="cond-chip x" onClick={() => setSearch("")}>Поиск: {search.trim()} ✕</button>}
+            </div>
+            {visibleListings.length === 0 && myListings.length > 0 && (
+              <div className="cond-hint">Объекты у этого агента есть ({counts.активно} активных, {counts.черновики} черновиков, {counts.деактивировано} деактивировано), но они скрыты условиями выше. Нажмите ✕ на условии или выберите другую вкладку.</div>
+            )}
+          </div>
           <div style={sx.selectHeaderRow}>
             <span style={sx.selectHeaderText}>
               {selected.size > 0 ? `Выбрано ${selected.size}/${visibleListings.length}` : `Всего объявлений: ${visibleListings.length}`}
